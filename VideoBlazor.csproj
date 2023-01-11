@@ -57,6 +57,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Include="wwwroot\images\default-media.png" />
       <None Include="wwwroot\images\naruto.jpeg" />
     </ItemGroup>
 
