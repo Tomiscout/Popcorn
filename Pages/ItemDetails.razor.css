@@ -1,5 +1,4 @@
-﻿
-#item-info-box {
+﻿#item-info-box {
     display: flex;
     flow-direction: columns;
     width: 100%;
@@ -32,4 +31,16 @@
     width: 48px;
     border: none;
     background: none;
+}
+
+.navigation-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.nav-item {
+    font-size: 16px;
+    font-family: 'Roboto','Helvetica','Arial','sans-serif';
+    cursor: pointer !important;
 }

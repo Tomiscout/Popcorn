@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Maui.Graphics;
+using VideoBlazor.Core.Enums;
 using VideoBlazor.Core.Model;
 
 namespace VideoBlazor.Core.Services
@@ -49,6 +46,51 @@ namespace VideoBlazor.Core.Services
             var items = await LoadMediaItems();
             items.Remove(items.FirstOrDefault(x => x.Id == id));
             await JsonUtils.SaveJson(items, _jsonName);
+        }
+
+        public async Task CreateMediaItemFromScan(MediaItem item, MediaScanResult scanResult)
+        {
+            foreach (var path in scanResult.Files)
+            {
+                item.Files.Add(new MediaFile
+                {
+                    Path = path,
+                    Title = Path.GetFileName(path),
+                    Type = FileType.File
+                });
+            }
+            await AddMediaItem(item);
+        }
+
+        public List<MediaFile> GetFilesForDirectory(string rootDirectory, IList<MediaFile> files)
+        {
+            var folders = new HashSet<string>();
+
+            var result = new List<MediaFile>();
+            foreach(var file in files)
+            {
+                var parent = Path.GetDirectoryName(file.Path);
+                var grandParent = Path.GetDirectoryName(parent);
+                if (parent == rootDirectory) {
+                    result.Add(file);
+                } else if(grandParent == rootDirectory)
+                {
+                    folders.Add(parent);
+                    
+                }
+            }
+
+            foreach(var folder in folders)
+            {
+                result.Add(new MediaFile
+                {
+                    Path = folder,
+                    Title = folder.Substring(folder.LastIndexOf("\\") + 1), //Windows dependant
+                    Type = FileType.Folder
+                });
+            }
+
+            return result.OrderByDescending(x => x.Type).ThenBy(x => x.Title).ToList();
         }
     }
 }

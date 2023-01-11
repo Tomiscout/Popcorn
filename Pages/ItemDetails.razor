@@ -10,6 +10,11 @@
     <span>Back</span>
 </MudButton>
 
+<MudButton Variant="Variant.Filled" @onclick="OnDelete">
+    <i class="fa-solid fa-trash"></i>
+    <span>Delete</span>
+</MudButton>
+
 @if(item is null) {
     <h4>No item</h4>
 } else {
@@ -22,15 +27,32 @@
 
     <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
     <MudTabPanel Text="Files">
+        <div class="navigation-container">
+            <p class="nav-item" @onclick=" OpenRootFolder">Root</p>
+            @foreach(var folder in navigation) {
+                <span><i class="fa-solid fa-chevron-right ml-1"></i></span> <!-- Have to wrap in span because of blazor font-awesome bug -->
+                    <p class="ml-1 nav-item" @onclick="()=> OpenFolderFromNavigation(folder)">@folder.Title</p>
+            }
+        </div>
+
+
          <MudList Clickable="true">
-             @foreach(var file in item.Files) {
-                 swi
-             }
-            <MudListItem Text="Inbox" Icon="@Icons.Material.Filled.Inbox" />
-            <MudListItem Text="Sent" Icon="@Icons.Material.Filled.Send" />
             <MudDivider />
-            <MudListItem Text="Trash" />
-            <MudListItem Text="Spam" />
+            @foreach (var file in currentFiles)
+            {
+                @if (file.Type == FileType.File)
+                {
+                        <MudListItem Text="@file.Title" Icon="@Icons.Material.Filled.Slideshow" />
+                }
+                else if (file.Type == FileType.Folder)
+                {
+                    <MudListItem Text="@file.Title" Icon="@Icons.Material.Filled.Folder" @onclick="() => OpenFolder(file)" />
+                }
+                <MudDivider />
+            }
+            @if(currentFiles.Count == 0) {
+                <MudText>No files</MudText>
+            }
         </MudList>
     </MudTabPanel>
     <MudTabPanel Text="Watch history">
@@ -56,23 +78,59 @@
     public string Id { get; set; }
 
     public MediaItem item;
+    public List<MediaFile> currentFiles = new List<MediaFile>();
+    public List<MediaFile> navigation = new List<MediaFile>();
 
     protected override async Task OnInitializedAsync()
     {
         item = await MediaItemService.LoadItemById(Id);
+        OpenRootFolder();
+
         if(item.History is not null) {
             foreach(var entry in item.History) {
                 entry.Title = Path.GetFileName(entry.Filename);
             }
         }
-    
+
+    }
+
+    public void OpenFolder(MediaFile folder) {
+        LoadFolder(folder);
+        navigation.Add(folder);
+    }
+
+    public void OpenFolderFromNavigation(MediaFile folder)
+    {
+        LoadFolder(folder);
+
+        var currentIndex = navigation.FindIndex(n => n.Path == folder.Path);
+        if (currentIndex == -1) return;
+
+        for(var i = navigation.Count - 1; i > currentIndex; i--) {
+            navigation.RemoveAt(i);
+        }
     }
 
     public void PlayHistoryItem(PlaybackHistory historyItem) {
 
     }
 
+    private void LoadFolder(MediaFile folder) {
+        currentFiles = MediaItemService.GetFilesForDirectory(folder.Path, item.Files);
+    }
+
+    public void OpenRootFolder() {
+        currentFiles = MediaItemService.GetFilesForDirectory(item.FolderDirectory, item.Files);
+        navigation = new List<MediaFile>();
+    }
+
     public void OnBack() {
         NavigationManager.NavigateTo("/");
+    }
+
+    public async void OnDelete()
+    {
+        await MediaItemService.DeleteMediaItem(new Guid(Id));
+        OnBack();
     }
 }
