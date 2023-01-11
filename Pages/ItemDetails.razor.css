@@ -1,0 +1,35 @@
+﻿
+#item-info-box {
+    display: flex;
+    flow-direction: columns;
+    width: 100%;
+    height: 185px;
+    margin: 10px;
+}
+
+#item-description {
+    margin-left: 10px;
+}
+
+#nav-tabs {
+    margin-top: 10px;
+}
+
+.history-list-item {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    margin:6px;
+    padding: 4px;
+}
+
+.history-list-title {
+    flex-grow: 1;
+}
+
+.history-list-button {
+    flex-grow: 0;
+    width: 48px;
+    border: none;
+    background: none;
+}

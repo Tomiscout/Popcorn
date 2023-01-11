@@ -1,0 +1,36 @@
+﻿@using VideoBlazor.Core.Model
+@using VideoBlazor.Core.Services
+@inject MediaItemService MediaItemService
+@inject NavigationManager NavigationManager
+@page "/"
+
+@if (items == null)
+{
+ <p><em>Loading...</em></p>
+} else if(items.Count == 0)
+{
+	<p>No media</p>
+} else {
+    <div class="items-cards">
+        @foreach(var item in items) {
+            <div class="item card" @onclick="() => OnItemClick(item)">
+
+                <img src="@item.Image" alt="@item.Title" />
+                <span>@item.Title</span>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    public IList<MediaItem> items;
+
+    protected override async Task OnInitializedAsync()
+    {
+        items = await MediaItemService.LoadMediaItems();
+    }
+    
+    public void OnItemClick(MediaItem item) {
+        NavigationManager.NavigateTo($"/itemDetails/{item.Id}");
+    }
+}
