@@ -21,17 +21,23 @@ else {
 		{
 			<div class="card folder-list-item">
 				<span class="folder-path">@folder.Path</span>
-				<button class="folder-list-button" @onclick="() => DeleteFolder(folder)">
-					<i class="fa-solid fa-trash"></i>
-				</button>
+				<MudButton class="folder-list-button" Variant="Variant.Filled" @onclick="() => DeleteFolder(folder)">
+					<i class="fa-solid fa-trash mr-1"></i>
+					<span>Delete</span>
+				</MudButton>
 			</div>
 		}
 	</div>
 }
 
 <div class="mt-2"></div>
-<button type="button" class="btn btn-primary" @onclick="AddNewFolder">Add folder</button>
-<button type="button" class="btn btn-primary" @onclick="OpenRootFolder">Open root folder</button>
+
+<MudButton Variant="Variant.Filled" @onclick="AddNewFolder">
+	<span>Add folder</span>
+</MudButton>
+<MudButton Variant="Variant.Filled" @onclick="OpenRootFolder">
+	<span>Open root folder</span>
+</MudButton>
 
 <div class="mb-3"></div>
 <h2>Media</h2>
@@ -45,27 +51,33 @@ else if (folders.Count == 0)
 }
 else
 {
-	<button type="button" class="btn btn-primary" @onclick="ScanFolders">
-		<i class="fa-solid fa-arrows-rotate"></i>
-	</button>
-	<div class="list-group list-group-flush">
+	<MudButton class="folder-list-button" Variant="Variant.Filled" @onclick="ScanFolders">
+		<span><i class="fa-solid fa-arrows-rotate"></i></span>
+		<span>Refresh</span>
+	</MudButton>
+	<MudList Clickable="true">
 		@foreach (var entry in groupedScanResults)
 		{
-			<div>
-				<h3>@entry.Key</h3>
-				@foreach (var scanResult in entry.Value)
-				{
-					<div class="card folder-list-item">
-						<span class="folder-path">@scanResult.Title</span>
-						<span class="file-count-label">@scanResult.Files.Count file@(scanResult.Files.Count != 1 ? "s" : "")</span>
-						<button class="folder-list-button" @onclick="() => AddScanResult(scanResult)">
-							<i class="fa-solid fa-plus"></i>
-						</button>
-					</div>
-				}
-			</div>
+			<h3>@entry.Key</h3>
+			<MudDivider />
+			@foreach (var scanResult in entry.Value)
+			{
+				<div class="folder-list-item">
+					<span class="folder-path">@scanResult.Title</span>
+					<span class="file-count-label">@scanResult.Files.Count file@(scanResult.Files.Count != 1 ? "s" : "")</span>
+					<button class="folder-list-button" @onclick="() => AddScanResult(scanResult)">
+						<i class="fa-solid fa-plus"></i>
+					</button>
+				</div>
+				<MudDivider />
+			}
+			@if (entry.Value.Count == 0)
+			{
+				<MudText>No files</MudText>
+			}
+			<MudDivider />
 		}
-	</div>
+	</MudList>
 }
 
 

@@ -28,7 +28,14 @@
 
 .history-list-date {
     flex-grow: 0;
-   
+}
+
+.seeds {
+    text-color: rgb(0, 128, 0);
+}
+
+.peers {
+    text-color: rgb(255, 0, 0);
 }
 
 
