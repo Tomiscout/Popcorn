@@ -26,7 +26,11 @@
 				<br />
 				<button type="button" class="btn btn-secondary" @onclick="PickImageFromFile">Select image</button>
 			} else {
-				<img src="@createItem.Image" style="width:100%; height:100%;" />
+				@if(string.IsNullOrWhiteSpace(createItem.Image)) {
+					<img src="/images/default-media.png" style="width:100%; height:100%;" />
+				} else {
+					<img src="@createItem.Image" style="width:100%; height:100%;" />
+				}
 			}
 		</div>
 

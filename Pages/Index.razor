@@ -15,7 +15,14 @@
         @foreach(var item in items) {
             <div class="item card" @onclick="() => OnItemClick(item)">
 
-                <img src="@item.Image" alt="@item.Title" />
+                @if (string.IsNullOrWhiteSpace(item.Image))
+                {
+                    <img src="/images/default-media.png" />
+                }
+                else
+                {
+                    <img src="@item.Image" alt="@item.Title" />
+                }
                 <span>@item.Title</span>
             </div>
         }

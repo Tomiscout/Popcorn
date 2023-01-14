@@ -6,26 +6,39 @@ namespace VideoBlazor.Core.Services
 {
 	public class MediaItemService
 	{
-        private static readonly string _jsonName = "mediaItems.json";
+        private static readonly string _jsonFormat = "mediaItems-{0}.json";
+        
+        public async Task<MediaItem> LoadMediaItem(Guid id) {
+            return await LoadMediaItem(id.ToString());
+        }
+        public async Task<MediaItem> LoadMediaItem(string id)
+        {
+            var mediaPath = string.Format(_jsonFormat, id);
+            return await JsonUtils.LoadJsonAsync<MediaItem>(mediaPath);
+        }
 
+        public async Task SaveMediaItem(MediaItem item)
+        {
+            await JsonUtils.SaveJson(item, string.Format(_jsonFormat, item.Id.ToString()));
+        }
 
         public async Task<IList<MediaItem>> LoadMediaItems()
         {
             try
             {
-                return await JsonUtils.LoadJsonAsync<IList<MediaItem>>(_jsonName);
+                var search = string.Format(_jsonFormat, "*");
+                var allPaths = Directory.EnumerateFiles(JsonUtils.GetDataFolder(), search, SearchOption.TopDirectoryOnly).ToList();
+                var result = new List<MediaItem>();
+                foreach (var path in allPaths) {
+                    result.Add(await JsonUtils.LoadJsonAsync<MediaItem>(Path.GetFileName(path)));
+                }
+                return result;
             }
             catch (FileNotFoundException)
             {
                 var emptyList = new List<MediaItem>();
-                await JsonUtils.SaveJson(emptyList, _jsonName);
                 return emptyList;
             }
-        }
-
-        public async Task<MediaItem> LoadItemById(string id)
-        {
-            return (await LoadMediaItems()).FirstOrDefault(n => n.Id.ToString() == id);
         }
 
         public async Task AddMediaItem(MediaItem mediaItem)
@@ -36,16 +49,27 @@ namespace VideoBlazor.Core.Services
                 ImageUtils.SaveImage(mediaItem.ImagePath, mediaItem.Id.ToString());
             }
 
-            var items = await LoadMediaItems();
-            items.Add(mediaItem);
-            await JsonUtils.SaveJson(items, _jsonName);
+            await SaveMediaItem(mediaItem);
+        }
+
+        public async Task AddHistoryItem(Guid id, PlaybackHistory item)
+        {
+            var mediaItem = await LoadMediaItem(id);
+            if(mediaItem.History is null)
+            {
+                mediaItem.History = new List<PlaybackHistory>();
+            }
+            mediaItem.History.Add(item);
+            await SaveMediaItem(mediaItem);
         }
 
         public async Task DeleteMediaItem(Guid id)
         {
-            var items = await LoadMediaItems();
-            items.Remove(items.FirstOrDefault(x => x.Id == id));
-            await JsonUtils.SaveJson(items, _jsonName);
+            var currentItem = await LoadMediaItem(id);
+            if(currentItem is not null)
+            {
+                File.Delete(string.Format(_jsonFormat, id.ToString()));
+            }
         }
 
         public async Task CreateMediaItemFromScan(MediaItem item, MediaScanResult scanResult)

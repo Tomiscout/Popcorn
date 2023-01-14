@@ -1,7 +1,10 @@
 ﻿@page "/itemDetails/{id}"
+@using System.Diagnostics
+@using VideoBlazor.Core.Exceptions
 @using VideoBlazor.Core.Model
 @using VideoBlazor.Core.Services
 @using VideoBlazor.Core.Enums;
+@using VideoBlazor.Core.Utils
 @inject NavigationManager NavigationManager
 @inject MediaItemService MediaItemService
 
@@ -21,7 +24,12 @@
     
     <h3>@item.Title</h3>
     <div id="item-info-box">
-        <img id="item-image" src="@item.Image" alt="@item.Title" />
+        @if (string.IsNullOrWhiteSpace(item.Image))
+        {
+			<img id="item-image" src="/images/default-media.png" />
+		} else {
+            <img id="item-image" src="@item.Image" />
+		}
         <span id="item-description">Descripton</span>
     </div>
 
@@ -35,14 +43,13 @@
             }
         </div>
 
-
          <MudList Clickable="true">
             <MudDivider />
             @foreach (var file in currentFiles)
             {
                 @if (file.Type == FileType.File)
                 {
-                        <MudListItem Text="@file.Title" Icon="@Icons.Material.Filled.Slideshow" />
+                    <MudListItem Text="@file.Title" Icon="@Icons.Material.Filled.Slideshow" @onclick="() => OpenFile(file)" />
                 }
                 else if (file.Type == FileType.Folder)
                 {
@@ -59,13 +66,16 @@
         @if (item.History is null) { 
             <span>No history</span>
         } else {
-            foreach(var entry in item.History) {
+                <MudDivider />
+            for(var i = item.History.Count() - 1; i >= 0; i--) {
                 <div class="card history-list-item">
-				    <span class="history-list-title">@entry.Title</span>
-				    <button class="history-list-button" @onclick="() => PlayHistoryItem(entry)">
+				    <span class="history-list-title">@item.History[i].Title</span>
+                        <span class="history-list-date">@item.History[i].PlaybackTime.ToShortDateString() @item.History[i].PlaybackTime.ToShortTimeString()</span>
+                        <button class="history-list-button" @onclick="() => OpenFile(item.History[i])">
 					    <i class="fa-solid fa-play"></i>
 				    </button>
 			    </div>
+                <MudDivider />
             }
         }
     </MudTabPanel>
@@ -83,15 +93,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        item = await MediaItemService.LoadItemById(Id);
+        item = await MediaItemService.LoadMediaItem(Id);
         OpenRootFolder();
 
-        if(item.History is not null) {
-            foreach(var entry in item.History) {
-                entry.Title = Path.GetFileName(entry.Filename);
-            }
+        if(item.History is null) {
+            item.History = new List<PlaybackHistory>();
         }
-
     }
 
     public void OpenFolder(MediaFile folder) {
@@ -111,8 +118,40 @@
         }
     }
 
-    public void PlayHistoryItem(PlaybackHistory historyItem) {
+    public async Task OpenFile(PlaybackHistory historyItem)
+    {
+        await MediaItemService.AddHistoryItem(item.Id, new PlaybackHistory
+        {
+            Filename = historyItem.Filename,
+            Title = historyItem.Title,
+            PlaybackTime = DateTime.Now
+        });
+        LaunchFile(historyItem.Filename);
+        item = await MediaItemService.LoadMediaItem(Id);
+    }
 
+    private async Task OpenFile(MediaFile file)
+    {
+        await MediaItemService.AddHistoryItem(item.Id, new PlaybackHistory
+        {
+            Filename = file.Path,
+            Title = file.Title,
+            PlaybackTime = DateTime.Now
+        });
+        LaunchFile(file.Path);
+        item = await MediaItemService.LoadMediaItem(Id);
+    }
+
+    private void LaunchFile(string path) {
+        try
+        {
+            var command = FileAssociation.GetExecFileAssociatedToExtension(Path.GetExtension(path));
+            Process.Start(command, $"\"{path}\"");
+        }
+        catch (Exception e)
+        {
+            throw new UnableToOpenFileException(e.Message, e);
+        }
     }
 
     private void LoadFolder(MediaFile folder) {
