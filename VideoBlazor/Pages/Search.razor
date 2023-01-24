@@ -1,0 +1,51 @@
+﻿@page "/search"
+@using System.Diagnostics
+@using VideoBlazor.Core.Utils
+@using VideoBlazor.SearchProviders.Model
+@using VideoBlazor.SearchProviders
+@using VideoBlazor.SearchProviders.Utils
+@using VideoBlazor.SearchProviders.Enum
+
+<MudTextField @bind-Value="@searchInput" Label="Standard" Variant="Variant.Text"></MudTextField>
+<MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchQuery">Search</MudButton>
+    
+<MudList Clickable="true">
+    <MudDivider />
+    @foreach (var item in searchResults)
+    {
+        <div class="search-list-item">
+            @switch(item.Source) {
+                case SearchSourceType.PirateBay:
+                    <img class="source-img" src="/images/piratebay.svg" />
+                    break;
+                case SearchSourceType.Rarbg:
+                    <img class="source-img" src="/images/rarbg.png" />
+                    break;
+                default:
+                    <div class="source-img" />
+                    break;
+            }
+            <span class="search-title">@item.Title</span>
+            @if (!string.IsNullOrWhiteSpace(item.MagnetLink)) {
+                <span class="search-right mr-2" @onclick="() => OpenMagnetLink(item.MagnetLink)"><i class="fa fa-magnet"></i></span>
+            }
+            <span class="search-right seeds mr-2">@item.Seeds</span>
+            <span class="search-right peers mr-2">@item.Peers</span>
+        </div>
+        <MudDivider />
+    }
+</MudList>
+
+@code {
+    public string searchInput { get; set; } = "";
+    public List<SearchResult> searchResults = new List<SearchResult>();
+
+    public async Task SearchQuery() {
+        searchResults = await SearchProviders.SearchQuery(searchInput);
+    }
+
+    public void OpenMagnetLink(string magnetLink) {
+        var command = FileAssociation.GetExecFileAssociatedToExtension(".torrent");
+        Process.Start(command, $"\"{magnetLink}\"");
+    }
+}

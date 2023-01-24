@@ -1,0 +1,33 @@
+﻿
+.search-list-item {
+    height: 40px;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    margin: 6px;
+    padding: 4px;
+}
+
+.source-img {
+    display: block;
+    max-width: 40px;
+    max-height: 40px;
+    width: auto;
+    height: auto;
+}
+
+.search-title {
+    flex-grow: 1;
+}
+
+.search-right {
+    flex-grow: 0;
+}
+
+.seeds {
+    color: green;
+}
+
+.peers {
+    color: indianred;
+}

@@ -1,0 +1,12 @@
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\bin\Debug\net6.0\VideoBlazor.SearchProviders.deps.json
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\bin\Debug\net6.0\VideoBlazor.SearchProviders.dll
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\bin\Debug\net6.0\VideoBlazor.SearchProviders.pdb
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\obj\Debug\net6.0\VideoBlazor.SearchProviders.csproj.AssemblyReference.cache
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\obj\Debug\net6.0\VideoBlazor.SearchProviders.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\obj\Debug\net6.0\VideoBlazor.SearchProviders.AssemblyInfoInputs.cache
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\obj\Debug\net6.0\VideoBlazor.SearchProviders.AssemblyInfo.cs
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\obj\Debug\net6.0\VideoBlazor.SearchProviders.csproj.CoreCompileInputs.cache
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\obj\Debug\net6.0\VideoBlazor.SearchProviders.dll
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\obj\Debug\net6.0\refint\VideoBlazor.SearchProviders.dll
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\obj\Debug\net6.0\VideoBlazor.SearchProviders.pdb
+C:\Users\brazi\source\repos\VideoBlazor\VideoBlazor.SearchProviders\obj\Debug\net6.0\ref\VideoBlazor.SearchProviders.dll
