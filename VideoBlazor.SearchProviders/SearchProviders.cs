@@ -1,9 +1,11 @@
 ﻿using VideoBlazor.SearchProviders.Model;
+using VideoBlazor.SearchProviders.Models;
 using VideoBlazor.SearchProviders.Providers.PirateBay;
 using VideoBlazor.SearchProviders.Providers.Rarbg;
 
 namespace VideoBlazor.SearchProviders
 {
+    
     // All the code in this file is included in all platforms.
     public static class SearchProviders
     {
@@ -33,8 +35,6 @@ namespace VideoBlazor.SearchProviders
                 Task finishedTask = await Task.WhenAny(downloadTasks);
                 downloadTasks.Remove(finishedTask);
             }
-
-            //return result.OrderByDescending(r => r.Seeds).ToList();
         }
 
         static async Task ProcessSearchProviderAsync(ISearchProvider provider, string query, Delegate resultHandler)

@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using VideoBlazor.SearchProviders.Enum;
 using VideoBlazor.SearchProviders.Model;
+using VideoBlazor.SearchProviders.Models;
 using VideoBlazor.SearchProviders.Utils;
 
 namespace VideoBlazor.SearchProviders.Providers.PirateBay
@@ -26,22 +27,27 @@ namespace VideoBlazor.SearchProviders.Providers.PirateBay
             "udp://open.stealth.si:80/announce",
         };
 
-        public async Task<List<SearchResult>> Search(string query)
+        public async Task<SearchQueryResult> Search(string query)
         {
             var searchQuery = WebUtility.UrlEncode(query);
             var url = $"https://apibay.org/q.php?q={searchQuery}";
             using var client = new HttpClient();
             var content = await client.GetStringAsync(url);
             var results = JsonSerializer.Deserialize<List<PirateBaySearchResult>>(content);
-            return results.Select(x => new SearchResult
+            return new SearchQueryResult
             {
-                Title = x.Name,
-                Seeds = int.Parse(x.Seeders),
-                Peers = int.Parse(x.Leechers),
-                MagnetLink = TorrentUtils.BuildMagnetLink(x.Name, x.InfoHash, _pirateBayTrackers),
+                Results = results.Select(x => new SearchResult
+                {
+                    Title = x.Name,
+                    Seeds = int.Parse(x.Seeders),
+                    Peers = int.Parse(x.Leechers),
+                    MagnetLink = TorrentUtils.BuildMagnetLink(x.Name, x.InfoHash, _pirateBayTrackers),
+                    Source = SearchSourceType.PirateBay,
+                    Size = long.Parse(x.Size)
+                }).ToList(),
                 Source = SearchSourceType.PirateBay,
-                Size = long.Parse(x.Size)
-            }).ToList();
+                Success = true
+            };
         }
     }
 }

@@ -3,6 +3,7 @@
 @using VideoBlazor.Core.Utils
 @using VideoBlazor.SearchProviders.Model
 @using VideoBlazor.SearchProviders
+@using VideoBlazor.SearchProviders.Models
 @using VideoBlazor.SearchProviders.Utils
 @using VideoBlazor.SearchProviders.Enum
 
@@ -37,11 +38,26 @@
 </MudList>
 
 @code {
+    public delegate void SearchCompletedHandler(SearchQueryResult result);
+
     public string searchInput { get; set; } = "";
     public List<SearchResult> searchResults = new List<SearchResult>();
 
     public async Task SearchQuery() {
-        searchResults = await SearchProviders.SearchQuery(searchInput);
+
+        searchResults = new List<SearchResult>();
+        SearchCompletedHandler handler = (result) =>
+        {
+            if(result.Success) {
+                searchResults.AddRange(result.Results);
+                searchResults = searchResults.OrderByDescending(r => r.Seeds).ToList();
+            } else {
+                Console.WriteLine(result.Error);
+            }
+            StateHasChanged();
+        };
+        
+        await SearchProviders.SearchQuery(searchInput, handler);
     }
 
     public void OpenMagnetLink(string magnetLink) {
