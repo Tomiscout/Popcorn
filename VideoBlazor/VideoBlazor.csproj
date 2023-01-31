@@ -63,6 +63,7 @@
 
     <ItemGroup>
       <Folder Include="Core\Media\" />
+      <Folder Include="Core\Utils\" />
     </ItemGroup>
 
     <ItemGroup>

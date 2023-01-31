@@ -16,6 +16,14 @@
     height: auto;
 }
 
+.progress-source-img {
+    display: block;
+    max-width: 20px;
+    max-height: 20px;
+    width: auto;
+    height: auto;
+}
+
 .search-title {
     flex-grow: 1;
 }
@@ -30,4 +38,22 @@
 
 .peers {
     color: indianred;
+}
+
+.status-popover {
+    min-width: 200px;
+    position: absolute;
+    top: 100%;
+}
+
+.status-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.status-row {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
 }

@@ -1,5 +1,7 @@
 ﻿@page "/search"
 @using System.Diagnostics
+@using VideoBlazor.Core.Enums
+@using VideoBlazor.Core.Model
 @using VideoBlazor.Core.Utils
 @using VideoBlazor.SearchProviders.Model
 @using VideoBlazor.SearchProviders
@@ -27,8 +29,9 @@
                     break;
             }
             <span class="search-title">@item.Title</span>
-            @if (!string.IsNullOrWhiteSpace(item.MagnetLink)) {
-                <span class="search-right mr-2" @onclick="() => OpenMagnetLink(item.MagnetLink)"><i class="fa fa-magnet"></i></span>
+            @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
+            {
+                <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
             }
             <span class="search-right seeds mr-2">@item.Seeds</span>
             <span class="search-right peers mr-2">@item.Peers</span>
@@ -37,31 +40,103 @@
     }
 </MudList>
 
+<MudPopover Open="@_isSearching" Fixed="true" Class="pa-4 status-popover" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
+    <div class="status-container">
+        @foreach (var status in searchStatuses) if(status.Value is not null)
+        {
+            <div class="status-row">
+                @switch (status.Value.Status)
+                {
+                    case ProcessStatus.NotStarted:
+                        <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.Pending" />
+                        break;
+                    case ProcessStatus.InProgress:
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
+                        break;
+                    case ProcessStatus.Finished:
+                        <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.Check" Color="Color.Success" />
+                        break;
+                    case ProcessStatus.Failed:
+                        <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" />
+                        break;
+                    default:
+                        break;
+                }
+                @switch (status.Key)
+                {
+                    case SearchSourceType.PirateBay:
+                        <img class="progress-source-img" src="/images/piratebay.svg" />
+                        break;
+                    case SearchSourceType.Rarbg:
+                        <img class="progress-source-img" src="/images/rarbg.png" />
+                        break;
+                    default:
+                        break;
+                }
+                <MudText>@status.Value.Title</MudText>
+                @if (!string.IsNullOrWhiteSpace(status.Value.Message))
+                {
+                    <MudText Class="ml-1 progress-status-text">@status.Value.Message</MudText>
+                }
+            </div>
+        }
+    </div>
+</MudPopover>
+
 @code {
     public delegate void SearchCompletedHandler(SearchQueryResult result);
 
     public string searchInput { get; set; } = "";
     public List<SearchResult> searchResults = new List<SearchResult>();
+    public Dictionary<SearchSourceType, SearchQueryStatus> searchStatuses = new Dictionary<SearchSourceType, SearchQueryStatus>();
+    private bool _isSearching = true;
+
+
+    protected override async Task OnInitializedAsync()
+	{
+		@*searchStatuses.Add(SearchSourceType.PirateBay, new SearchQueryStatus(){
+                Title = "PirateBay",
+                Status = ProcessStatus.NotStarted,
+        });*@
+    }
 
     public async Task SearchQuery() {
+        var sources = SearchProviders.GetSearchProvidersSources();
+        foreach(var source in sources) {
+            searchStatuses.Add(source, new SearchQueryStatus()
+            {
+                Title = source.ToString(),
+                Status = ProcessStatus.InProgress,
+            });
+        }
 
+        _isSearching = true;
         searchResults = new List<SearchResult>();
         SearchCompletedHandler handler = (result) =>
         {
             if(result.Success) {
                 searchResults.AddRange(result.Results);
+                searchStatuses[result.Source].Status = ProcessStatus.Finished;
                 searchResults = searchResults.OrderByDescending(r => r.Seeds).ToList();
             } else {
+                searchStatuses[result.Source].Status = ProcessStatus.Failed;
                 Console.WriteLine(result.Error);
             }
             StateHasChanged();
         };
-        
+
         await SearchProviders.SearchQuery(searchInput, handler);
     }
 
-    public void OpenMagnetLink(string magnetLink) {
-        var command = FileAssociation.GetExecFileAssociatedToExtension(".torrent");
-        Process.Start(command, $"\"{magnetLink}\"");
+    public async void DownloadTorrent(SearchResult item) {
+        if(!string.IsNullOrWhiteSpace(item.MagnetLink)) {
+            TorrentUtils.OpenMagnetLink(item.MagnetLink);
+        }
+        else
+        {
+            //TODO progress spinner enable
+            await SearchProviders.DownloadAndOpenTorrent(item.Source, item.TorrentFileLink);
+            //TODO progress spinner disable
+        }
     }
 }

@@ -15,6 +15,8 @@ namespace VideoBlazor.SearchProviders.Providers.Rarbg
         private static readonly string _apiUrl = "http://torrentapi.org/pubapi_v2.php";
         private string _apiToken = null;
 
+        public SearchSourceType Source => SearchSourceType.Rarbg;
+
         public async Task<SearchQueryResult> Search(string query)
         {
             try
@@ -22,7 +24,7 @@ namespace VideoBlazor.SearchProviders.Providers.Rarbg
                 var results = await AttemptSearch(query);
                 return new SearchQueryResult()
                 {
-                    Source = SearchSourceType.Rarbg,
+                    Source = Source,
                     Results = results,
                     Success = true
                 };
@@ -30,7 +32,7 @@ namespace VideoBlazor.SearchProviders.Providers.Rarbg
             {
                 return new SearchQueryResult()
                 {
-                    Source = SearchSourceType.Rarbg,
+                    Source = Source,
                     Success = false,
                     Error = e,
                     ErrorMessage = e.Message
@@ -122,7 +124,7 @@ namespace VideoBlazor.SearchProviders.Providers.Rarbg
         {
             return new SearchResult()
             {
-                Source = SearchSourceType.Rarbg,
+                Source = Source,
                 Title = result.Title,
                 Seeds = result.Seeds,
                 Peers = result.Peers,

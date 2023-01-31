@@ -14,6 +14,8 @@ namespace VideoBlazor.SearchProviders.Providers.PirateBay
 {
     public class PirateBaySearchProvider : ISearchProvider
     {
+        public SearchSourceType Source { get; } = SearchSourceType.PirateBay;
+
         private readonly string[] _pirateBayTrackers = {
             "udp://tracker.coppersurfer.tk:6969/announce",
             "udp://tracker.openbittorrent.com:6969/announce",
@@ -38,11 +40,11 @@ namespace VideoBlazor.SearchProviders.Providers.PirateBay
             {
                 Results = results.Select(x => new SearchResult
                 {
+                    Source = Source,
                     Title = x.Name,
                     Seeds = int.Parse(x.Seeders),
                     Peers = int.Parse(x.Leechers),
                     MagnetLink = TorrentUtils.BuildMagnetLink(x.Name, x.InfoHash, _pirateBayTrackers),
-                    Source = SearchSourceType.PirateBay,
                     Size = long.Parse(x.Size)
                 }).ToList(),
                 Source = SearchSourceType.PirateBay,

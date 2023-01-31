@@ -1,5 +1,7 @@
-﻿using VideoBlazor.SearchProviders.Model;
+﻿using VideoBlazor.SearchProviders.Enum;
+using VideoBlazor.SearchProviders.Model;
 using VideoBlazor.SearchProviders.Models;
+using VideoBlazor.SearchProviders.Providers.Linkomanija;
 using VideoBlazor.SearchProviders.Providers.PirateBay;
 using VideoBlazor.SearchProviders.Providers.Rarbg;
 
@@ -12,15 +14,16 @@ namespace VideoBlazor.SearchProviders
 
         private static List<ISearchProvider> _searchProviders = new List<ISearchProvider>()
         {
-            new PirateBaySearchProvider(),
-            new RarbgSearchProvider(),
-
+            /*new PirateBaySearchProvider(),
+            new RarbgSearchProvider(),*/
+            new LinkomanijaProvider(),
         };
         
-        public static void GetSearchProviders()
+        public static List<SearchSourceType> GetSearchProvidersSources()
         {
-            
+            return _searchProviders.Select(s => s.Source).ToList();
         }
+
         //TODO parallel runner https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/async/start-multiple-async-tasks-and-process-them-as-they-complete?pivots=dotnet-7-0
         public static async Task SearchQuery(string query, Delegate resultHandler)
         {
@@ -45,9 +48,16 @@ namespace VideoBlazor.SearchProviders
                 resultHandler.DynamicInvoke(results);
             } catch(Exception e)
             {
-                
+                //TODO exception handling
             }
 
+        }
+
+        public static async Task DownloadAndOpenTorrent(SearchSourceType source, string torrentUrl)
+        {
+            var provider = _searchProviders.FirstOrDefault(s => s.Source == source);
+            if(provider is null) return;
+            ((ITorrentDownloader)provider).DownloadTorrent(torrentUrl);
         }
     }
 }
