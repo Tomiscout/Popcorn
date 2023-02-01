@@ -101,6 +101,7 @@
     }
 
     public async Task SearchQuery() {
+        searchStatuses.Clear();
         var sources = SearchProviders.GetSearchProvidersSources();
         foreach(var source in sources) {
             searchStatuses.Add(source, new SearchQueryStatus()

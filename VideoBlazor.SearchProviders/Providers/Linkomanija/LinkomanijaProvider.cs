@@ -6,6 +6,8 @@ using HtmlAgilityPack;
 using System;
 using VideoBlazor.SearchProviders.Utils;
 using System.Net;
+using System.IO.Compression;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace VideoBlazor.SearchProviders.Providers.Linkomanija
 {
@@ -15,7 +17,8 @@ namespace VideoBlazor.SearchProviders.Providers.Linkomanija
         private const string _cookieName = "PHPSESSID";
         private const string _indexUrl = "https://www.linkomanija.net/login.php";
         private const string _loginUrl = "https://www.linkomanija.net/takelogin.php";
-        private const string _searchUrl = "https://www.linkomanija.net/takelogin.php";
+        private const string _searchUrl = "https://www.linkomanija.net/browse.php";
+        private HttpClientHandler _clientHandler => new HttpClientHandler() { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate };
 
         private const string _username = "tomazasxxl";
         private const string _password = "Narkevicius";
@@ -24,20 +27,27 @@ namespace VideoBlazor.SearchProviders.Providers.Linkomanija
 
         public async Task<SearchQueryResult> Search(string query)
         {
-            /*if (string.IsNullOrWhiteSpace(_cookie))
+            if (string.IsNullOrWhiteSpace(_cookie))
             {
                 await Login();
-            }*/
+            }
 
-
-            var path = @"C:\Users\brazi\Downloads\LinkoManija.Net __ Torrentai.html";
-            var html = File.ReadAllText(path);
-            var doc = new HtmlAgilityPack.HtmlDocument();
+            using HttpClient client = new HttpClient(_clientHandler); //TODO proper httpclient handling
+            Dictionary<string, string> queryParameters = new Dictionary<string, string>()
+            {
+                { "search", query },
+                { "incldead", "0" }
+            };
+            var url = new Uri(QueryHelpers.AddQueryString(_searchUrl, queryParameters)).ToString();
+            var response = await AuthenticatedGetRequest(client, url);
+            var html = await response.Content.ReadAsStringAsync();
+            File.WriteAllText(@"C:\Users\brazi\AppData\Local\Packages\3282D9AF-B9C3-4CE1-86DA-8CFE1D1B0633_9zz4h110yvjzm\LocalState\torrents\test2.html", html);
+            var doc = new HtmlDocument();
             doc.LoadHtml(html);
 
             var searchResults = new List<SearchResult>();
-            var tableRows = doc.DocumentNode.SelectNodes("//*[@id='content']/form/table[2]/tbody/tr");
-            if(tableRows.Count() == 0)
+            var tableRows = doc.DocumentNode.SelectNodes("//*[@id='content']/form/table[2]/tr");
+            if (tableRows.Count() == 0)
             {
                 return new SearchQueryResult()
                 {
@@ -75,29 +85,13 @@ namespace VideoBlazor.SearchProviders.Providers.Linkomanija
 
         public async Task<string> DownloadTorrent(string url)
         {
-             if (string.IsNullOrWhiteSpace(_cookie)) await Login();
+            if (string.IsNullOrWhiteSpace(_cookie)) await Login();
 
-            using HttpClient client = new HttpClient();
+            using HttpClient client = new HttpClient(_clientHandler);
             try
             {
-                //TODO refactor code dublication
-                var req = new HttpRequestMessage(HttpMethod.Get, url) { };
-                AddDefaultHeaders(req);
-                req.Headers.Add("Referer", "https://www.linkomanija.net/browse.php");
-                req.Headers.Add("Cookie", _cookie);
-                var response = await client.SendAsync(req);
-
-                if (response.RequestMessage.RequestUri.AbsolutePath.Contains("login.php"))
-                {
-                    await Login();
-                    req = new HttpRequestMessage(HttpMethod.Get, url) { };
-                    AddDefaultHeaders(req);
-                    req.Headers.Add("Referer", "https://www.linkomanija.net/browse.php");
-                    req.Headers.Add("Cookie", _cookie);
-                    response = await client.SendAsync(req);
-                }
-
-                var torrentFileName = url.Substring(url.IndexOf("name=") + 5);
+                var response = await AuthenticatedGetRequest(client, url);
+                var torrentFileName = WebUtility.UrlDecode(url.Substring(url.IndexOf("name=") + 5));
                 var path = Path.Join(TorrentUtils.GetTorrentsFolder(), torrentFileName);
                 File.Delete(path);
                 using var fs = new FileStream(path, FileMode.CreateNew);
@@ -109,18 +103,51 @@ namespace VideoBlazor.SearchProviders.Providers.Linkomanija
             }
         }
 
+        private async Task<HttpResponseMessage> AuthenticatedGetRequest(HttpClient client, string url)
+        {
+            var response = await GetRequest(client, url);
+
+            if (response.RequestMessage.RequestUri.AbsolutePath.Contains("login.php"))
+            {
+                await Login();
+                response = await GetRequest(client, url);
+            }
+            return response;
+        }
+
+        private async Task<HttpResponseMessage> GetRequest(HttpClient client, string url)
+        {
+            var req = new HttpRequestMessage(HttpMethod.Get, url) { };
+            AddDefaultHeaders(req);
+            req.Headers.Add("Referer", "https://www.linkomanija.net/browse.php");
+            req.Headers.Add("Cookie", _cookie);
+            return await client.SendAsync(req);
+        }
+
         private SearchResult ParseTableRow(HtmlNode row)
         {
             var genre = row.ChildNodes[1].FirstChild.FirstChild.Attributes["title"].Value;
             var titleDiv = row.ChildNodes[3];
             var uploadedDate = row.ChildNodes[9].InnerText.Insert(10, " ");
+
+            //This is neccesary since freeleech and (NAUJAS) tags may fuck up order
+            var downloadImageNode = titleDiv.ChildNodes
+                .Where(c => c.Name == "a" && c.FirstChild is not null)
+                .Select(c => c.FirstChild)
+                .Where(c => c.Name == "img" && c.Attributes["title"]?.Value == "Parsisiųsti")
+                .FirstOrDefault()?.ParentNode;
+            if(downloadImageNode is null)
+            {
+                //TODO Failed parsing download link
+            }
+
             return new SearchResult()
             {
                 Source = Source,
                 Title = titleDiv.FirstChild.InnerText,
                 TorrentPageUrl = titleDiv.FirstChild.Attributes["href"].Value,
                 Description = titleDiv.ChildNodes["span"].InnerText,
-                TorrentFileLink = titleDiv.SelectNodes("//img[contains(@title, 'Parsisiųsti')]").First().ParentNode.Attributes["href"].Value,
+                TorrentFileLink = downloadImageNode.Attributes["href"].Value,
                 FilesCount = int.Parse(row.ChildNodes[5].InnerText),
                 UploadedDate = DateTime.Parse(uploadedDate),
                 Seeds = int.Parse(row.ChildNodes[15].InnerText),
@@ -130,8 +157,8 @@ namespace VideoBlazor.SearchProviders.Providers.Linkomanija
 
         private async Task Login()
         {
+            using HttpClient client = new HttpClient(_clientHandler); //TODO proper httpclient handling
             //Load website to get session id from cookie
-            using HttpClient client = new HttpClient();
 
             string cookie = null;
             try
