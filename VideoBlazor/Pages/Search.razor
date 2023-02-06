@@ -1,44 +1,102 @@
 ﻿@page "/search"
 @using System.Diagnostics
+@using DM.MovieApi.MovieDb.Movies
 @using VideoBlazor.Core.Enums
 @using VideoBlazor.Core.Model
 @using VideoBlazor.Core.Utils
 @using VideoBlazor.SearchProviders.Model
 @using VideoBlazor.SearchProviders
 @using VideoBlazor.SearchProviders.Models
+@using VideoBlazor.SearchProviders.MovieDb
 @using VideoBlazor.SearchProviders.Utils
 @using VideoBlazor.SearchProviders.Enum
 
-<MudTextField @bind-Value="@searchInput" Label="Standard" Variant="Variant.Text"></MudTextField>
-<MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchQuery">Search</MudButton>
-    
-<MudList Clickable="true">
-    <MudDivider />
-    @foreach (var item in searchResults)
-    {
-        <div class="search-list-item">
-            @switch(item.Source) {
-                case SearchSourceType.PirateBay:
-                    <img class="source-img" src="/images/piratebay.svg" />
-                    break;
-                case SearchSourceType.Rarbg:
-                    <img class="source-img" src="/images/rarbg.png" />
-                    break;
-                default:
-                    <div class="source-img" />
-                    break;
-            }
-            <span class="search-title">@item.Title</span>
-            @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+    <MudTabPanel Text="Torrents">
+
+        <MudTextField @bind-Value="@searchInput" Label="Standard" Variant="Variant.Text"></MudTextField>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchQuery">Search</MudButton>
+
+        <MudList Clickable="true">
+            <MudDivider />
+            @foreach (var item in searchResults)
             {
-                <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
+                <div class="search-list-item">
+                    @switch (item.Source)
+                    {
+                        case SearchSourceType.PirateBay:
+                            <img class="source-img" src="/images/piratebay.svg" />
+                            break;
+                        case SearchSourceType.Rarbg:
+                            <img class="source-img" src="/images/rarbg.png" />
+                            break;
+                        default:
+                            <div class="source-img" />
+                            break;
+                    }
+                    <span class="search-title">@item.Title</span>
+                    @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
+                    {
+                        <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
+                    }
+                    <span class="search-right seeds mr-2">@item.Seeds</span>
+                    <span class="search-right peers mr-2">@item.Peers</span>
+                </div>
+                <MudDivider />
             }
-            <span class="search-right seeds mr-2">@item.Seeds</span>
-            <span class="search-right peers mr-2">@item.Peers</span>
-        </div>
-        <MudDivider />
-    }
-</MudList>
+        </MudList>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Media">
+        <MudTextField @bind-Value="@mediaSearchInput" Label="Standard" Variant="Variant.Text"></MudTextField>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchMediaQuery">Search</MudButton>
+
+        <MudList Clickable="true">
+            <MudDivider />
+            @foreach (var item in mediaSearchResults)
+            {
+                <div class="media-list-item">
+                    @if (item.MediaType == MovieDbMediaType.Person)
+                    {
+                        if(string.IsNullOrWhiteSpace(item.ProfilePath)) {
+                            <img src="/images/image-missing.svg" />
+                        } else {
+                            <img class="media-poster-img" src="@item.ProfilePath" />
+                        }
+                    } else {
+                        if(string.IsNullOrWhiteSpace(item.PosterPath)) {
+                            <img src="/images/image-missing.svg" />
+                        } else {
+                            <img class="media-poster-img" src="@item.PosterPath" />
+                        }
+                    }
+                    <div class="media-info-container">
+                        <div style="display: flex; flex-direction: row;">
+                            <span class="media-title">@item.Title</span>
+                            @if(item.MediaType == MovieDbMediaType.Movie) {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Movie</MudChip>
+                            } else if(item.MediaType == MovieDbMediaType.TvShow) {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">TV show</MudChip>
+                            } else {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Person</MudChip>
+                            }
+                        </div>
+                        <span class="media-description">@item.Description</span>
+                        <div>
+                            @foreach (var genre in item.Genres)
+                            {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@genre</MudChip>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <MudDivider />
+            }
+        </MudList>
+    </MudTabPanel>
+</MudTabs>
+
+
 
 <MudPopover Open="@_isSearching" Fixed="true" Class="pa-4 status-popover" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
     <div class="status-container">
@@ -87,17 +145,57 @@
     public delegate void SearchCompletedHandler(SearchQueryResult result);
 
     public string searchInput { get; set; } = "";
+    public string mediaSearchInput { get; set; } = "";
     public List<SearchResult> searchResults = new List<SearchResult>();
+    public List<SearchResult> mediaTorrentResults = new List<SearchResult>();
+    public List<MovieDbSearchResult> mediaSearchResults = new List<MovieDbSearchResult>();
     public Dictionary<SearchSourceType, SearchQueryStatus> searchStatuses = new Dictionary<SearchSourceType, SearchQueryStatus>();
     private bool _isSearching = true;
 
 
     protected override async Task OnInitializedAsync()
 	{
-		@*searchStatuses.Add(SearchSourceType.PirateBay, new SearchQueryStatus(){
+    @*searchStatuses.Add(SearchSourceType.PirateBay, new SearchQueryStatus(){
                 Title = "PirateBay",
                 Status = ProcessStatus.NotStarted,
         });*@
+    }
+
+    public async Task SearchMediaQuery()
+    {
+        mediaSearchResults.Clear();
+        mediaSearchResults.AddRange(await MovieDbProvider.Search(mediaSearchInput));
+
+        /*searchStatuses.Clear();
+        var sources = SearchProviders.GetImdbSearchProvidersSources();
+        foreach (var source in sources)
+        {
+            searchStatuses.Add(source, new SearchQueryStatus()
+                {
+                    Title = source.ToString(),
+                    Status = ProcessStatus.InProgress,
+                });
+        }
+
+        _isSearching = true;
+        searchResults = new List<SearchResult>();
+        SearchCompletedHandler handler = (result) =>
+        {
+            if (result.Success)
+            {
+                mediaSsearchResults.AddRange(result.Results);
+                searchStatuses[result.Source].Status = ProcessStatus.Finished;
+                mediaSsearchResults = mediaSsearchResults.OrderByDescending(r => r.Seeds).ToList();
+            }
+            else
+            {
+                searchStatuses[result.Source].Status = ProcessStatus.Failed;
+                Console.WriteLine(result.Error);
+            }
+            StateHasChanged();
+        };
+
+        await SearchProviders.SearchImdbQuery(imdbId, handler);*/
     }
 
     public async Task SearchQuery() {

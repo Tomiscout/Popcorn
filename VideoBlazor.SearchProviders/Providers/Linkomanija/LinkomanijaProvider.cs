@@ -14,10 +14,14 @@ namespace VideoBlazor.SearchProviders.Providers.Linkomanija
     public class LinkomanijaProvider : ISearchProvider, ITorrentDownloader
     {
         public SearchSourceType Source => SearchSourceType.Linkomanija;
+        public bool Imdb { get; } = false;
+
         private const string _cookieName = "PHPSESSID";
         private const string _indexUrl = "https://www.linkomanija.net/login.php";
         private const string _loginUrl = "https://www.linkomanija.net/takelogin.php";
         private const string _searchUrl = "https://www.linkomanija.net/browse.php";
+
+        //TODO use 1.1.1.1 DNS
         private HttpClientHandler _clientHandler => new HttpClientHandler() { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate };
 
         private const string _username = "tomazasxxl";
@@ -81,6 +85,11 @@ namespace VideoBlazor.SearchProviders.Providers.Linkomanija
                 Source = Source,
                 Success = true
             };
+        }
+
+        public Task<SearchQueryResult> SearchImdb(string imdb, string title)
+        {
+            throw new NotImplementedException();
         }
 
         public async Task<string> DownloadTorrent(string url)

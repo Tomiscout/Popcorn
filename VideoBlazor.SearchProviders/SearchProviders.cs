@@ -1,9 +1,5 @@
 ﻿using VideoBlazor.SearchProviders.Enum;
-using VideoBlazor.SearchProviders.Model;
-using VideoBlazor.SearchProviders.Models;
 using VideoBlazor.SearchProviders.Providers.Linkomanija;
-using VideoBlazor.SearchProviders.Providers.PirateBay;
-using VideoBlazor.SearchProviders.Providers.Rarbg;
 
 namespace VideoBlazor.SearchProviders
 {
@@ -24,8 +20,27 @@ namespace VideoBlazor.SearchProviders
             return _searchProviders.Select(s => s.Source).ToList();
         }
 
-        //TODO parallel runner https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/async/start-multiple-async-tasks-and-process-them-as-they-complete?pivots=dotnet-7-0
+        public static List<SearchSourceType> GetImdbSearchProvidersSources()
+        {
+            return _searchProviders.Where(s => s.Imdb).Select(s => s.Source).ToList();
+        }
+
         public static async Task SearchQuery(string query, Delegate resultHandler)
+        {
+            IEnumerable<Task> searchTasksQuery =
+            from provider in _searchProviders
+            select ProcessSearchProviderAsync(provider, query, resultHandler);
+
+            List<Task> downloadTasks = searchTasksQuery.ToList();
+
+            while (downloadTasks.Any())
+            {
+                Task finishedTask = await Task.WhenAny(downloadTasks);
+                downloadTasks.Remove(finishedTask);
+            }
+        }
+
+        public static async Task SearcImdbhQuery(string query, Delegate resultHandler)
         {
             IEnumerable<Task> searchTasksQuery =
             from provider in _searchProviders
@@ -57,7 +72,7 @@ namespace VideoBlazor.SearchProviders
         {
             var provider = _searchProviders.FirstOrDefault(s => s.Source == source);
             if(provider is null) return;
-            ((ITorrentDownloader)provider).DownloadTorrent(torrentUrl);
+            await ((ITorrentDownloader)provider).DownloadTorrent(torrentUrl);
         }
     }
 }

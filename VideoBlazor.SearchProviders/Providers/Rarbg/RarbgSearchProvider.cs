@@ -16,6 +16,7 @@ namespace VideoBlazor.SearchProviders.Providers.Rarbg
         private string _apiToken = null;
 
         public SearchSourceType Source => SearchSourceType.Rarbg;
+        public bool Imdb { get; } = true;
 
         public async Task<SearchQueryResult> Search(string query)
         {
@@ -38,6 +39,11 @@ namespace VideoBlazor.SearchProviders.Providers.Rarbg
                     ErrorMessage = e.Message
                 };
             }
+        }
+
+        public Task<SearchQueryResult> SearchImdb(string imdb, string title)
+        {
+            throw new NotImplementedException();
         }
 
         private async Task<List<SearchResult>> AttemptSearch(string query, int attempts = 0)

@@ -3,6 +3,7 @@ using VideoBlazor.Data;
 using VideoBlazor.Core;
 using MudBlazor.Services;
 using VideoBlazor.SearchProviders.Utils;
+using VideoBlazor.SearchProviders.MovieDb;
 
 namespace VideoBlazor;
 
@@ -33,6 +34,7 @@ public static class MauiProgram
 		JsonUtils.EnsureAppFolder();
 		ImageUtils.EnsureImageFolder();
 		TorrentUtils.EnsureTorrentsFolder();
+        MovieDbProvider.Initialize();
 
         return builder.Build();
 	}

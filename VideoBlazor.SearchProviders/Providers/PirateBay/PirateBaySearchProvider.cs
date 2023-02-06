@@ -15,6 +15,7 @@ namespace VideoBlazor.SearchProviders.Providers.PirateBay
     public class PirateBaySearchProvider : ISearchProvider
     {
         public SearchSourceType Source { get; } = SearchSourceType.PirateBay;
+        public bool Imdb { get; } = true;
 
         private readonly string[] _pirateBayTrackers = {
             "udp://tracker.coppersurfer.tk:6969/announce",
@@ -50,6 +51,11 @@ namespace VideoBlazor.SearchProviders.Providers.PirateBay
                 Source = SearchSourceType.PirateBay,
                 Success = true
             };
+        }
+
+        public Task<SearchQueryResult> SearchImdb(string imdb, string title)
+        {
+            throw new NotImplementedException();
         }
     }
 }

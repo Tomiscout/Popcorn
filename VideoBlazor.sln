@@ -4,7 +4,7 @@ VisualStudioVersion = 17.0.31611.283
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor", "VideoBlazor\VideoBlazor.csproj", "{F953513C-0D98-454B-A34B-106D2107CE20}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoBlazor.SearchProviders", "VideoBlazor.SearchProviders\VideoBlazor.SearchProviders.csproj", "{6D1A8512-7201-41AD-A918-41A771A79493}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.SearchProviders", "VideoBlazor.SearchProviders\VideoBlazor.SearchProviders.csproj", "{6D1A8512-7201-41AD-A918-41A771A79493}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
