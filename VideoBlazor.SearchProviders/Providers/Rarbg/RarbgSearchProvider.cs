@@ -41,17 +41,36 @@ namespace VideoBlazor.SearchProviders.Providers.Rarbg
             }
         }
 
-        public Task<SearchQueryResult> SearchImdb(string imdb, string title)
+        public async Task<SearchQueryResult> SearchImdb(string imdb, string title)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var results = await AttemptSearch(title, 0, imdb);
+                return new SearchQueryResult()
+                {
+                    Source = Source,
+                    Results = results,
+                    Success = true
+                };
+            }
+            catch (SearchFailedException e)
+            {
+                return new SearchQueryResult()
+                {
+                    Source = Source,
+                    Success = false,
+                    Error = e,
+                    ErrorMessage = e.Message
+                };
+            }
         }
 
-        private async Task<List<SearchResult>> AttemptSearch(string query, int attempts = 0)
+        private async Task<List<SearchResult>> AttemptSearch(string query, int attempts = 0, string imdb = null)
         {
             string responseString = null;
             try
             {
-                var response = await GetRarbgApiResult(query);
+                var response = await GetRarbgApiResult(query, 0, imdb);
                 responseString = await response.Content.ReadAsStringAsync();
             } catch(HttpRequestException e)
             {
@@ -60,7 +79,7 @@ namespace VideoBlazor.SearchProviders.Providers.Rarbg
                     throw new SearchFailedException("Failed to get Rarbg API result", e);
                 }
                 await Task.Delay(5000);
-                return await AttemptSearch(query, ++attempts); //Recursion, but it's simple enough
+                return await AttemptSearch(query, ++attempts, imdb); //Recursion, but it's simple enough
             }
 
             try
@@ -92,7 +111,7 @@ namespace VideoBlazor.SearchProviders.Providers.Rarbg
                 }
                 await Task.Delay(5000);
                 await Login();
-                return await AttemptSearch(query, ++attempts); //Recursion, but it's simple enough
+                return await AttemptSearch(query, ++attempts, imdb); //Recursion, but it's simple enough
             }
             catch (Exception e)
             {
@@ -100,7 +119,7 @@ namespace VideoBlazor.SearchProviders.Providers.Rarbg
             }
         }
 
-        private async Task<HttpResponseMessage> GetRarbgApiResult(string query, int attempts = 0)
+        private async Task<HttpResponseMessage> GetRarbgApiResult(string query, int attempts = 0, string imdb = null)
         {
             if(_apiToken is null)
             {
@@ -115,6 +134,13 @@ namespace VideoBlazor.SearchProviders.Providers.Rarbg
                 { "app_id", "VideoBlazor" },
                 { "token", _apiToken }
             };
+            if(string.IsNullOrWhiteSpace(imdb))
+            {
+                parameters.Add("search_string", query);
+            } else {
+                parameters.Add("search_imdb", imdb);
+            }
+
             try
             {
                 return await client.GetAsync(new Uri(QueryHelpers.AddQueryString(_apiUrl, parameters)));

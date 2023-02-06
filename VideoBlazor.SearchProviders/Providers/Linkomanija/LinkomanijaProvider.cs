@@ -14,7 +14,7 @@ namespace VideoBlazor.SearchProviders.Providers.Linkomanija
     public class LinkomanijaProvider : ISearchProvider, ITorrentDownloader
     {
         public SearchSourceType Source => SearchSourceType.Linkomanija;
-        public bool Imdb { get; } = false;
+        public bool Imdb { get; } = true;
 
         private const string _cookieName = "PHPSESSID";
         private const string _indexUrl = "https://www.linkomanija.net/login.php";
@@ -45,7 +45,6 @@ namespace VideoBlazor.SearchProviders.Providers.Linkomanija
             var url = new Uri(QueryHelpers.AddQueryString(_searchUrl, queryParameters)).ToString();
             var response = await AuthenticatedGetRequest(client, url);
             var html = await response.Content.ReadAsStringAsync();
-            File.WriteAllText(@"C:\Users\brazi\AppData\Local\Packages\3282D9AF-B9C3-4CE1-86DA-8CFE1D1B0633_9zz4h110yvjzm\LocalState\torrents\test2.html", html);
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
 
@@ -87,9 +86,9 @@ namespace VideoBlazor.SearchProviders.Providers.Linkomanija
             };
         }
 
-        public Task<SearchQueryResult> SearchImdb(string imdb, string title)
+        public async Task<SearchQueryResult> SearchImdb(string imdb, string title)
         {
-            throw new NotImplementedException();
+            return await Search(title);
         }
 
         public async Task<string> DownloadTorrent(string url)

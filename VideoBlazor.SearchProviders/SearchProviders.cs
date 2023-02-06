@@ -1,5 +1,7 @@
 ﻿using VideoBlazor.SearchProviders.Enum;
 using VideoBlazor.SearchProviders.Providers.Linkomanija;
+using VideoBlazor.SearchProviders.Providers.PirateBay;
+using VideoBlazor.SearchProviders.Providers.Rarbg;
 
 namespace VideoBlazor.SearchProviders
 {
@@ -10,8 +12,8 @@ namespace VideoBlazor.SearchProviders
 
         private static List<ISearchProvider> _searchProviders = new List<ISearchProvider>()
         {
-            /*new PirateBaySearchProvider(),
-            new RarbgSearchProvider(),*/
+            new PirateBaySearchProvider(),
+            new RarbgSearchProvider(),
             new LinkomanijaProvider(),
         };
         
@@ -40,11 +42,11 @@ namespace VideoBlazor.SearchProviders
             }
         }
 
-        public static async Task SearcImdbhQuery(string query, Delegate resultHandler)
+        public static async Task SearchImdbQuery(string query, string title, Delegate resultHandler)
         {
             IEnumerable<Task> searchTasksQuery =
             from provider in _searchProviders
-            select ProcessSearchProviderAsync(provider, query, resultHandler);
+            select ProcessSearchProviderImdbAsync(provider, query, title, resultHandler);
 
             List<Task> downloadTasks = searchTasksQuery.ToList();
 
@@ -66,6 +68,19 @@ namespace VideoBlazor.SearchProviders
                 //TODO exception handling
             }
 
+        }
+
+        static async Task ProcessSearchProviderImdbAsync(ISearchProvider provider, string query, string title, Delegate resultHandler)
+        {
+            try
+            {
+                var results = await provider.SearchImdb(query, title);
+                resultHandler.DynamicInvoke(results);
+            }
+            catch (Exception e)
+            {
+                //TODO exception handling
+            }
         }
 
         public static async Task DownloadAndOpenTorrent(SearchSourceType source, string torrentUrl)

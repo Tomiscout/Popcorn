@@ -1,6 +1,5 @@
-﻿@page "/search"
+﻿@page "/torrent-search"
 @using System.Diagnostics
-@using DM.MovieApi.MovieDb.Movies
 @using VideoBlazor.Core.Enums
 @using VideoBlazor.Core.Model
 @using VideoBlazor.Core.Utils
@@ -11,92 +10,43 @@
 @using VideoBlazor.SearchProviders.Utils
 @using VideoBlazor.SearchProviders.Enum
 
-<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
-    <MudTabPanel Text="Torrents">
+<div class="search-bar">
+    <MudTextField @bind-Value="@searchInput" @onkeydown="@Enter" Label="Torrent title" Variant="Variant.Text"></MudTextField>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchQuery">Search</MudButton>
+</div>
 
-        <MudTextField @bind-Value="@searchInput" Label="Standard" Variant="Variant.Text"></MudTextField>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchQuery">Search</MudButton>
 
-        <MudList Clickable="true">
-            <MudDivider />
-            @foreach (var item in searchResults)
+<MudList Clickable="true">
+    <MudDivider />
+    @foreach (var item in searchResults)
+    {
+        <div class="search-list-item">
+            @switch (item.Source)
             {
-                <div class="search-list-item">
-                    @switch (item.Source)
-                    {
-                        case SearchSourceType.PirateBay:
-                            <img class="source-img" src="/images/piratebay.svg" />
-                            break;
-                        case SearchSourceType.Rarbg:
-                            <img class="source-img" src="/images/rarbg.png" />
-                            break;
-                        default:
-                            <div class="source-img" />
-                            break;
-                    }
-                    <span class="search-title">@item.Title</span>
-                    @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
-                    {
-                        <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
-                    }
-                    <span class="search-right seeds mr-2">@item.Seeds</span>
-                    <span class="search-right peers mr-2">@item.Peers</span>
-                </div>
-                <MudDivider />
+                case SearchSourceType.PirateBay:
+                    <img class="source-img" src="/images/piratebay.svg" />
+                    break;
+                case SearchSourceType.Rarbg:
+                    <img class="source-img" src="/images/rarbg.png" />
+                    break;
+                case SearchSourceType.Linkomanija:
+                    <img class="source-img" src="/images/linkomanija-small.png" />
+                    break;
+                default:
+                    <div class="source-img" />
+                    break;
             }
-        </MudList>
-    </MudTabPanel>
-
-    <MudTabPanel Text="Media">
-        <MudTextField @bind-Value="@mediaSearchInput" Label="Standard" Variant="Variant.Text"></MudTextField>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchMediaQuery">Search</MudButton>
-
-        <MudList Clickable="true">
-            <MudDivider />
-            @foreach (var item in mediaSearchResults)
+            <span class="search-title">@item.Title</span>
+            @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
             {
-                <div class="media-list-item">
-                    @if (item.MediaType == MovieDbMediaType.Person)
-                    {
-                        if(string.IsNullOrWhiteSpace(item.ProfilePath)) {
-                            <img src="/images/image-missing.svg" />
-                        } else {
-                            <img class="media-poster-img" src="@item.ProfilePath" />
-                        }
-                    } else {
-                        if(string.IsNullOrWhiteSpace(item.PosterPath)) {
-                            <img src="/images/image-missing.svg" />
-                        } else {
-                            <img class="media-poster-img" src="@item.PosterPath" />
-                        }
-                    }
-                    <div class="media-info-container">
-                        <div style="display: flex; flex-direction: row;">
-                            <span class="media-title">@item.Title</span>
-                            @if(item.MediaType == MovieDbMediaType.Movie) {
-                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Movie</MudChip>
-                            } else if(item.MediaType == MovieDbMediaType.TvShow) {
-                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">TV show</MudChip>
-                            } else {
-                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Person</MudChip>
-                            }
-                        </div>
-                        <span class="media-description">@item.Description</span>
-                        <div>
-                            @foreach (var genre in item.Genres)
-                            {
-                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@genre</MudChip>
-                            }
-                        </div>
-                    </div>
-                </div>
-                <MudDivider />
+                <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
             }
-        </MudList>
-    </MudTabPanel>
-</MudTabs>
-
-
+            <span class="search-right seeds mr-2">@item.Seeds</span>
+            <span class="search-right peers mr-2">@item.Peers</span>
+        </div>
+        <MudDivider />
+    }
+</MudList>
 
 <MudPopover Open="@_isSearching" Fixed="true" Class="pa-4 status-popover" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
     <div class="status-container">
@@ -150,8 +100,7 @@
     public List<SearchResult> mediaTorrentResults = new List<SearchResult>();
     public List<MovieDbSearchResult> mediaSearchResults = new List<MovieDbSearchResult>();
     public Dictionary<SearchSourceType, SearchQueryStatus> searchStatuses = new Dictionary<SearchSourceType, SearchQueryStatus>();
-    private bool _isSearching = true;
-
+    private bool _isSearching = false;
 
     protected override async Task OnInitializedAsync()
 	{
@@ -159,6 +108,14 @@
                 Title = "PirateBay",
                 Status = ProcessStatus.NotStarted,
         });*@
+    }
+
+    public void Enter(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+            SearchQuery();
+        }
     }
 
     public async Task SearchMediaQuery()

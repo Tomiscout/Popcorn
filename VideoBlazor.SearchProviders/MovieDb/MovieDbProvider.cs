@@ -23,7 +23,6 @@ namespace VideoBlazor.SearchProviders.MovieDb
     public static class MovieDbProvider
     {
         private const string _apiKeyBearer = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiOGFmNmRkMjM1ZjBhMzRkZDg3ZDM2OTdhY2Q3OWIyOSIsInN1YiI6IjYzZGZiNTQ4Y2QyMDQ2MDA5ZDRmM2ZmOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.-tjdZE__JgXNY6Z1Y50GtgQ5_4D23SSzPca-y_gw3DQ";
-        private const string _apiKey = "b8af6dd235f0a34dd87d3697acd79b29";
         private static IApiMovieRequest _movieApi;
         private static IApiTVShowRequest _tvShowApi;
         private static IApiConfigurationRequest _configApi;
@@ -34,6 +33,7 @@ namespace VideoBlazor.SearchProviders.MovieDb
         public static void Initialize()
         {
             MovieDbFactory.RegisterSettings(_apiKeyBearer);
+            _movieApi = MovieDbFactory.Create<IApiMovieRequest>().Value;
             _tvShowApi = MovieDbFactory.Create<IApiTVShowRequest>().Value;
             _configApi = MovieDbFactory.Create<IApiConfigurationRequest>().Value;
             _genreApi = MovieDbFactory.Create<IApiGenreRequest>().Value;
@@ -53,7 +53,7 @@ namespace VideoBlazor.SearchProviders.MovieDb
             var results = new List<MovieDbSearchResult>();
             try
             {
-                var result = await GetMultiSearchResponse(query);
+                var result = await MovieDbRequests.GetMultiSearchResponse(query);
                 results.AddRange(result.Results.Select(r => new MovieDbSearchResult()
                 {
                     MediaType = GetMediaType(r.MediaType),
@@ -102,100 +102,24 @@ namespace VideoBlazor.SearchProviders.MovieDb
             return genres;
         }
 
-        public static async Task<string> GetImdbId(int movieDbId)
+        public static async Task<Movie> GetMovieDetails(int id)
         {
-            //TODO tv show fallback
-            var details = await _movieApi.FindByIdAsync(movieDbId);
-            return details.Item.ImdbId;
+            var details = await _movieApi.FindByIdAsync(id);
+            if(details is not null)
+            {
+                return details.Item;
+            }
+            return null;
         }
 
-        //This is separate, since no library suppoorts multi search
-        public static async Task<MovieDbApiResponse> GetMultiSearchResponse(string query)
+        public static async Task<TVShow> GetTvDetails(int id)
         {
-            var param = new Dictionary<string, string>
+            var tvDetails = await _tvShowApi.FindByIdAsync(id);
+            if (tvDetails is not null)
             {
-                {"language", "en"},
-                {"query", query },
-                {"api_key", _apiKey }
-            };
-
-            string command = $"search/multi";
-            using HttpClient client = CreateClient();
-            var cmd = CreateCommand(command, param);
-
-            HttpResponseMessage response = await client.GetAsync(cmd);
-            string json = await response.Content.ReadAsStringAsync();
-
-            // rate limit will not exist if there is an error.
-            if (response.IsSuccessStatusCode == false)
-            {
-                var error = new MovieDbApiResponse
-                {
-                    // This will throw up if the error is page number = 0; the resultant json will be: {"errors":["page must be greater than 0"]}
-                    // in other words, the json will not include a status_code. Asked the api devs and this is a known issue they are working on.
-                    // What to do? Nothing really, the page guard at the top of the method will keep the page number > 0.
-                    Error = JsonSerializer.Deserialize<MovieDbApiError>(json),
-                    CommandText = response.RequestMessage?.RequestUri?.ToString() ?? "response message/uri was null",
-                    Json = json,
-                };
-
-                return error;
+                return tvDetails.Item;
             }
-
-            try
-            {
-                var result = JsonSerializer.Deserialize<MovieDbApiResponse>(json, new JsonSerializerOptions()
-                {
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                    Converters = { new NullableConverterFactory() }
-                });
-                return result;
-            } catch (Exception e)
-            {
-                var error = new MovieDbApiResponse
-                {
-                    // This will throw up if the error is page number = 0; the resultant json will be: {"errors":["page must be greater than 0"]}
-                    // in other words, the json will not include a status_code. Asked the api devs and this is a known issue they are working on.
-                    // What to do? Nothing really, the page guard at the top of the method will keep the page number > 0.
-                    Error = new MovieDbApiError() { Message = e.Message, Exception = e},
-                    CommandText = response.RequestMessage?.RequestUri?.ToString() ?? "response message/uri was null",
-                    Json = json,
-                };
-
-                return error;
-            }
-        }
-
-        private static HttpClient CreateClient()
-        {
-            var handler = new HttpClientHandler
-            {
-                AllowAutoRedirect = false,
-                UseCookies = false,
-                UseDefaultCredentials = true,
-                AutomaticDecompression = DecompressionMethods.GZip,
-            };
-
-            var client = new HttpClient(handler);
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            client.BaseAddress = new Uri("http://api.themoviedb.org/3/");
-
-            return client;
-        }
-
-        private static string CreateCommand(string rootCommand, IDictionary<string, string> parameters)
-        {
-            string tokens = parameters.Any()
-                ? string.Join("&", parameters.Select(x => $"{x.Key}={WebUtility.UrlEncode(x.Value)}"))
-                : string.Empty;
-
-            if (string.IsNullOrWhiteSpace(tokens) == false)
-            {
-                rootCommand += $"?{tokens}";
-            }
-
-            return rootCommand;
+            return null;
         }
     }
 }

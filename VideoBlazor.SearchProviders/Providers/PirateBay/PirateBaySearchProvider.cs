@@ -53,9 +53,9 @@ namespace VideoBlazor.SearchProviders.Providers.PirateBay
             };
         }
 
-        public Task<SearchQueryResult> SearchImdb(string imdb, string title)
+        public async Task<SearchQueryResult> SearchImdb(string imdb, string title)
         {
-            throw new NotImplementedException();
+            return await Search(imdb);
         }
     }
 }
