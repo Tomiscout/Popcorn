@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using VideoBlazor.SearchProviders.Omdb;
 
 namespace VideoBlazor.SearchProviders.MovieDb
 {
@@ -17,5 +13,6 @@ namespace VideoBlazor.SearchProviders.MovieDb
         public string BackdropPath { get; set; }
         public string ProfilePath { get; set; }
         public List<string> Genres { get; set; }
+        public OmdbResult Ratings { get; set; }
     }
 }

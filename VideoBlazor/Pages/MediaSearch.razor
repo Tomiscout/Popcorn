@@ -8,6 +8,7 @@
 @using VideoBlazor.SearchProviders
 @using VideoBlazor.SearchProviders.Models
 @using VideoBlazor.SearchProviders.MovieDb
+@using VideoBlazor.SearchProviders.Omdb
 @using VideoBlazor.SearchProviders.Utils
 @using VideoBlazor.SearchProviders.Enum
 
@@ -75,8 +76,8 @@
     </MudList>
 } else {
     <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="Back">Back</MudButton>
-
-    <div class="selected-media-header">
+    <div>
+        <div class="selected-media-header">
         @*<img class="backdrop-img" src="@Selected.BackdropPath">*@
         <div class="selected-item">
             @if (string.IsNullOrWhiteSpace(Selected.PosterPath))
@@ -105,48 +106,84 @@
                     }
                 </div>
                 <span class="media-description">@Selected.Description</span>
-                <div>
-                    @foreach (var genre in Selected.Genres)
+                @*TODO Selected.Ratings.Awards*@
+                <div class="media-footer">
+                    <div class="media-genres">
+                        @foreach (var genre in Selected.Genres)
+                        {
+                            <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@genre</MudChip>
+                        }
+                    </div>
+                    @if (Selected.Ratings is not null)
                     {
-                        <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@genre</MudChip>
+                        <div class="media-ratings">
+                            @if (Selected.Ratings.RTRating is not null)
+                            {
+                                <div class="media-image-rating">
+                                    @if (Selected.Ratings.RTRating < 60)
+                                    {
+                                        <img class="media-rating-icon" src="/images/rt-rotten.svg">
+                                    }
+                                    else
+                                    {
+                                        <img class="media-rating-icon" src="/images/rt-fresh.svg">
+                                    }
+                                    <span>@Selected.Ratings.RTRating%</span>
+                                </div>
+                            }
+                            @if (Selected.Ratings.ImdbRating is not null)
+                            {
+                                <div class="media-image-rating">
+                                    <img class="media-rating-icon" src="/images/imdb.svg">
+                                    <span>@Selected.Ratings.ImdbRating</span>
+                                </div>
+                            }
+                            @if (Selected.Ratings.Metascore is not null)
+                            {
+                                <div class="media-rating-icon metascore @GetClassForMetascore()">
+                                    <span>@Selected.Ratings.Metascore</span>
+                                </div>
+                            }
+                        </div>
                     }
                 </div>
             </div>
         </div>
     </div>
 
-    @*TODO separate razor element*@
-    <MudList Clickable="true">
-        <MudDivider />
-        @foreach (var item in mediaTorrentResults)
-        {
-            <div class="search-list-item">
-                @switch (item.Source)
-                {
-                    case SearchSourceType.PirateBay:
-                        <img class="source-img" src="/images/piratebay.svg" />
-                        break;
-                    case SearchSourceType.Rarbg:
-                        <img class="source-img" src="/images/rarbg.png" />
-                        break;
-                    case SearchSourceType.Linkomanija:
-                        <img class="source-img" src="/images/linkomanija-small.png" />
-                        break;
-                    default:
-                        <div class="source-img" />
-                        break;
-                }
-                <span class="search-title">@item.Title</span>
-                @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
-                {
-                    <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
-                }
-                <span class="search-right seeds mr-2">@item.Seeds</span>
-                <span class="search-right peers mr-2">@item.Peers</span>
-            </div>
+        @*TODO separate razor element*@
+        <MudList Clickable="true">
             <MudDivider />
-        }
-    </MudList>
+            @foreach (var item in mediaTorrentResults)
+            {
+                <div class="search-list-item">
+                    @switch (item.Source)
+                    {
+                        case SearchSourceType.PirateBay:
+                            <img class="source-img" src="/images/piratebay.svg" />
+                            break;
+                        case SearchSourceType.Rarbg:
+                            <img class="source-img" src="/images/rarbg.png" />
+                            break;
+                        case SearchSourceType.Linkomanija:
+                            <img class="source-img" src="/images/linkomanija-small.png" />
+                            break;
+                        default:
+                            <div class="source-img" />
+                            break;
+                    }
+                    <span class="search-title">@item.Title</span>
+                    @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
+                    {
+                        <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
+                    }
+                    <span class="search-right seeds mr-2">@item.Seeds</span>
+                    <span class="search-right peers mr-2">@item.Peers</span>
+                </div>
+                <MudDivider />
+            }
+        </MudList>
+    </div>
 }
 
 <MudPopover Open="@_isSearching" Fixed="true" Class="pa-4 status-popover" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
@@ -193,6 +230,8 @@
 </MudPopover>
 
 @code {
+    
+    //Rotten < 60% = rotten
     public delegate void SearchCompletedHandler(SearchQueryResult result);
 
     public string mediaSearchInput { get; set; } = "";
@@ -224,7 +263,7 @@
             return;
         }
         Selected = item;
-
+        searchStatuses.Clear();
 
         string imdbId = null;
         if (item.MediaType == MovieDbMediaType.Movie)
@@ -240,6 +279,12 @@
 
         if (string.IsNullOrWhiteSpace(imdbId)) return;
 
+        var ratings = await OmdbProvider.GetRatings(imdbId);
+        if (ratings is not null)
+        {
+            Selected.Ratings = ratings;
+            StateHasChanged();
+        }
 
         var sources = SearchProviders.GetImdbSearchProvidersSources();
         foreach (var source in sources)
@@ -274,6 +319,22 @@
 
     public void Back() {
         Selected = null;
+    }
+
+    public string GetClassForMetascore() {
+        int score = (int)Selected.Ratings.Metascore;
+        if (score >= 80)
+        {
+            return "metascore-good";
+        }
+        else if (score >= 60)
+        {
+            return "metascore-ok";
+        }
+        else
+        {
+            return "metascore-bad";
+        }
     }
 
     public async Task SearchMediaQuery()
