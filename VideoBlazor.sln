@@ -6,6 +6,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor", "VideoBlazor\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.SearchProviders", "VideoBlazor.SearchProviders\VideoBlazor.SearchProviders.csproj", "{6D1A8512-7201-41AD-A918-41A771A79493}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoPlayer", "VideoPlayer\VideoPlayer.csproj", "{A81C8D30-C7B1-47B8-A361-69E6BFFDA94D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -22,6 +24,10 @@ Global
 		{6D1A8512-7201-41AD-A918-41A771A79493}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6D1A8512-7201-41AD-A918-41A771A79493}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6D1A8512-7201-41AD-A918-41A771A79493}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A81C8D30-C7B1-47B8-A361-69E6BFFDA94D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A81C8D30-C7B1-47B8-A361-69E6BFFDA94D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A81C8D30-C7B1-47B8-A361-69E6BFFDA94D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A81C8D30-C7B1-47B8-A361-69E6BFFDA94D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

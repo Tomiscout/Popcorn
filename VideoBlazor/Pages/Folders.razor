@@ -98,6 +98,7 @@ else
 
 	protected override async Task OnInitializedAsync()
 	{
+		await Task.Delay(100);
 		folders = await FolderService.LoadSavedFolders();
 		ScanFolders();
 	}
