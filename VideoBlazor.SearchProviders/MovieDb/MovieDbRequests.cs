@@ -56,6 +56,7 @@ namespace VideoBlazor.SearchProviders.MovieDb
                     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                     Converters = { new NullableConverterFactory() }
                 });
+                result.Json = json;
                 return result;
             }
             catch (Exception e)

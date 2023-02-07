@@ -11,7 +11,7 @@
 @using VideoBlazor.SearchProviders.Enum
 
 <div class="search-bar">
-    <MudTextField @bind-Value="@searchInput" @onkeydown="@Enter" Label="Torrent title" Variant="Variant.Text"></MudTextField>
+    <MudTextField @bind-Value="@searchInput" @onkeyup="@Enter" Label="Torrent title" Variant="Variant.Text"></MudTextField>
     <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchQuery">Search</MudButton>
 </div>
 
@@ -114,45 +114,8 @@
     {
         if (e.Code == "Enter" || e.Code == "NumpadEnter")
         {
-            SearchQuery();
+            SearchQuery().ConfigureAwait(false);
         }
-    }
-
-    public async Task SearchMediaQuery()
-    {
-        mediaSearchResults.Clear();
-        mediaSearchResults.AddRange(await MovieDbProvider.Search(mediaSearchInput));
-
-        /*searchStatuses.Clear();
-        var sources = SearchProviders.GetImdbSearchProvidersSources();
-        foreach (var source in sources)
-        {
-            searchStatuses.Add(source, new SearchQueryStatus()
-                {
-                    Title = source.ToString(),
-                    Status = ProcessStatus.InProgress,
-                });
-        }
-
-        _isSearching = true;
-        searchResults = new List<SearchResult>();
-        SearchCompletedHandler handler = (result) =>
-        {
-            if (result.Success)
-            {
-                mediaSsearchResults.AddRange(result.Results);
-                searchStatuses[result.Source].Status = ProcessStatus.Finished;
-                mediaSsearchResults = mediaSsearchResults.OrderByDescending(r => r.Seeds).ToList();
-            }
-            else
-            {
-                searchStatuses[result.Source].Status = ProcessStatus.Failed;
-                Console.WriteLine(result.Error);
-            }
-            StateHasChanged();
-        };
-
-        await SearchProviders.SearchImdbQuery(imdbId, handler);*/
     }
 
     public async Task SearchQuery() {

@@ -15,7 +15,7 @@
 @if (Selected is null)
 {
     <div class="search-bar">
-        <MudTextField @bind-Value="@mediaSearchInput" @onkeydown="@Enter" Label="Title" Variant="Variant.Text"></MudTextField>
+        <MudTextField @bind-Value="@mediaSearchInput" @onkeyup="@Enter" Label="Title" Variant="Variant.Text"></MudTextField>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchMediaQuery">Search</MudButton>
     </div>
 
@@ -253,7 +253,7 @@
     {
         if (e.Code == "Enter" || e.Code == "NumpadEnter")
         {
-            Task.Run(() => SearchMediaQuery());
+            SearchMediaQuery();
         }
     }
 
@@ -339,8 +339,14 @@
 
     public async Task SearchMediaQuery()
     {
-        mediaSearchResults.Clear();
-        mediaSearchResults.AddRange(await MovieDbProvider.Search(mediaSearchInput));
+        try{
+            mediaSearchResults.Clear();
+            mediaSearchResults.AddRange(await MovieDbProvider.Search(mediaSearchInput));
+            StateHasChanged();
+        } catch(Exception e) {
+            throw;
+        }
+        
     }
 
     public async void DownloadTorrent(SearchResult item) {
