@@ -33,10 +33,35 @@ namespace WebSiteRatings
             var path = @"C:\Users\brazi\Desktop\naruto.mkv";
 
             _mediaPlayer.Play(new Media(_libVLC, path));
+            RecalculatePlayImageStatus();
+
+        }
+
+        private void RecalculatePlayImageStatus()
+        {
+            if(_mediaPlayer.IsPlaying)
+            {
+                PlayImage.Visibility = Visibility.Hidden;
+                StopImage.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                PlayImage.Visibility = Visibility.Visible;
+                StopImage.Visibility = Visibility.Hidden;
+            }
         }
 
         private void Play_Clicked(object sender, RoutedEventArgs e)
         {
+            if (_mediaPlayer.IsPlaying)
+            {
+                _mediaPlayer.Pause();
+            }
+            else
+            {
+                _mediaPlayer.Play();
+            }
+            RecalculatePlayImageStatus();
         }
     }
 }

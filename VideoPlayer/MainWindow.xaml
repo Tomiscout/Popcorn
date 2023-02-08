@@ -8,9 +8,81 @@
         Loaded="MetroWindow_Loaded"
         mc:Ignorable="d"
         Title="My Sites" Height="650" Width="1000">
+    <mah:MetroWindow.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/icons.xaml"></ResourceDictionary>
+                <ResourceDictionary Source="Resources/PlayerStyles.xaml"></ResourceDictionary>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </mah:MetroWindow.Resources>
     <Grid>
         <vlc:VideoView x:Name="VideoView">
-            <Button Click="Play_Clicked" Margin="54,583,851,10">PLAY</Button>
+            <!--<DockPanel>
+                <Border Height="25" Background="SkyBlue" BorderBrush="Black" BorderThickness="1" DockPanel.Dock="Top">
+                    <TextBlock Foreground="Black">Dock = "Top"</TextBlock>
+                </Border>
+               
+                <Button DockPanel.Dock="Bottom" Click="Play_Clicked" Width="16" Height="16">
+                    <Image Source="{StaticResource playDrawingImage}" />
+                </Button>
+                <Border Width="200" Background="PaleGreen" BorderBrush="Black" BorderThickness="1" DockPanel.Dock="Left">
+                    <TextBlock Foreground="Black">Dock = "Left"</TextBlock>
+                </Border>
+                <Border Background="White" BorderBrush="Black" BorderThickness="1">
+                    <TextBlock Foreground="Black">This content will "Fill" the remaining space</TextBlock>
+                </Border>
+                
+            </DockPanel>-->
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel>
+
+                </StackPanel>
+                <Grid Grid.Row="1" Height="100">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="20" />
+                        <RowDefinition Height="20" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Slider Grid.Row="1" Maximum="100" />
+
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="64" />
+                        </Grid.ColumnDefinitions>
+
+
+                        <Image x:Name="PlayImage" Grid.Column="0" Source="{StaticResource playDrawingImage}" IsHitTestVisible="False" Margin="8"/>
+                        <Image x:Name="StopImage" Grid.Column="0" Source="{StaticResource stopDrawingImage}" IsHitTestVisible="False" Margin="8"/>
+                        <Button x:Name="PlayBtn" Opacity="0.01" Grid.Column="0" Click="Play_Clicked" Margin="8" Padding="0" />
+
+                        <Image Style="{StaticResource PlayBtnScale}" Grid.Column="1" Source="{StaticResource _10_backDrawingImage}" IsHitTestVisible="False" Margin="8"/>
+                        <Button Opacity="0.01" Grid.Column="1" Click="Play_Clicked" Margin="8" Padding="0" />
+
+                        <Image Source="{StaticResource _10_forwardDrawingImage}" Grid.Column="2" IsHitTestVisible="False" Margin="8" />
+                        <Button Opacity="0.01" Grid.Column="2" Click="Play_Clicked" Margin="8" Padding="0" />
+
+                        <Image Source="{StaticResource sound_maxDrawingImage}" Grid.Column="3" IsHitTestVisible="False" Margin="8" />
+                        <Button Opacity="0.01" Grid.Column="3" Click="Play_Clicked" Margin="8" Padding="0" />
+
+                    </Grid>
+                </Grid>
+            </Grid>
         </vlc:VideoView>
     </Grid>
 </mah:MetroWindow>
