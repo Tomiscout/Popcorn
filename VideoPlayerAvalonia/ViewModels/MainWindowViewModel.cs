@@ -17,10 +17,7 @@ namespace VideoPlayerAvalonia.ViewModels
         public void Play()
         {
             var args = Environment.GetCommandLineArgs();
-            if(args?.Length > 0)
-            {
-                return;
-            }
+            
             var path = @"C:\Users\brazi\Desktop\naruto.mkv";
             using var media = new Media(_libVlc, path);
             MediaPlayer.Play(media);
