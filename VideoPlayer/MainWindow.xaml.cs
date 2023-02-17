@@ -34,6 +34,7 @@ namespace WebSiteRatings
 
             _mediaPlayer.Play(new Media(_libVLC, path));
             RecalculatePlayImageStatus();
+            RecalculateVolumeIcon();
 
         }
 
@@ -41,13 +42,37 @@ namespace WebSiteRatings
         {
             if(_mediaPlayer.IsPlaying)
             {
-                PlayImage.Visibility = Visibility.Hidden;
-                StopImage.Visibility = Visibility.Visible;
+                PlayBtn.Visibility = Visibility.Hidden;
+                StopBtn.Visibility = Visibility.Visible;
             }
             else
             {
-                PlayImage.Visibility = Visibility.Visible;
-                StopImage.Visibility = Visibility.Hidden;
+                PlayBtn.Visibility = Visibility.Visible;
+                StopBtn.Visibility = Visibility.Hidden;
+            }
+        }
+
+        private void RecalculateVolumeIcon()
+        {
+            var volume = _mediaPlayer?.Volume ?? 100;
+            VolumeMute.Visibility = Visibility.Hidden;
+            VolumeMin.Visibility = Visibility.Hidden;
+            VolumeMed.Visibility = Visibility.Hidden;
+            VolumeMax.Visibility = Visibility.Hidden;
+            if (volume == 0)
+            {
+                VolumeMute.Visibility = Visibility.Visible;
+            } else if (volume <= 33)
+            {
+                VolumeMute.Visibility = Visibility.Visible;
+            }
+            else if (volume <= 66)
+            {
+                VolumeMed.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                VolumeMax.Visibility = Visibility.Visible;
             }
         }
 

@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:mah="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
+        xmlns:SVG="http://sharpvectors.codeplex.com/svgc/"
         Loaded="MetroWindow_Loaded"
         mc:Ignorable="d"
         Title="My Sites" Height="650" Width="1000">
@@ -14,6 +15,18 @@
                 <ResourceDictionary Source="Resources/icons.xaml"></ResourceDictionary>
                 <ResourceDictionary Source="Resources/PlayerStyles.xaml"></ResourceDictionary>
             </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="SvgPop" TargetType="{x:Type SVG:SvgViewbox}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Button}}}" Value="True">
+                        <Setter Property="RenderTransformOrigin" Value="0.5, 0.5"/>
+                        <Setter Property="RenderTransform">
+                            <Setter.Value>
+                                <ScaleTransform ScaleX="0.85" ScaleY="0.85"/>
+                            </Setter.Value>
+                        </Setter>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
         </ResourceDictionary>
     </mah:MetroWindow.Resources>
     <Grid>
@@ -66,19 +79,36 @@
                             <ColumnDefinition Width="64" />
                         </Grid.ColumnDefinitions>
 
+                        <Button x:Name="PlayBtn" Style="{StaticResource TransparentButton}" Grid.Column="0" Click="Play_Clicked">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/play.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
 
-                        <Image x:Name="PlayImage" Grid.Column="0" Source="{StaticResource playDrawingImage}" IsHitTestVisible="False" Margin="8"/>
-                        <Image x:Name="StopImage" Grid.Column="0" Source="{StaticResource stopDrawingImage}" IsHitTestVisible="False" Margin="8"/>
-                        <Button x:Name="PlayBtn" Opacity="0.01" Grid.Column="0" Click="Play_Clicked" Margin="8" Padding="0" />
-
-                        <Image Style="{StaticResource PlayBtnScale}" Grid.Column="1" Source="{StaticResource _10_backDrawingImage}" IsHitTestVisible="False" Margin="8"/>
-                        <Button Opacity="0.01" Grid.Column="1" Click="Play_Clicked" Margin="8" Padding="0" />
-
-                        <Image Source="{StaticResource _10_forwardDrawingImage}" Grid.Column="2" IsHitTestVisible="False" Margin="8" />
-                        <Button Opacity="0.01" Grid.Column="2" Click="Play_Clicked" Margin="8" Padding="0" />
-
-                        <Image Source="{StaticResource sound_maxDrawingImage}" Grid.Column="3" IsHitTestVisible="False" Margin="8" />
-                        <Button Opacity="0.01" Grid.Column="3" Click="Play_Clicked" Margin="8" Padding="0" />
+                        <Button x:Name="StopBtn" Style="{StaticResource TransparentButton}" Grid.Column="0" Click="Play_Clicked">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/stop.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
+                        <Button Grid.Column="1" Style="{StaticResource TransparentButton}" Click="Play_Clicked">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/10-back.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
+                        <Button Grid.Column="2" Style="{StaticResource TransparentButton}" Click="Play_Clicked">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/10-forward.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
+                        <Button x:Name="VolumeMute" Grid.Column="3" Style="{StaticResource TransparentButton}" Click="Play_Clicked" Visibility="Hidden">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/sound-mute.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
+                        <Button x:Name="VolumeMin"  Grid.Column="3" Style="{StaticResource TransparentButton}" Click="Play_Clicked" Visibility="Hidden">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/sound-min.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
+                        <Button x:Name="VolumeMed" Grid.Column="3" Style="{StaticResource TransparentButton}" Click="Play_Clicked" Visibility="Hidden">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/sound-med.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
+                        <Button x:Name="VolumeMax" Grid.Column="3" Style="{StaticResource TransparentButton}" Click="Play_Clicked" Visibility="Hidden">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/sound-max.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
+                        <StackPanel Grid.Column="4" HorizontalAlignment="Center" Orientation="Horizontal">
+                            <TextBlock Margin="0 0 5 0">Narutoo</TextBlock>
+                            <TextBlock Margin="0 0 7 0">EP 275</TextBlock>
+                            <TextBlock>Bowlcut faints and cries</TextBlock>
+                        </StackPanel>
 
                     </Grid>
                 </Grid>
