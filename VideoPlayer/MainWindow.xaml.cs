@@ -4,6 +4,7 @@ using MahApps.Metro.Controls;
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 
 namespace WebSiteRatings
 {
@@ -14,11 +15,11 @@ namespace WebSiteRatings
     {
         LibVLC _libVLC;
         MediaPlayer _mediaPlayer;
-        
+        private int _currentVolume = 100;
+
         public MainWindow()
         {
             InitializeComponent();
-            
         }
 
         private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
@@ -27,6 +28,7 @@ namespace WebSiteRatings
 
             _libVLC = new LibVLC();
             _mediaPlayer = new MediaPlayer(_libVLC);
+            _mediaPlayer.TimeChanged += RecalculateSeekValue;
 
             VideoView.MediaPlayer = _mediaPlayer;
 
@@ -76,6 +78,35 @@ namespace WebSiteRatings
             }
         }
 
+        private void RecalculateSeekValue(object sender, MediaPlayerTimeChangedEventArgs e)
+        {
+            //This shouldnt be invoked so much, maybe use dispatchtimer for polling every 1sec or something
+           /* this.Dispatcher.Invoke(() =>
+            {
+                TimeSlider.Value = _mediaPlayer.Length > 0 ? e.Time / _mediaPlayer.Length : 0;
+            });*/
+        }
+
+        private bool ShouldDisplayVolumePopup()
+        {
+            return true;
+        }
+       
+        
+        private void Mute_Clicked(object sender, RoutedEventArgs e)
+        {
+            if (_mediaPlayer.Volume == 0)
+            {
+                _mediaPlayer.Volume = _currentVolume;
+            }
+            else
+            {
+                _currentVolume = _mediaPlayer.Volume;
+                _mediaPlayer.Volume = 0;
+            }
+            RecalculateVolumeIcon();
+        }
+
         private void Play_Clicked(object sender, RoutedEventArgs e)
         {
             if (_mediaPlayer.IsPlaying)
@@ -88,5 +119,18 @@ namespace WebSiteRatings
             }
             RecalculatePlayImageStatus();
         }
+
+        private void Forward_Clicked(object sender, RoutedEventArgs e)
+        {
+            if (!_mediaPlayer.IsPlaying) return;
+            _mediaPlayer.Time += 10000;
+        }
+
+        private void Backward_Clicked(object sender, RoutedEventArgs e)
+        {
+            if (!_mediaPlayer.IsPlaying) return;
+            _mediaPlayer.Time -= 10000;
+        }
+
     }
 }
