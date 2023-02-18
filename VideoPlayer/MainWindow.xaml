@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:mah="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
-        xmlns:converters="clr-namespace:VideoPlayer.Utils.Converters"
+        xmlns:utils="clr-namespace:VideoPlayer.Utils"
         xmlns:SVG="http://sharpvectors.codeplex.com/svgc/"
         Loaded="MetroWindow_Loaded"
         mc:Ignorable="d"
@@ -28,11 +28,36 @@
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
-            <converters:OrConverter x:Key="OrConverter" />
+            <utils:OrConverter x:Key="MultiOrConverter" />
         </ResourceDictionary>
     </mah:MetroWindow.Resources>
     <Grid>
+        <Popup x:Name="VolumePopup"
+                            Placement="Top"
+                            PlacementTarget="{Binding Source={x:Reference VolumeMute}}"
+                            Width="{Binding Source={x:Reference VolumeMute}, Path=ActualWidth}"
+                            MinHeight="100"
+                            PopupAnimation="Fade"
+                            StaysOpen="True"
+                            DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                        >
+            <Popup.IsOpen>
+                <MultiBinding Converter="{StaticResource MultiOrConverter}">
+                    <Binding ElementName="VolumeMute" Path="IsMouseOver" Mode="OneWay" />
+                    <Binding  ElementName="VolumeMin" Path="IsMouseOver" Mode="OneWay" />
+                    <Binding  ElementName="VolumeMed" Path="IsMouseOver" Mode="OneWay" />
+                    <Binding  ElementName="VolumeMax" Path="IsMouseOver" Mode="OneWay" />
+                    <Binding  ElementName="VolumePopup" Path="IsMouseOver" Mode="OneWay" />
+                </MultiBinding>
+            </Popup.IsOpen>
+            <Border BorderThickness="1">
+                <TextBlock Name="myPopupText" Background="LightBlue" Foreground="Blue">
+                Popup Text
+                </TextBlock>
+            </Border>
+        </Popup>
         <vlc:VideoView x:Name="VideoView">
+            
             <!--<DockPanel>
                 <Border Height="25" Background="SkyBlue" BorderBrush="Black" BorderThickness="1" DockPanel.Dock="Top">
                     <TextBlock Foreground="Black">Dock = "Top"</TextBlock>
@@ -66,7 +91,7 @@
 
                     <Slider x:Name="TimeSlider" Grid.Row="1" Minimum="0" Maximum="1" />
 
-                    <Grid Grid.Row="2">
+                    <Grid x:Name="ButtonRow"  Grid.Row="2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="64" />
                             <ColumnDefinition Width="64" />
@@ -111,29 +136,7 @@
                             <TextBlock Margin="0 0 7 0">EP 275</TextBlock>
                             <TextBlock>Bowlcut faints and cries</TextBlock>
                         </StackPanel>
-                        <Popup x:Name="VolumePopup"
-                            Placement="Top"
-                            PlacementTarget="{Binding ElementName=VolumeMute}"
-                            Width="{Binding ElementName=VolumeMute, Path=ActualWidth}"
-                            MinHeight="100"
-                            PopupAnimation="Fade"
-                            StaysOpen="True"
-                        >
-                            <!--<Popup.IsOpen>
-                                <MultiBinding Converter="{StaticResource OrConverter}">
-                                    <Binding ElementName="VolumeMute" Path="IsMouseOver" Mode="OneWay" />
-                                    <Binding ElementName="VolumeMin" Path="IsMouseOver" Mode="OneWay" />
-                                    <Binding ElementName="VolumeMed" Path="IsMouseOver" Mode="OneWay" />
-                                    <Binding ElementName="VolumeMax" Path="IsMouseOver" Mode="OneWay" />
-                                    <Binding ElementName="VolumePopup" Path="IsMouseOver" Mode="OneWay" />
-                                </MultiBinding>
-                            </Popup.IsOpen>-->
-                            <Border BorderThickness="1">
-                                <TextBlock Name="myPopupText" Background="LightBlue" Foreground="Blue">
-                Popup Text
-                                </TextBlock>
-                            </Border>
-                        </Popup>
+                        
                     </Grid>
                 </Grid>
             </Grid>
