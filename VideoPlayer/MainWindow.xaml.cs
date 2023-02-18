@@ -25,12 +25,6 @@ namespace WebSiteRatings
             InitializeComponent();
         }
 
-        private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
-        {
-            wvc?.CoreWebView2?.Navigate("https://www.microsoft.com");
-        }
-
-
         private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
         {
             Core.Initialize();

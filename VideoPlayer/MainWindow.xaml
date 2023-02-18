@@ -34,10 +34,6 @@
     </mah:MetroWindow.Resources>
     <Grid>
         <!--<WPF:WebView2 DefaultBackgroundColor="Transparent" x:Name="wvc" Grid.Row="1" Source="file:///C:/Users/brazi/source/repos/VideoBlazor/VideoPlayer/test.html"/>-->
-        <Button Width ="30" Height="40" Click="ButtonBase_OnClick">
-            
-        </Button>
-
         <Popup x:Name="VolumePopup"
                             Placement="Top"
                             PlacementTarget="{Binding Source={x:Reference VolumeMute}}"
