@@ -132,5 +132,12 @@ namespace WebSiteRatings
             _mediaPlayer.Time -= 10000;
         }
 
+        private void NextTrack(object sender, RoutedEventArgs e)
+        {
+        }
+
+        private void FullscreenToggle(object sender, RoutedEventArgs e)
+        {
+        }
     }
 }

@@ -44,10 +44,10 @@
             <Popup.IsOpen>
                 <MultiBinding Converter="{StaticResource MultiOrConverter}">
                     <Binding ElementName="VolumeMute" Path="IsMouseOver" Mode="OneWay" />
-                    <Binding  ElementName="VolumeMin" Path="IsMouseOver" Mode="OneWay" />
-                    <Binding  ElementName="VolumeMed" Path="IsMouseOver" Mode="OneWay" />
-                    <Binding  ElementName="VolumeMax" Path="IsMouseOver" Mode="OneWay" />
-                    <Binding  ElementName="VolumePopup" Path="IsMouseOver" Mode="OneWay" />
+                    <Binding ElementName="VolumeMin" Path="IsMouseOver" Mode="OneWay" />
+                    <Binding ElementName="VolumeMed" Path="IsMouseOver" Mode="OneWay" />
+                    <Binding ElementName="VolumeMax" Path="IsMouseOver" Mode="OneWay" />
+                    <Binding ElementName="VolumePopup" Path="IsMouseOver" Mode="OneWay" />
                 </MultiBinding>
             </Popup.IsOpen>
             <Border BorderThickness="1">
@@ -56,7 +56,7 @@
                 </TextBlock>
             </Border>
         </Popup>
-        <vlc:VideoView x:Name="VideoView">
+        <vlc:VideoView x:Name="VideoView" Background="Black">
             
             <!--<DockPanel>
                 <Border Height="25" Background="SkyBlue" BorderBrush="Black" BorderThickness="1" DockPanel.Dock="Top">
@@ -79,6 +79,7 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
+                
                 <StackPanel>
 
                 </StackPanel>
@@ -88,9 +89,11 @@
                         <RowDefinition Height="20" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
+                
 
-                    <Slider x:Name="TimeSlider" Grid.Row="1" Minimum="0" Maximum="1" />
+                    <Slider Grid.Row="1" x:Name="TimeSlider" Style="{StaticResource Horizontal_Slider}" VerticalAlignment="Center" IsMoveToPointEnabled="True" Value="500" Margin="10,0,10,0"></Slider>
 
+                    
                     <Grid x:Name="ButtonRow"  Grid.Row="2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="64" />
@@ -100,13 +103,15 @@
                             <ColumnDefinition />
                             <ColumnDefinition Width="64" />
                             <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="8" />
                             <ColumnDefinition Width="64" />
                             <ColumnDefinition Width="64" />
                             <ColumnDefinition Width="64" />
                         </Grid.ColumnDefinitions>
+                        
 
                         <Button x:Name="PlayBtn" Style="{StaticResource TransparentButton}" Grid.Column="0" Click="Play_Clicked">
-                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/play.svg" OptimizePath="False" TextAsGeometry="True"/>
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/play.svg" OptimizePath="False" TextAsGeometry="True" MessageBackground="White"/>
                         </Button>
 
                         <Button x:Name="StopBtn" Style="{StaticResource TransparentButton}" Grid.Column="0" Click="Play_Clicked">
@@ -131,12 +136,26 @@
                         <Button x:Name="VolumeMax" Grid.Column="3" Style="{StaticResource TransparentButton}" Click="Mute_Clicked" Visibility="Hidden">
                             <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/sound-max.svg" OptimizePath="False" TextAsGeometry="True"/>
                         </Button>
-                        <StackPanel Grid.Column="4" HorizontalAlignment="Center" Orientation="Horizontal">
-                            <TextBlock Margin="0 0 5 0">Narutoo</TextBlock>
-                            <TextBlock Margin="0 0 7 0">EP 275</TextBlock>
-                            <TextBlock>Bowlcut faints and cries</TextBlock>
+                        <StackPanel Grid.Column="4" HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal">
+                            <TextBlock Foreground="White" Margin="0 0 5 0">Narutoo</TextBlock>
+                            <TextBlock Foreground="White" FontWeight="Bold" Margin="0 0 7 0">EP 275</TextBlock>
+                            <TextBlock Foreground="White">Bowlcut faints and cries</TextBlock>
                         </StackPanel>
-                        
+                        <Button x:Name="NextTrackBtn" Grid.Column="5" Style="{StaticResource TransparentButton}" Click="NextTrack">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/next.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
+                        <Button x:Name="EpisodesBtn" Grid.Column="6" Style="{StaticResource TransparentButton}">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/episodes.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
+                        <Button x:Name="SubtitlesBtn" Grid.Column="8" Style="{StaticResource TransparentButton}">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/subtitles.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
+                        <Button x:Name="SpeedBtn" Grid.Column="9" Style="{StaticResource TransparentButton}">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/speed.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
+                        <Button x:Name="FullscreenBtn" Grid.Column="10" Style="{StaticResource TransparentButton}" Click="FullscreenToggle">
+                            <SVG:SvgViewbox Style="{StaticResource SvgPop}" Source="/Assets/Icons/fullscreen.svg" OptimizePath="False" TextAsGeometry="True"/>
+                        </Button>
                     </Grid>
                 </Grid>
             </Grid>
