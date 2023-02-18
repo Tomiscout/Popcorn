@@ -7,36 +7,6 @@
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
   </PropertyGroup>
   <ItemGroup>
-    <None Remove="Assets\Icons\10-back.svg" />
-    <None Remove="Assets\Icons\10-forward.svg" />
-    <None Remove="Assets\Icons\back.svg" />
-    <None Remove="Assets\Icons\episodes.svg" />
-    <None Remove="Assets\Icons\fullscreen.svg" />
-    <None Remove="Assets\Icons\next.svg" />
-    <None Remove="Assets\Icons\play.svg" />
-    <None Remove="Assets\Icons\sound-max.svg" />
-    <None Remove="Assets\Icons\sound-med.svg" />
-    <None Remove="Assets\Icons\sound-min.svg" />
-    <None Remove="Assets\Icons\sound-mute.svg" />
-    <None Remove="Assets\Icons\speed.svg" />
-    <None Remove="Assets\Icons\stop.svg" />
-    <None Remove="Assets\Icons\subtitles.svg" />
-    <None Remove="Resources\Icons\10-back.png" />
-    <None Remove="Resources\Icons\10-forward.png" />
-    <None Remove="Resources\Icons\back.png" />
-    <None Remove="Resources\Icons\episodes.png" />
-    <None Remove="Resources\Icons\fullscreen.png" />
-    <None Remove="Resources\Icons\next.png" />
-    <None Remove="Resources\Icons\play.png" />
-    <None Remove="Resources\Icons\play2.png" />
-    <None Remove="Resources\Icons\sound-med.png" />
-    <None Remove="Resources\Icons\sound-min.png" />
-    <None Remove="Resources\Icons\sound-mute.png" />
-    <None Remove="Resources\Icons\speed.png" />
-    <None Remove="Resources\Icons\stop.png" />
-    <None Remove="Resources\Icons\subtitles.png" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="LibVLCSharp.WPF" Version="3.6.7" />
     <PackageReference Include="MahApps.Metro" Version="2.4.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.0" />
@@ -52,91 +22,8 @@
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\Icons\10-back.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\10-forward.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\back.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\episodes.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\fullscreen.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\next.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\play.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\sound-max.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\sound-med.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\sound-min.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\sound-mute.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\speed.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\stop.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Icons\subtitles.svg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\Icons\10-back.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\10-forward.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\back.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\episodes.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\fullscreen.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\next.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\play.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\play2.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\sound-med.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\sound-min.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\sound-mute.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\speed.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\stop.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Icons\subtitles.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
+    <Folder Include="Resources\" />
   </ItemGroup>
 </Project>
