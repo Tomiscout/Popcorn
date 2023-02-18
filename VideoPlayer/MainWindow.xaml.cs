@@ -2,12 +2,15 @@
 using LibVLCSharp.WPF;
 using MahApps.Metro.Controls;
 using System;
+using System.Threading.Tasks;
+using System.Web;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 
 namespace WebSiteRatings
 {
+    //https://blogs.msmvps.com/bsonnino/2021/02/27/using-the-new-webview2-in-a-wpf-app/
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
@@ -21,6 +24,12 @@ namespace WebSiteRatings
         {
             InitializeComponent();
         }
+
+        private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
+        {
+            wvc?.CoreWebView2?.Navigate("https://www.microsoft.com");
+        }
+
 
         private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
         {

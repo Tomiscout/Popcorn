@@ -6,8 +6,9 @@
         xmlns:mah="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
         xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
         xmlns:utils="clr-namespace:VideoPlayer.Utils"
+        xmlns:WPF="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:SVG="http://sharpvectors.codeplex.com/svgc/"
-        Loaded="MetroWindow_Loaded"
+                 Loaded="MetroWindow_Loaded"
         mc:Ignorable="d"
         Title="My Sites" Height="650" Width="1000">
     <mah:MetroWindow.Resources>
@@ -32,6 +33,11 @@
         </ResourceDictionary>
     </mah:MetroWindow.Resources>
     <Grid>
+        <!--<WPF:WebView2 DefaultBackgroundColor="Transparent" x:Name="wvc" Grid.Row="1" Source="file:///C:/Users/brazi/source/repos/VideoBlazor/VideoPlayer/test.html"/>-->
+        <Button Width ="30" Height="40" Click="ButtonBase_OnClick">
+            
+        </Button>
+
         <Popup x:Name="VolumePopup"
                             Placement="Top"
                             PlacementTarget="{Binding Source={x:Reference VolumeMute}}"
