@@ -45,7 +45,8 @@ namespace WebSiteRatings
             WebView.CoreWebView2InitializationCompleted += WebViewInitialized;
         }
 
-        private void WebViewInitialized(object sender, CoreWebView2InitializationCompletedEventArgs e) {
+        private void WebViewInitialized(object sender, CoreWebView2InitializationCompletedEventArgs e)
+        {
             WebView.CoreWebView2.WebMessageReceived += WebMessageReceived;
         }
 
@@ -53,9 +54,15 @@ namespace WebSiteRatings
         {
             var message = e.WebMessageAsJson;
             var webEvent = JsonSerializer.Deserialize<WebEvent>(message);
-            
-            var success = webEvent.Name switch {
+
+            var success = webEvent.Name switch
+            {
                 "play_status_changed" => Play(webEvent.Data),
+                "fullscreen" => SetFullscreen(webEvent.Data),
+                "set_playback_time" => SetPlaybackTime(webEvent.Data),
+                "skip_seconds" => SetPlaybackTimeSkip(webEvent.Data),
+                "volume" => SetVolume(webEvent.Data),
+                "play_next_title" => PlayNextTitle(),
                 _ => throw new NotImplementedException()
             };
         }
@@ -76,28 +83,114 @@ namespace WebSiteRatings
             WebView?.CoreWebView2?.PostWebMessageAsJson(json);
         }
 
-    private bool Play(object data)
-    {
-        try
+        private bool Play(object data)
         {
-            var play = ((JsonElement)data).GetBoolean();
-            if (play)
+            try
             {
-                _mediaPlayer.Play();
+                var play = ((JsonElement)data).GetBoolean();
+                if (play)
+                {
+                    _mediaPlayer.Play();
+                }
+                else
+                {
+                    _mediaPlayer.Pause();
+                }
             }
-            else
+            catch (Exception e)
             {
-                _mediaPlayer.Pause();
+                //TODO log
+                return false;
             }
-        }catch(Exception e)
+            return true;
+        }
+
+        private bool SetFullscreen(object data)
         {
-            //TODO log
+            try
+            {
+                var fullscreen = ((JsonElement)data).GetBoolean();
+                if (fullscreen)
+                {
+                    UseNoneWindowStyle = true;
+                    IgnoreTaskbarOnMaximize = true;
+                    ShowMinButton = false;
+                    ShowMaxRestoreButton = false;
+                    ShowCloseButton = false;
+                    WindowState = WindowState.Maximized;
+                }
+                else
+                {
+                    UseNoneWindowStyle = false;
+                    ShowTitleBar = true;
+                    IgnoreTaskbarOnMaximize = false;
+                    ShowMinButton = true;
+                    ShowMaxRestoreButton = true;
+                    ShowCloseButton = true;
+                    WindowState = WindowState.Normal;
+                }
+            }
+            catch (Exception e)
+            {
+                //TODO log
+                return false;
+            }
+            return true;
+        }
+
+        private bool SetPlaybackTime(object data)
+        {
+            try
+            {
+                var time = ((JsonElement)data).GetInt64();
+                _mediaPlayer.Time = time;
+            }
+            catch (Exception e)
+            {
+                //TODO log
+                return false;
+            }
+            return true;
+        }
+
+        private bool SetPlaybackTimeSkip(object data)
+        {
+            try
+            {
+                var time = ((JsonElement)data).GetInt64();
+                _mediaPlayer.Time += time * 1000;
+            }
+            catch (Exception e)
+            {
+                //TODO log
+                return false;
+            }
+            return true;
+        }
+
+        private bool SetVolume(object data)
+        {
+            try
+            {
+                var volume = ((JsonElement)data).GetInt32();
+                _mediaPlayer.Volume = volume * 100;
+            }
+            catch (Exception e)
+            {
+                //TODO log
+                return false;
+            }
+            return true;
+        }
+
+        private bool PlayNextTitle()
+        {
+            //TODO
             return false;
         }
-        return true;
-    }
 
-    /* private void RecalculatePlayImageStatus()
+
+        /* private void RecalculatePlayImageStatus()
      {
          if(_mediaPlayer.IsPlaying)
          {
@@ -178,5 +271,5 @@ namespace WebSiteRatings
      private void FullscreenToggle(object sender, RoutedEventArgs e)
      {
      }*/
-}
+    }
 }

@@ -8,7 +8,7 @@
         xmlns:WPF="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
                  Loaded="MetroWindow_Loaded"
         mc:Ignorable="d"
-        Title="My Sites" Height="650" Width="1000">
+        Title="Video player" Height="650" Width="1000">
     <mah:MetroWindow.Resources>
     </mah:MetroWindow.Resources>
     <Grid>

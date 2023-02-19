@@ -5,6 +5,8 @@ class Video {
   paused = false;
   muted = false;
   fullscreen = false;
+  duration = 0;
+  volume = 0;
 
   play() {
     this.paused = false;
@@ -20,33 +22,44 @@ class Video {
 
   requestFullscreen() {
     this.fullscreen = true;
-    console.log('requesting fullscreen')
+    this.postMessage({name: 'fullscreen', data: true});
   }
 
   exitFullscreen() {
     this.fullscreen = false;
-    console.log('exiting fullscreen')
+    this.postMessage({name: 'fullscreen', data: false});
   }
 
   setCurrentTime(time) {
     console.log('Setting time',time)
+    this.postMessage({name: 'set_playback_time', data: time});
   }
-
-  setMuted() {
-    this.muted = false; //TODO rig
-    console.log('muted');
-  }
-
+  
+  //Note: could do this with set_playback_time, but it's easier and more accurate to do it in the backend
   skipBackward() {
-    console.log('skip backward');
+    this.postMessage({name: 'skip_seconds', data: -10});
   }
 
   skipForward() {
-    console.log('skip forward');
+    this.postMessage({name: 'skip_seconds', data: 10});
+  }
+
+  setVolume(volume) {
+    this.postMessage({name: 'volume', data: volume});
+  }
+
+  toggleMute() {
+    this.muted = !this.muted;
+    if(this.muted) {
+      this.postMessage({name: 'volume', data: 0});
+    } else {
+      this.postMessage({name: 'volume', data: this.volume});
+    }
   }
 
   playNextTitle() {
     console.log('playing next title')
+    this.postMessage({name: 'play_next_title'});
   }
 
   selectEpisode(id) {
@@ -58,7 +71,6 @@ class Video {
   }
 
   postMessage(message) {
-    debugger;
     window.chrome.webview.postMessage(message);
   }
 }
@@ -93,6 +105,9 @@ watchedBar.style.width = '0px';
 pauseButton.style.display = 'none';
 minimizeButton.style.display = 'none';
 
+startup();
+
+
 const displayControls = () => {
   controlsContainer.style.opacity = '1';
   document.body.style.cursor = 'initial';
@@ -108,24 +123,15 @@ const displayControls = () => {
 const playPause = () => {
   if (video.paused) {
     video.play();
-    playButton.style.display = 'none';
-    pauseButton.style.display = '';
   } else {
     video.pause();
-    playButton.style.display = '';
-    pauseButton.style.display = 'none';
   }
+  recalculatePlayButton();
 };
 
 const toggleMute = () => {
-  video.muted = !video.muted;
-  if (video.muted) {
-    fullVolumeButton.style.display = 'none';
-    mutedButton.style.display = '';
-  } else {
-    fullVolumeButton.style.display = '';
-    mutedButton.style.display = 'none';
-  }
+  video.toggleMute();
+  recalculateVolumeButton();
 };
 
 const toggleFullScreen = () => {
@@ -137,6 +143,13 @@ const toggleFullScreen = () => {
   recalculateFullscreenButton();
 };
 
+function startup() {
+  recalculateFullscreenButton();
+  recalculateVolumeButton();
+  recalculatePlayButton();
+}
+
+
 function recalculateFullscreenButton(){
   if (!video.fullscreen) {
     maximizeButton.style.display = '';
@@ -146,6 +159,26 @@ function recalculateFullscreenButton(){
     minimizeButton.style.display = '';
   }
 };
+
+function recalculateVolumeButton() {
+  if (video.muted || video.volume === 0) {
+    fullVolumeButton.style.display = 'none';
+    mutedButton.style.display = '';
+  } else {
+    fullVolumeButton.style.display = '';
+    mutedButton.style.display = 'none';
+  }
+}
+
+function recalculatePlayButton() {
+  if (video.paused) {
+    playButton.style.display = 'none';
+    pauseButton.style.display = '';
+  } else {
+    playButton.style.display = '';
+    pauseButton.style.display = 'none';
+  }
+}
 
 document.addEventListener('keyup', (event) => {
   if (event.code === 'Space') {
@@ -223,4 +256,6 @@ window.chrome.webview.addEventListener('message', event => {
   if (event.data === 'message') {
     // process message
   }
+
+  //TODO loaded media event, setting name, video duration
 });
