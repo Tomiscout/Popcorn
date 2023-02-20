@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 using Microsoft.Extensions.Configuration;
 
 namespace WebSiteRatings
@@ -15,6 +16,11 @@ namespace WebSiteRatings
             Config = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
                 .Build();
+        }
+
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            
         }
     }
 }

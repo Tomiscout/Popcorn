@@ -165,3 +165,41 @@ body {
   fill: #ffffff;
   fill-rule: evenodd;
 }
+
+
+#volume-control {
+	margin: auto auto;
+  width: inherit;
+	height: 150px;
+	width: 5px;
+	background: #555;
+}
+
+#volume-popup {
+  position: absolute;
+  width: 40px;
+  height: 140px;
+  background-color: rgba(0, 0, 0, 0.737);
+}
+
+.ui-slider-range-min {
+  height: 140px;
+  width: 5px;
+  bottom: 0px;
+  background: red;
+  position: absolute;
+  border: none;
+  outline: none;
+}
+
+.ui-slider-handle {
+  width: 20px;
+  height: 20px;
+  border-radius: 20px;
+  background: red;
+  position: absolute;
+  margin-left: -8px;
+  margin-top: -8px;
+  cursor: pointer;
+  outline: none;
+}

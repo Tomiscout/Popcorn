@@ -35,10 +35,17 @@
         <button class="fast-forward">
           <img src="assets/icons/10-forward.svg"/>
         </button>
-        <button class="volume">
-          <img class="full-volume" src="assets/icons/sound-max.svg"/>
-          <img class="muted" src="assets/icons/sound-mute.svg"/>
-        </button>
+
+        <div id="volume">
+          <div id="volume-popup">
+            <div id="volume-control"></div>
+          </div>
+          <button id="volume-button">
+            <img class="full-volume" src="assets/icons/sound-max.svg"/>
+            <img class="muted" src="assets/icons/sound-mute.svg"/>
+          </button>
+        </div>
+        
         <p class="title">
           <span class="series">Blender Foundation</span> <span class="episode">Big Buck Bunny</span>
         </p>
@@ -59,6 +66,8 @@
       </div>
     </div>
   </div>
+  <script src="lib/jquery-3.6.3.min.js"></script>
+  <script src="lib/jquery-ui-slider.min.js"></script>
   <script src="app.js"></script>
 </body>
 

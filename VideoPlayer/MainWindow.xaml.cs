@@ -33,16 +33,13 @@ namespace WebSiteRatings
             _libVLC = new LibVLC();
             _mediaPlayer = new MediaPlayer(_libVLC);
             _mediaPlayer.TimeChanged += RecalculateSeekValue;
+            WebView.CoreWebView2InitializationCompleted += WebViewInitialized;
 
             VideoView.MediaPlayer = _mediaPlayer;
 
             var path = @"C:\Users\brazi\Desktop\naruto.mkv";
 
             _mediaPlayer.Play(new Media(_libVLC, path));
-            /* RecalculatePlayImageStatus();
-             RecalculateVolumeIcon();*/
-
-            WebView.CoreWebView2InitializationCompleted += WebViewInitialized;
         }
 
         private void WebViewInitialized(object sender, CoreWebView2InitializationCompletedEventArgs e)
@@ -172,8 +169,8 @@ namespace WebSiteRatings
         {
             try
             {
-                var volume = ((JsonElement)data).GetInt32();
-                _mediaPlayer.Volume = volume * 100;
+                var volume = ((JsonElement)data).GetDouble();
+                _mediaPlayer.Volume = (int)Math.Floor(volume * 100);
             }
             catch (Exception e)
             {
@@ -190,19 +187,7 @@ namespace WebSiteRatings
         }
 
 
-        /* private void RecalculatePlayImageStatus()
-     {
-         if(_mediaPlayer.IsPlaying)
-         {
-             PlayBtn.Visibility = Visibility.Hidden;
-             StopBtn.Visibility = Visibility.Visible;
-         }
-         else
-         {
-             PlayBtn.Visibility = Visibility.Visible;
-             StopBtn.Visibility = Visibility.Hidden;
-         }
-     }
+        /* 
 
      private void RecalculateVolumeIcon()
      {
@@ -227,49 +212,6 @@ namespace WebSiteRatings
              VolumeMax.Visibility = Visibility.Visible;
          }
      }
-
-
-
-     private bool ShouldDisplayVolumePopup()
-     {
-         return true;
-     }
-
-
-     private void Mute_Clicked(object sender, RoutedEventArgs e)
-     {
-         if (_mediaPlayer.Volume == 0)
-         {
-             _mediaPlayer.Volume = _currentVolume;
-         }
-         else
-         {
-             _currentVolume = _mediaPlayer.Volume;
-             _mediaPlayer.Volume = 0;
-         }
-         RecalculateVolumeIcon();
-     }
-
-
-
-     private void Forward_Clicked(object sender, RoutedEventArgs e)
-     {
-         if (!_mediaPlayer.IsPlaying) return;
-         _mediaPlayer.Time += 10000;
-     }
-
-     private void Backward_Clicked(object sender, RoutedEventArgs e)
-     {
-         if (!_mediaPlayer.IsPlaying) return;
-         _mediaPlayer.Time -= 10000;
-     }
-
-     private void NextTrack(object sender, RoutedEventArgs e)
-     {
-     }
-
-     private void FullscreenToggle(object sender, RoutedEventArgs e)
-     {
-     }*/
+        */
     }
 }

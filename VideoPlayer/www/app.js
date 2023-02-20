@@ -81,11 +81,13 @@ const controlsContainer = document.querySelector('.video-container .controls-con
 const playPauseButton = document.querySelector('.video-container .controls button.play-pause');
 const rewindButton = document.querySelector('.video-container .controls button.rewind');
 const fastForwardButton = document.querySelector('.video-container .controls button.fast-forward');
-const volumeButton = document.querySelector('.video-container .controls button.volume');
+const volumeButton = document.querySelector('#volume-button');
 const fullScreenButton = document.querySelector('.video-container .controls button.full-screen');
 const nextButton = document.querySelector('.next');
 const episodesButton = document.querySelector('.episodes');
 const subtitlesButton = document.querySelector('.subtitles');
+const volume = $("#volume");
+const volumePopup = $("#volume-popup");
 
 const playButton = playPauseButton.querySelector('.playing');
 const pauseButton = playPauseButton.querySelector('.paused');
@@ -117,7 +119,7 @@ const displayControls = () => {
   controlsTimeout = setTimeout(() => {
     controlsContainer.style.opacity = '0';
     document.body.style.cursor = 'none';
-  }, 5000);
+  }, 5000 * 300);
 };
 
 const playPause = () => {
@@ -147,6 +149,7 @@ function startup() {
   recalculateFullscreenButton();
   recalculateVolumeButton();
   recalculatePlayButton();
+  volumePopup[0].style.display = 'none';
 }
 
 
@@ -247,8 +250,32 @@ subtitlesButton.addEventListener('click', () => {
 });
 
 volumeButton.addEventListener('click', toggleMute);
-
 fullScreenButton.addEventListener('click', toggleFullScreen);
+
+volume.on("mouseenter", () => {
+  let pos = volume.offset();
+  volumePopup.css({
+    left: pos.left + volume.width()/2 - volumePopup.width()/2,
+    bottom: volume.height()
+  });
+  volumePopup[0].style.display = '';
+  console.log('entered');
+});
+volume.on("mouseleave", () => {
+  volumePopup[0].style.display = 'none';
+  console.log('leave');
+});
+
+$("#volume-control").slider({
+  min: 0,
+  max: 100,
+  value: 0,
+  range: "min",
+  orientation : 'vertical',
+  slide: function(event, ui) {
+    video.setVolume(ui.value / 100);
+  }
+});
 
 //Events from WPF
 window.chrome.webview.addEventListener('message', event => {
