@@ -3,7 +3,11 @@ using LibVLCSharp.WPF;
 using MahApps.Metro.Controls;
 using Microsoft.Web.WebView2.Core;
 using System;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.Versioning;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Web;
 using System.Windows;
@@ -15,6 +19,7 @@ namespace WebSiteRatings
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public partial class MainWindow : MetroWindow
     {
         LibVLC _libVLC;
@@ -33,18 +38,32 @@ namespace WebSiteRatings
             _libVLC = new LibVLC();
             _mediaPlayer = new MediaPlayer(_libVLC);
             _mediaPlayer.TimeChanged += RecalculateSeekValue;
+            _mediaPlayer.LengthChanged += SendLengthEvent;
             WebView.CoreWebView2InitializationCompleted += WebViewInitialized;
-
             VideoView.MediaPlayer = _mediaPlayer;
+        }
 
-            var path = @"C:\Users\brazi\Desktop\naruto.mkv";
-
-            _mediaPlayer.Play(new Media(_libVLC, path));
+        public void LoadMedia(string path)
+        {
+            var media = new Media(_libVLC, path);
+            _mediaPlayer.Play(media);
+            PostEvent("track_loaded", new TrackLoadedEvent()
+            {
+                FileName = Path.GetFileName(path),
+            });
         }
 
         private void WebViewInitialized(object sender, CoreWebView2InitializationCompletedEventArgs e)
         {
             WebView.CoreWebView2.WebMessageReceived += WebMessageReceived;
+
+        }
+
+        private bool PlayerInitialized()
+        {
+            var path = @"C:\Users\brazi\Desktop\naruto.mkv";
+            LoadMedia(path);
+            return true;
         }
 
         private void WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -60,14 +79,20 @@ namespace WebSiteRatings
                 "skip_seconds" => SetPlaybackTimeSkip(webEvent.Data),
                 "volume" => SetVolume(webEvent.Data),
                 "play_next_title" => PlayNextTitle(),
+                "initialized" => PlayerInitialized(),
                 _ => throw new NotImplementedException()
             };
         }
 
+        //This is invoked 3-4 times per second
         private void RecalculateSeekValue(object sender, MediaPlayerTimeChangedEventArgs e)
         {
-            //This shouldnt be invoked so much, maybe have timer and send event every 500ms to javascript
-            /*TimeSlider.Value = _mediaPlayer.Length > 0 ? e.Time / _mediaPlayer.Length : 0;*/
+            PostEvent("current_time", e.Time);
+        }
+
+        private void SendLengthEvent(object sender, MediaPlayerLengthChangedEventArgs e)
+        {
+            PostEvent("duration_update", e.Length);
         }
 
         private void PostEvent(string eventName, object data)
@@ -76,8 +101,12 @@ namespace WebSiteRatings
             {
                 Name = eventName,
                 Data = data
+            }, new JsonSerializerOptions()
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
             });
-            WebView?.CoreWebView2?.PostWebMessageAsJson(json);
+
+            WebView?.Dispatcher?.Invoke(() => WebView?.CoreWebView2?.PostWebMessageAsJson(json));
         }
 
         private bool Play(object data)
@@ -104,6 +133,10 @@ namespace WebSiteRatings
 
         private bool SetFullscreen(object data)
         {
+            var path = @"C:\Users\brazi\Desktop\naruto.mkv";
+            LoadMedia(path);
+            return false;
+
             try
             {
                 var fullscreen = ((JsonElement)data).GetBoolean();
@@ -139,7 +172,7 @@ namespace WebSiteRatings
         {
             try
             {
-                var time = ((JsonElement)data).GetInt64();
+                var time = (long)Math.Round(((JsonElement)data).GetDouble());
                 _mediaPlayer.Time = time;
             }
             catch (Exception e)

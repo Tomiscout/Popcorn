@@ -42,7 +42,7 @@ body {
   color: white;
 }
 
-.video-container .progress-controls .time-remaining {
+#time-remaining {
   margin: 1vw;
   width: 4vw;
 }

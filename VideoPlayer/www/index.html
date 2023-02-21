@@ -20,7 +20,7 @@
           <div class="watched-bar"></div>
           <div class="playhead"></div>
         </div>
-        <div class="time-remaining">
+        <div id="time-remaining">
           00:00
         </div>
       </div>
@@ -46,8 +46,13 @@
           </button>
         </div>
         
-        <p class="title">
-          <span class="series">Blender Foundation</span> <span class="episode">Big Buck Bunny</span>
+        <p>
+          <div id="plainTitle" class="title" style="display: none;">
+            <span id="plainTitleSpan" class="series"></span>
+          </div>
+          <div id="seriesTitle" class="title" style="display: none;">
+            <span class="series">Blender Foundation</span> <span class="episode">Big Buck Bunny</span>
+          </div>
         </p>
         
         <button class="next">

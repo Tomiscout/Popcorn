@@ -1,6 +1,42 @@
 const videoContainer = document.querySelector('.video-container');
 // const video = document.querySelector('.video-container video');
 
+function trackLoadedEventHandler(data) {
+  if(!data.title) {
+    plainTitle.css({display: ''})
+    seriesTitle.css({display: 'none'})
+
+    $('#plainTitleSpan').html(data.filename);
+  } else {
+    plainTitle.css({display: 'none'})
+    seriesTitle.css({display: ''})
+  }
+}
+
+function durationUpdateEventHandler(data) {
+  video.duration = data;
+}
+
+//Events from WPF
+window?.chrome?.webview?.addEventListener('message', event => {
+  switch (event.data.name) {
+    case 'current_time': 
+      currentTimeUpdateEventHandler(event.data.data);
+    break;
+    case 'duration_update':
+      durationUpdateEventHandler(event.data.data);
+    break;
+    case 'track_loaded':
+      trackLoadedEventHandler(event.data.data);
+    break;
+  }
+});
+
+function postMessage(message) {
+  window?.chrome?.webview?.postMessage(message);
+  //TODO error message, that it's intendend to be used in webview
+}
+
 class Video {
   paused = false;
   muted = false;
@@ -11,55 +47,55 @@ class Video {
   play() {
     this.paused = false;
     console.log('play')
-    this.postMessage({name: 'play_status_changed', data: true});
+    postMessage({name: 'play_status_changed', data: true});
   }
 
   pause() {
     this.paused = true;
     console.log('pausing');
-    this.postMessage({name: 'play_status_changed', data: false});
+    postMessage({name: 'play_status_changed', data: false});
   }
 
   requestFullscreen() {
     this.fullscreen = true;
-    this.postMessage({name: 'fullscreen', data: true});
+    postMessage({name: 'fullscreen', data: true});
   }
 
   exitFullscreen() {
     this.fullscreen = false;
-    this.postMessage({name: 'fullscreen', data: false});
+    postMessage({name: 'fullscreen', data: false});
   }
 
   setCurrentTime(time) {
     console.log('Setting time',time)
-    this.postMessage({name: 'set_playback_time', data: time});
+    postMessage({name: 'set_playback_time', data: time});
   }
   
   //Note: could do this with set_playback_time, but it's easier and more accurate to do it in the backend
   skipBackward() {
-    this.postMessage({name: 'skip_seconds', data: -10});
+    postMessage({name: 'skip_seconds', data: -10});
   }
 
   skipForward() {
-    this.postMessage({name: 'skip_seconds', data: 10});
+    postMessage({name: 'skip_seconds', data: 10});
   }
 
   setVolume(volume) {
-    this.postMessage({name: 'volume', data: volume});
+    postMessage({name: 'volume', data: volume});
   }
 
   toggleMute() {
     this.muted = !this.muted;
     if(this.muted) {
-      this.postMessage({name: 'volume', data: 0});
+      postMessage({name: 'volume', data: 0});
     } else {
-      this.postMessage({name: 'volume', data: this.volume});
+      postMessage({name: 'volume', data: this.volume});
     }
   }
 
   playNextTitle() {
     console.log('playing next title')
-    this.postMessage({name: 'play_next_title'});
+    postMessage({name: 'play_next_title'});
   }
 
   selectEpisode(id) {
@@ -68,10 +104,6 @@ class Video {
 
   selectSubtitle(id) {
     console.log('selecting subtitle', id);
-  }
-
-  postMessage(message) {
-    window.chrome.webview.postMessage(message);
   }
 }
 const video = new Video();
@@ -96,10 +128,11 @@ const mutedButton = volumeButton.querySelector('.muted');
 const maximizeButton = fullScreenButton.querySelector('.maximize');
 const minimizeButton = fullScreenButton.querySelector('.minimize');
 
-
+const plainTitle = $('#plainTitle');
+const seriesTitle = $('#seriesTitle');
 const progressBar = document.querySelector('.video-container .progress-controls .progress-bar');
 const watchedBar = document.querySelector('.video-container .progress-controls .progress-bar .watched-bar');
-const timeLeft = document.querySelector('.video-container .progress-controls .time-remaining');
+const timeLeft = document.querySelector('#time-remaining');
 
 let controlsTimeout;
 controlsContainer.style.opacity = '0';
@@ -107,8 +140,20 @@ watchedBar.style.width = '0px';
 pauseButton.style.display = 'none';
 minimizeButton.style.display = 'none';
 
+function startup() {
+  postMessage({name: 'initialized'});
+  recalculateFullscreenButton();
+  recalculateVolumeButton();
+  recalculatePlayButton();
+  volumePopup[0].style.display = 'none';
+}
 startup();
 
+function currentTimeUpdateEventHandler(currentTime) {
+  watchedBar.style.width = ((currentTime / video.duration) * 100) + '%';
+    const totalSecondsRemaining = video.duration - currentTime;
+    timeLeft.textContent = timeFormat(totalSecondsRemaining);
+}
 
 const displayControls = () => {
   controlsContainer.style.opacity = '1';
@@ -144,14 +189,6 @@ const toggleFullScreen = () => {
   }
   recalculateFullscreenButton();
 };
-
-function startup() {
-  recalculateFullscreenButton();
-  recalculateVolumeButton();
-  recalculatePlayButton();
-  volumePopup[0].style.display = 'none';
-}
-
 
 function recalculateFullscreenButton(){
   if (!video.fullscreen) {
@@ -202,25 +239,6 @@ document.addEventListener('keyup', (event) => {
 document.addEventListener('mousemove', () => {
   displayControls();
 });
-
-// video.addEventListener('timeupdate', () => {
-//   watchedBar.style.width = ((video.currentTime / video.duration) * 100) + '%';
-//   // TODO: calculate hours as well...
-//   const totalSecondsRemaining = video.duration - video.currentTime;
-//   // THANK YOU: BEGANOVICH
-//   const time = new Date(null);
-//   time.setSeconds(totalSecondsRemaining);
-//   let hours = null;
-
-//   if(totalSecondsRemaining >= 3600) {
-//     hours = (time.getHours().toString()).padStart('2', '0');
-//   }
-
-//   let minutes = (time.getMinutes().toString()).padStart('2', '0');
-//   let seconds = (time.getSeconds().toString()).padStart('2', '0');
-
-//   timeLeft.textContent = `${hours ? hours : '00'}:${minutes}:${seconds}`;
-// });
 
 progressBar.addEventListener('click', (event) => {
   const pos = (event.pageX  - (progressBar.offsetLeft + progressBar.offsetParent.offsetLeft)) / progressBar.offsetWidth;
@@ -277,12 +295,23 @@ $("#volume-control").slider({
   }
 });
 
-//Events from WPF
-window.chrome.webview.addEventListener('message', event => {
-  debugger;
-  if (event.data === 'message') {
-    // process message
+
+function timeFormat(duration) {
+  duration = duration / 1000;
+  // Hours, minutes and seconds
+  const hrs = ~~(duration / 3600);
+  const mins = ~~((duration % 3600) / 60);
+  const secs = ~~duration % 60;
+
+  // Output like "1:01" or "4:03:59" or "123:03:59"
+  let ret = "";
+
+  if (hrs > 0) {
+      ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
   }
 
-  //TODO loaded media event, setting name, video duration
-});
+  ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+  ret += "" + secs;
+
+  return ret;
+}
