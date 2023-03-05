@@ -1,12 +1,15 @@
 ﻿@page "/itemDetails/{id}"
 @using System.Diagnostics
 @using VideoBlazor.Core.Exceptions
+@using VideoBlazor.Core.Filenames;
 @using VideoBlazor.Core.Model
 @using VideoBlazor.Core.Services
 @using VideoBlazor.Core.Enums;
 @using VideoBlazor.Core.Utils
 @inject NavigationManager NavigationManager
 @inject MediaItemService MediaItemService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JsRunTime
 
 <MudButton Variant="Variant.Filled" @onclick="OnBack">
     <i class="fa-solid fa-arrow-left"></i>
@@ -47,15 +50,31 @@
             <MudDivider />
             @foreach (var file in currentFiles)
             {
-                @if (file.Type == FileType.File)
-                {
-                    <MudListItem Text="@file.Title" Icon="@Icons.Material.Filled.Slideshow" @onclick="() => OpenFile(file)" />
-                }
-                else if (file.Type == FileType.Folder)
-                {
-                    <MudListItem Text="@file.Title" Icon="@Icons.Material.Filled.Folder" @onclick="() => OpenFolder(file)" />
-                }
-                <MudDivider />
+                <div class="file-list-item" @onclick="() => ClickFile(file)">
+                    <span class="file-title">@file.Title</span>
+                    @if (file.EpisodeTags is not null)
+                    {
+                        @foreach (var tag in file.EpisodeTags)
+                        {
+                            <MudChip Variant="Variant.Outlined" Color="Color.Primary">@tag</MudChip>
+                        }
+                    }
+                    @if(file.OtherTags is not null)
+                    {
+                        @foreach (var tag in file.OtherTags)
+                        {
+                        <MudChip Variant="Variant.Outlined" Color="Color.Secondary">@tag</MudChip>
+                        }
+                    }
+                    @if (file.FormatTags is not null)
+                    {
+                        @foreach (var tag in file.FormatTags)
+                        {
+                        <MudChip Variant="Variant.Outlined" Color="Color.Info">@tag</MudChip>
+                        }
+                    }
+                    </div>
+               
             }
             @if(currentFiles.Count == 0) {
                 <MudText>No files</MudText>
@@ -82,10 +101,13 @@
     </MudTabs>
 }
 
-
 @code {
     [Parameter]
     public string Id { get; set; }
+
+    //TODO better alert system
+    private bool _alert = true;
+    private string _alertText = "";
 
     public MediaItem item;
     public List<MediaFile> currentFiles = new List<MediaFile>();
@@ -126,8 +148,16 @@
             Title = historyItem.Title,
             PlaybackTime = DateTime.Now
         });
-        LaunchFile(historyItem.Filename);
+        await LaunchFile(historyItem.Filename);
         item = await MediaItemService.LoadMediaItem(Id);
+    }
+
+    public async Task ClickFile(MediaFile file)
+    {
+        if (file.Type == FileType.File)
+            await OpenFile(file);
+        else if (file.Type == FileType.Folder)
+            OpenFolder(file);
     }
 
     private async Task OpenFile(MediaFile file)
@@ -142,17 +172,57 @@
         item = await MediaItemService.LoadMediaItem(Id);
     }
 
-    private void LaunchFile(string path) {
+    private async Task LaunchFile(string path) {
+        if(!File.Exists(path))
+        {
+            Snackbar.Add($"File \"{Path.GetFileName(path)}\" not found", Severity.Error);
+            return;
+        }
         FileService.LaunchMediaFile(path);
     }
 
-    private void LoadFolder(MediaFile folder) {
+    private async Task LoadFolder(MediaFile folder)
+    {
         currentFiles = MediaItemService.GetFilesForDirectory(folder.Path, item.Files);
+        await RecalculateTags();
     }
 
-    public void OpenRootFolder() {
+    public async Task OpenRootFolder() {
         currentFiles = MediaItemService.GetFilesForDirectory(item.FolderDirectory, item.Files);
         navigation = new List<MediaFile>();
+        await RecalculateTags();
+    }
+
+    private async Task RecalculateTags()
+    {
+        var files = currentFiles.Where(f => f.Type == FileType.File && f.FormatTags is null);
+
+        foreach (var file in files)
+        {
+            var parsed = await ParseFilename(file.Path);
+
+            file.EpisodeTags = new List<string>();
+            if (parsed.Seasons is not null)
+            {
+                file.EpisodeTags.Add($"Season {parsed.Seasons.FirstOrDefault()}");
+            }
+            if (parsed.Episodes is not null)
+            {
+                file.EpisodeTags.Add($"Episode {parsed.Episodes.FirstOrDefault()}"); 
+            }
+
+            file.FormatTags = new List<string>();
+            if (!string.IsNullOrWhiteSpace(parsed.Resolution))
+            {
+                file.FormatTags.Add(parsed.Resolution);
+            }
+            if(!string.IsNullOrWhiteSpace(parsed.VideoCodec))
+            {
+                file.FormatTags.Add(parsed.VideoCodec);
+            }
+            file.FormatTags.Add(Path.GetExtension(file.Path));
+        }
+        StateHasChanged();
     }
 
     public void OnBack() {
@@ -164,4 +234,36 @@
         await MediaItemService.DeleteMediaItem(new Guid(Id));
         OnBack();
     }
+
+    private string GetFileIcon(FileType type)
+    {
+        return type switch
+        {
+            FileType.File => Icons.Material.Filled.Slideshow,
+            FileType.Folder => Icons.Material.Filled.Folder,
+            _ => ""
+        };
+    }
+
+    private async Task<ParsedFilenameModel> ParseFilename(string path)
+    {
+        try
+        {
+            return await JsRunTime.InvokeAsync<ParsedFilenameModel>("FilenameParser.ParseFilename", new object[2] { Path.GetFileName(path), true });
+        }
+        catch (Exception)
+        {
+            //TODO log
+        }
+        //Dirty fallback
+        try
+        {
+            return await JsRunTime.InvokeAsync<ParsedFilenameModel>("FilenameParser.ParseFilename", new object[2] { Path.GetFileName(path), false });
+        } catch(Exception)
+        {
+            //TODO log
+        }
+        return null;
+    }
+
 }

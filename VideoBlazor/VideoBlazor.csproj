@@ -69,6 +69,7 @@
 
     <ItemGroup>
       <Folder Include="Core\Media\" />
+      <Folder Include="NpmJS\" />
     </ItemGroup>
 
     <ItemGroup>
@@ -78,6 +79,12 @@
 
     <ItemGroup>
       <ProjectReference Include="..\VideoBlazor.SearchProviders\VideoBlazor.SearchProviders.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Update="wwwroot\js\filenameParser.js">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
     </ItemGroup>
 
 </Project>
