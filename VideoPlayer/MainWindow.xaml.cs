@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Web;
 using System.Windows;
 using VideoPlayer.Contracts;
+using VideoPlayer.Pipes;
 
 namespace WebSiteRatings
 {
@@ -35,10 +36,13 @@ namespace WebSiteRatings
         {
             Core.Initialize();
 
+            Environment.GetCommandLineArgs();
+
             _libVLC = new LibVLC();
             _mediaPlayer = new MediaPlayer(_libVLC);
             _mediaPlayer.TimeChanged += RecalculateSeekValue;
             _mediaPlayer.LengthChanged += SendLengthEvent;
+            _mediaPlayer.EndReached += PlaybackEndReached;
             WebView.CoreWebView2InitializationCompleted += WebViewInitialized;
             VideoView.MediaPlayer = _mediaPlayer;
         }
@@ -61,6 +65,8 @@ namespace WebSiteRatings
 
         private bool PlayerInitialized()
         {
+            PipeManager.Test();
+
             var path = @"C:\Users\brazi\Desktop\naruto.mkv";
             LoadMedia(path);
             return true;
@@ -133,6 +139,8 @@ namespace WebSiteRatings
 
         private bool SetFullscreen(object data)
         {
+            PipeManager.Test();
+
             var path = @"C:\Users\brazi\Desktop\naruto.mkv";
             LoadMedia(path);
             return false;
@@ -181,6 +189,11 @@ namespace WebSiteRatings
                 return false;
             }
             return true;
+        }
+
+        private void PlaybackEndReached(object sender, EventArgs e)
+        {
+            PostEvent("playback_ended", null);
         }
 
         private bool SetPlaybackTimeSkip(object data)

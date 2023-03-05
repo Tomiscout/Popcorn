@@ -1,41 +1,37 @@
 const videoContainer = document.querySelector('.video-container');
-// const video = document.querySelector('.video-container video');
 
-function trackLoadedEventHandler(data) {
-  if(!data.title) {
-    plainTitle.css({display: ''})
-    seriesTitle.css({display: 'none'})
+const controlsContainer = document.querySelector('.video-container .controls-container');
 
-    $('#plainTitleSpan').html(data.filename);
-  } else {
-    plainTitle.css({display: 'none'})
-    seriesTitle.css({display: ''})
-  }
-}
+const playPauseButton = document.querySelector('.video-container .controls button.play-pause');
+const rewindButton = document.querySelector('.video-container .controls button.rewind');
+const fastForwardButton = document.querySelector('.video-container .controls button.fast-forward');
+const volumeButton = document.querySelector('#volume-button');
+const fullScreenButton = document.querySelector('.video-container .controls button.full-screen');
+const nextButton = document.querySelector('.next');
+const episodesButton = document.querySelector('.episodes');
+const subtitlesButton = document.querySelector('.subtitles');
+const volume = $("#volume");
+const volumePopup = $("#volume-popup");
 
-function durationUpdateEventHandler(data) {
-  video.duration = data;
-}
+const playButton = playPauseButton.querySelector('.playing');
+const pauseButton = playPauseButton.querySelector('.paused');
+const fullVolumeButton = volumeButton.querySelector('.full-volume');
+const mutedButton = volumeButton.querySelector('.muted');
+const maximizeButton = fullScreenButton.querySelector('.maximize');
+const minimizeButton = fullScreenButton.querySelector('.minimize');
 
-//Events from WPF
-window?.chrome?.webview?.addEventListener('message', event => {
-  switch (event.data.name) {
-    case 'current_time': 
-      currentTimeUpdateEventHandler(event.data.data);
-    break;
-    case 'duration_update':
-      durationUpdateEventHandler(event.data.data);
-    break;
-    case 'track_loaded':
-      trackLoadedEventHandler(event.data.data);
-    break;
-  }
-});
+const plainTitle = $('#plainTitle');
+const seriesTitle = $('#seriesTitle');
+const progressBar = document.querySelector('.video-container .progress-controls .progress-bar');
+const watchedBar = document.querySelector('.video-container .progress-controls .progress-bar .watched-bar');
+const timeLeft = document.querySelector('#time-remaining');
 
-function postMessage(message) {
-  window?.chrome?.webview?.postMessage(message);
-  //TODO error message, that it's intendend to be used in webview
-}
+let controlsTimeout;
+controlsContainer.style.opacity = '0';
+watchedBar.style.width = '0px';
+pauseButton.style.display = 'none';
+minimizeButton.style.display = 'none';
+
 
 class Video {
   paused = false;
@@ -108,37 +104,6 @@ class Video {
 }
 const video = new Video();
 
-const controlsContainer = document.querySelector('.video-container .controls-container');
-
-const playPauseButton = document.querySelector('.video-container .controls button.play-pause');
-const rewindButton = document.querySelector('.video-container .controls button.rewind');
-const fastForwardButton = document.querySelector('.video-container .controls button.fast-forward');
-const volumeButton = document.querySelector('#volume-button');
-const fullScreenButton = document.querySelector('.video-container .controls button.full-screen');
-const nextButton = document.querySelector('.next');
-const episodesButton = document.querySelector('.episodes');
-const subtitlesButton = document.querySelector('.subtitles');
-const volume = $("#volume");
-const volumePopup = $("#volume-popup");
-
-const playButton = playPauseButton.querySelector('.playing');
-const pauseButton = playPauseButton.querySelector('.paused');
-const fullVolumeButton = volumeButton.querySelector('.full-volume');
-const mutedButton = volumeButton.querySelector('.muted');
-const maximizeButton = fullScreenButton.querySelector('.maximize');
-const minimizeButton = fullScreenButton.querySelector('.minimize');
-
-const plainTitle = $('#plainTitle');
-const seriesTitle = $('#seriesTitle');
-const progressBar = document.querySelector('.video-container .progress-controls .progress-bar');
-const watchedBar = document.querySelector('.video-container .progress-controls .progress-bar .watched-bar');
-const timeLeft = document.querySelector('#time-remaining');
-
-let controlsTimeout;
-controlsContainer.style.opacity = '0';
-watchedBar.style.width = '0px';
-pauseButton.style.display = 'none';
-minimizeButton.style.display = 'none';
 
 function startup() {
   postMessage({name: 'initialized'});
@@ -148,6 +113,53 @@ function startup() {
   volumePopup[0].style.display = 'none';
 }
 startup();
+
+
+function trackLoadedEventHandler(data) {
+  if(!data.title) {
+    plainTitle.css({display: ''})
+    seriesTitle.css({display: 'none'})
+    $('#plainTitleSpan').html(data.filename);
+  } else {
+    plainTitle.css({display: 'none'})
+    seriesTitle.css({display: ''})
+  }
+
+  video.paused = false;
+  recalculatePlayButton();
+}
+
+function playbackEndedEventHandler() {
+  video.reset();
+}
+// const video = document.querySelector('.video-container video');
+
+function durationUpdateEventHandler(data) {
+  video.duration = data;
+}
+
+//Events from WPF
+window?.chrome?.webview?.addEventListener('message', event => {
+  switch (event.data.name) {
+    case 'current_time': 
+      currentTimeUpdateEventHandler(event.data.data);
+    break;
+    case 'duration_update':
+      durationUpdateEventHandler(event.data.data);
+    break;
+    case 'track_loaded':
+      trackLoadedEventHandler(event.data.data);
+    break;
+  }
+});
+
+function postMessage(message) {
+  window?.chrome?.webview?.postMessage(message);
+  //TODO error message, that it's intendend to be used in webview
+}
+
+
+
 
 function currentTimeUpdateEventHandler(currentTime) {
   watchedBar.style.width = ((currentTime / video.duration) * 100) + '%';
@@ -315,3 +327,11 @@ function timeFormat(duration) {
 
   return ret;
 }
+
+/**
+ * hunger games
+ * hp
+ * death note
+ * house oof dragon
+ * naruto
+ */

@@ -1,5 +1,8 @@
-﻿using System.Windows;
+﻿using System;
+using System.Threading.Tasks;
+using System.Windows;
 using Microsoft.Extensions.Configuration;
+using VideoPlayer.Pipes;
 
 namespace WebSiteRatings
 {
@@ -19,7 +22,8 @@ namespace WebSiteRatings
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            
+            Console.WriteLine("Video player started");
+            Task.Run(async () => await PipeManager.Initialize(e.Args));
         }
     }
 }

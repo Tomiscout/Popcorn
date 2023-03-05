@@ -143,15 +143,7 @@
     }
 
     private void LaunchFile(string path) {
-        try
-        {
-            var command = FileAssociation.GetExecFileAssociatedToExtension(Path.GetExtension(path));
-            Process.Start(command, $"\"{path}\"");
-        }
-        catch (Exception e)
-        {
-            throw new UnableToOpenFileException(e.Message, e);
-        }
+        FileService.LaunchMediaFile(path);
     }
 
     private void LoadFolder(MediaFile folder) {
