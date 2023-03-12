@@ -9,22 +9,23 @@
 #controls {
     display: flex;
     flex-direction: row;
-    border: 1px solid #ccc;
+   /* border: 1px solid #ccc;*/
     height: 48px;
     width: 100%;
 }
 
 #content {
-    flex: 1;
+    flex-grow: 1;
     flex-direction: column;
-    border: 1px solid #ccc;
+    /*border: 1px solid #ccc;*/
     width: 100%;
+    overflow: auto;
 }
 
 #details {
     display: flex;
     flex-direction: column;
-    border: 1px solid #ccc;
+   /* border: 1px solid #ccc;*/
     height: 120px;
     width: 100%;
 }
@@ -41,4 +42,16 @@
 }
 .column-s {
     width: 50px;
+}
+
+.progress-container {
+    position: relative;
+}
+.progress-container > span{
+    position: absolute;
+    left: 30%;
+    top: -2px;
+    z-index: 1;
+    color: #ffffff;
+    text-shadow: 1px 1px 4px #000000
 }

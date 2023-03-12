@@ -12,48 +12,92 @@
 @using VideoBlazor.SearchProviders.Utils
 @using VideoBlazor.SearchProviders.Enum
 
-@if (Selected is null)
-{
-    <div class="search-bar">
-        <MudTextField @bind-Value="@mediaSearchInput" @onkeyup="@Enter" Label="Title" Variant="Variant.Text"></MudTextField>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchMediaQuery">Search</MudButton>
-    </div>
-
-    <MudList Clickable="true">
-        <MudDivider />
-        @foreach (var item in mediaSearchResults)
-        {
-            <div class="media-list-item" @onclick="() => SelectItem(item)">
-                @if (item.MediaType == MovieDbMediaType.Person)
-                {
-                    if (string.IsNullOrWhiteSpace(item.ProfilePath))
+<div class="pa-4">
+    @if (Selected is null)
+    {
+        <div class="search-bar">
+            <MudTextField @bind-Value="@mediaSearchInput" @onkeyup="@Enter" Label="Title" Variant="Variant.Text"></MudTextField>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchMediaQuery">Search</MudButton>
+        </div>
+    
+        <MudList Clickable="true">
+            <MudDivider />
+            @foreach (var item in mediaSearchResults)
+            {
+                <div class="media-list-item" @onclick="() => SelectItem(item)">
+                    @if (item.MediaType == MovieDbMediaType.Person)
                     {
-                        <img src="/images/image-missing.svg" />
+                        if (string.IsNullOrWhiteSpace(item.ProfilePath))
+                        {
+                            <img src="/images/image-missing.svg" />
+                        }
+                        else
+                        {
+                            <img class="media-poster-img" src="@item.ProfilePath" />
+                        }
                     }
                     else
                     {
-                        <img class="media-poster-img" src="@item.ProfilePath" />
+                        if (string.IsNullOrWhiteSpace(item.PosterPath))
+                        {
+                            <img src="/images/image-missing.svg" />
+                        }
+                        else
+                        {
+                            <img class="media-poster-img" src="@item.PosterPath" />
+                        }
                     }
+                    <div class="media-info-container">
+                        <div style="display: flex; flex-direction: row;">
+                            <span class="media-title">@item.Title</span>
+                            @if (item.MediaType == MovieDbMediaType.Movie)
+                            {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Movie</MudChip>
+                            }
+                            else if (item.MediaType == MovieDbMediaType.TvShow)
+                            {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">TV show</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Person</MudChip>
+                            }
+                        </div>
+                        <span class="media-description">@item.Description</span>
+                        <div>
+                            @foreach (var genre in item.Genres)
+                            {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@genre</MudChip>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <MudDivider />
+            }
+        </MudList>
+    } else {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="Back">Back</MudButton>
+        <div>
+            <div class="selected-media-header">
+            @*<img class="backdrop-img" src="@Selected.BackdropPath">*@
+            <div class="selected-item">
+                @if (string.IsNullOrWhiteSpace(Selected.PosterPath))
+                {
+                    <img src="/images/image-missing.svg" />
                 }
                 else
                 {
-                    if (string.IsNullOrWhiteSpace(item.PosterPath))
-                    {
-                        <img src="/images/image-missing.svg" />
-                    }
-                    else
-                    {
-                        <img class="media-poster-img" src="@item.PosterPath" />
-                    }
+                    <img class="media-poster-img" src="@Selected.PosterPath" />
                 }
+    
                 <div class="media-info-container">
                     <div style="display: flex; flex-direction: row;">
-                        <span class="media-title">@item.Title</span>
-                        @if (item.MediaType == MovieDbMediaType.Movie)
+                        <span class="media-title">@Selected.Title</span>
+                        @if (Selected.MediaType == MovieDbMediaType.Movie)
                         {
                             <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Movie</MudChip>
                         }
-                        else if (item.MediaType == MovieDbMediaType.TvShow)
+                        else if (Selected.MediaType == MovieDbMediaType.TvShow)
                         {
                             <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">TV show</MudChip>
                         }
@@ -62,129 +106,87 @@
                             <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Person</MudChip>
                         }
                     </div>
-                    <span class="media-description">@item.Description</span>
-                    <div>
-                        @foreach (var genre in item.Genres)
-                        {
-                            <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@genre</MudChip>
-                        }
-                    </div>
-                </div>
-            </div>
-            <MudDivider />
-        }
-    </MudList>
-} else {
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="Back">Back</MudButton>
-    <div>
-        <div class="selected-media-header">
-        @*<img class="backdrop-img" src="@Selected.BackdropPath">*@
-        <div class="selected-item">
-            @if (string.IsNullOrWhiteSpace(Selected.PosterPath))
-            {
-                <img src="/images/image-missing.svg" />
-            }
-            else
-            {
-                <img class="media-poster-img" src="@Selected.PosterPath" />
-            }
-
-            <div class="media-info-container">
-                <div style="display: flex; flex-direction: row;">
-                    <span class="media-title">@Selected.Title</span>
-                    @if (Selected.MediaType == MovieDbMediaType.Movie)
-                    {
-                        <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Movie</MudChip>
-                    }
-                    else if (Selected.MediaType == MovieDbMediaType.TvShow)
-                    {
-                        <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">TV show</MudChip>
-                    }
-                    else
-                    {
-                        <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Person</MudChip>
-                    }
-                </div>
-                <span class="media-description">@Selected.Description</span>
-                @*TODO Selected.Ratings.Awards*@
-                <div class="media-footer">
-                    <div class="media-genres">
-                        @foreach (var genre in Selected.Genres)
-                        {
-                            <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@genre</MudChip>
-                        }
-                    </div>
-                    @if (Selected.Ratings is not null)
-                    {
-                        <div class="media-ratings">
-                            @if (Selected.Ratings.RTRating is not null)
+                    <span class="media-description">@Selected.Description</span>
+                    @*TODO Selected.Ratings.Awards*@
+                    <div class="media-footer">
+                        <div class="media-genres">
+                            @foreach (var genre in Selected.Genres)
                             {
-                                <div class="media-image-rating">
-                                    @if (Selected.Ratings.RTRating < 60)
-                                    {
-                                        <img class="media-rating-icon" src="/images/rt-rotten.svg">
-                                    }
-                                    else
-                                    {
-                                        <img class="media-rating-icon" src="/images/rt-fresh.svg">
-                                    }
-                                    <span>@Selected.Ratings.RTRating%</span>
-                                </div>
-                            }
-                            @if (Selected.Ratings.ImdbRating is not null)
-                            {
-                                <div class="media-image-rating">
-                                    <img class="media-rating-icon" src="/images/imdb.svg">
-                                    <span>@Selected.Ratings.ImdbRating</span>
-                                </div>
-                            }
-                            @if (Selected.Ratings.Metascore is not null)
-                            {
-                                <div class="media-rating-icon metascore @GetClassForMetascore()">
-                                    <span>@Selected.Ratings.Metascore</span>
-                                </div>
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@genre</MudChip>
                             }
                         </div>
-                    }
+                        @if (Selected.Ratings is not null)
+                        {
+                            <div class="media-ratings">
+                                @if (Selected.Ratings.RTRating is not null)
+                                {
+                                    <div class="media-image-rating">
+                                        @if (Selected.Ratings.RTRating < 60)
+                                        {
+                                            <img class="media-rating-icon" src="/images/rt-rotten.svg">
+                                        }
+                                        else
+                                        {
+                                            <img class="media-rating-icon" src="/images/rt-fresh.svg">
+                                        }
+                                        <span>@Selected.Ratings.RTRating%</span>
+                                    </div>
+                                }
+                                @if (Selected.Ratings.ImdbRating is not null)
+                                {
+                                    <div class="media-image-rating">
+                                        <img class="media-rating-icon" src="/images/imdb.svg">
+                                        <span>@Selected.Ratings.ImdbRating</span>
+                                    </div>
+                                }
+                                @if (Selected.Ratings.Metascore is not null)
+                                {
+                                    <div class="media-rating-icon metascore @GetClassForMetascore()">
+                                        <span>@Selected.Ratings.Metascore</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-
-        @*TODO separate razor element*@
-        <MudList Clickable="true">
-            <MudDivider />
-            @foreach (var item in mediaTorrentResults)
-            {
-                <div class="search-list-item">
-                    @switch (item.Source)
-                    {
-                        case SearchSourceType.PirateBay:
-                            <img class="source-img" src="/images/piratebay.svg" />
-                            break;
-                        case SearchSourceType.Rarbg:
-                            <img class="source-img" src="/images/rarbg.png" />
-                            break;
-                        case SearchSourceType.Linkomanija:
-                            <img class="source-img" src="/images/linkomanija-small.png" />
-                            break;
-                        default:
-                            <div class="source-img" />
-                            break;
-                    }
-                    <span class="search-title">@item.Title</span>
-                    @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
-                    {
-                        <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
-                    }
-                    <span class="search-right seeds mr-2">@item.Seeds</span>
-                    <span class="search-right peers mr-2">@item.Peers</span>
-                </div>
+    
+            @*TODO separate razor element*@
+            <MudList Clickable="true">
                 <MudDivider />
-            }
-        </MudList>
-    </div>
-}
+                @foreach (var item in mediaTorrentResults)
+                {
+                    <div class="search-list-item">
+                        @switch (item.Source)
+                        {
+                            case SearchSourceType.PirateBay:
+                                <img class="source-img" src="/images/piratebay.svg" />
+                                break;
+                            case SearchSourceType.Rarbg:
+                                <img class="source-img" src="/images/rarbg.png" />
+                                break;
+                            case SearchSourceType.Linkomanija:
+                                <img class="source-img" src="/images/linkomanija-small.png" />
+                                break;
+                            default:
+                                <div class="source-img" />
+                                break;
+                        }
+                        <span class="search-title">@item.Title</span>
+                        @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
+                        {
+                            <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
+                        }
+                        <span class="search-right seeds mr-2">@item.Seeds</span>
+                        <span class="search-right peers mr-2">@item.Peers</span>
+                    </div>
+                    <MudDivider />
+                }
+            </MudList>
+        </div>
+    }
+</div>
 
 <MudPopover Open="@_isSearching" Fixed="true" Class="pa-4 status-popover" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
     <div class="status-container">

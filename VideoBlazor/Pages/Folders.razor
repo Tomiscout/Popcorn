@@ -6,80 +6,81 @@
 @inject FolderService FolderService
 @inject IModalService modal
 
-<h2>Scan folders</h2>
-@if (folders == null)
-{
-	<p><em>Loading...</em></p>
-}
-else if(folders.Count == 0)
-{
-	<p>No folders</p>
-}
-else {
-	<div class="list-group list-group-flush">
-		@foreach (var folder in folders)
-		{
-			<div class="card folder-list-item">
-				<span class="folder-path">@folder.Path</span>
-				<MudButton class="folder-list-button" Variant="Variant.Filled" @onclick="() => DeleteFolder(folder)">
-					<i class="fa-solid fa-trash mr-1"></i>
-					<span>Delete</span>
-				</MudButton>
-			</div>
-		}
-	</div>
-}
-
-<div class="mt-2"></div>
-
-<MudButton Variant="Variant.Filled" @onclick="AddNewFolder">
-	<span>Add folder</span>
-</MudButton>
-<MudButton Variant="Variant.Filled" @onclick="OpenRootFolder">
-	<span>Open root folder</span>
-</MudButton>
-
-<div class="mb-3"></div>
-<h2>Media</h2>
-@if (folders == null) //TODOO fix
-{
-	<p><em>Loading...</em></p>
-}
-else if (folders.Count == 0)
-{
-	<p>No results</p>
-}
-else
-{
-	<MudButton class="folder-list-button" Variant="Variant.Filled" @onclick="ScanFolders">
-		<span><i class="fa-solid fa-arrows-rotate"></i></span>
-		<span>Refresh</span>
-	</MudButton>
-	<MudList Clickable="true">
-		@foreach (var entry in groupedScanResults)
-		{
-			<h3>@entry.Key</h3>
-			<MudDivider />
-			@foreach (var scanResult in entry.Value)
-			{
-				<div class="folder-list-item">
-					<span class="folder-path">@scanResult.Title</span>
-					<span class="file-count-label">@scanResult.Files.Count file@(scanResult.Files.Count != 1 ? "s" : "")</span>
-					<button class="folder-list-button" @onclick="() => AddScanResult(scanResult)">
-						<i class="fa-solid fa-plus"></i>
-					</button>
-				</div>
-				<MudDivider />
-			}
-			@if (entry.Value.Count == 0)
-			{
-				<MudText>No files</MudText>
-			}
-			<MudDivider />
-		}
-	</MudList>
-}
-
+<div class="pa-4">
+	<h2>Scan folders</h2>
+    @if (folders == null)
+    {
+    	<p><em>Loading...</em></p>
+    }
+    else if(folders.Count == 0)
+    {
+    	<p>No folders</p>
+    }
+    else {
+    	<div class="list-group list-group-flush">
+    		@foreach (var folder in folders)
+    		{
+    			<div class="card folder-list-item">
+    				<span class="folder-path">@folder.Path</span>
+    				<MudButton class="folder-list-button" Variant="Variant.Filled" @onclick="() => DeleteFolder(folder)">
+    					<i class="fa-solid fa-trash mr-1"></i>
+    					<span>Delete</span>
+    				</MudButton>
+    			</div>
+    		}
+    	</div>
+    }
+    
+    <div class="mt-2"></div>
+    
+    <MudButton Variant="Variant.Filled" @onclick="AddNewFolder">
+    	<span>Add folder</span>
+    </MudButton>
+    <MudButton Variant="Variant.Filled" @onclick="OpenRootFolder">
+    	<span>Open root folder</span>
+    </MudButton>
+    
+    <div class="mb-3"></div>
+    <h2>Media</h2>
+    @if (folders == null) //TODOO fix
+    {
+    	<p><em>Loading...</em></p>
+    }
+    else if (folders.Count == 0)
+    {
+    	<p>No results</p>
+    }
+    else
+    {
+    	<MudButton class="folder-list-button" Variant="Variant.Filled" @onclick="ScanFolders">
+    		<span><i class="fa-solid fa-arrows-rotate"></i></span>
+    		<span>Refresh</span>
+    	</MudButton>
+    	<MudList Clickable="true">
+    		@foreach (var entry in groupedScanResults)
+    		{
+    			<h3>@entry.Key</h3>
+    			<MudDivider />
+    			@foreach (var scanResult in entry.Value)
+    			{
+    				<div class="folder-list-item">
+    					<span class="folder-path">@scanResult.Title</span>
+    					<span class="file-count-label">@scanResult.Files.Count file@(scanResult.Files.Count != 1 ? "s" : "")</span>
+    					<button class="folder-list-button" @onclick="() => AddScanResult(scanResult)">
+    						<i class="fa-solid fa-plus"></i>
+    					</button>
+    				</div>
+    				<MudDivider />
+    			}
+    			@if (entry.Value.Count == 0)
+    			{
+    				<MudText>No files</MudText>
+    			}
+    			<MudDivider />
+    		}
+    	</MudList>
+    }
+</div>
 
 @*@foreach (var folder in folders)
 {

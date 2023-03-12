@@ -30,29 +30,31 @@
                   Dense="true"
                   MultiSelection="true">
             <HeaderContent>
-                <MudTh><MudTableSortLabel Style="width:300px; max-width:250px;" SortBy="new Func<TorrentViewModel, object>(x => x.Title)">Title</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel Style="width:500px;" SortBy="new Func<TorrentViewModel, object>(x => x.Title)">Title</MudTableSortLabel></MudTh>
                 <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.Size)">Size</MudTableSortLabel></MudTh>
                 <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.Status)">Status</MudTableSortLabel></MudTh>
-                <MudTh><MudTableSortLabel Style="max-width:50px" SortBy="new Func<TorrentViewModel, object>(x => x.Progress)">Progress</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel Style="width:100px" SortBy="new Func<TorrentViewModel, object>(x => x.Progress)">Progress</MudTableSortLabel></MudTh>
                 <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.ETA)">ETA</MudTableSortLabel></MudTh>
                 <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.DownloadSpeed)">Download speed</MudTableSortLabel></MudTh>
                 <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.UploadSpeed)">Upload speed</MudTableSortLabel></MudTh>
-                <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.Seeds)">Seeds/Peers</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.Seeds)">Seeds</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.Seeds)">Peers</MudTableSortLabel></MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd Style="max-width: 300px;" DataLabel="Title">@context.Title</MudTd>
+                <MudTd Style="max-width: 500px;" DataLabel="Title">@context.Title</MudTd>
                 <MudTd DataLabel="Size">@context.Size</MudTd>
                 <MudTd DataLabel="Status">@context.Status</MudTd>
                 <MudTd DataLabel="Progress">
-                    <div style="display: flex; flex-direction: column;align-items: center;">
+                    <div class="progress-container">
                         <span>@context.Progress %</span>
-                        <MudProgressLinear Color="Color.Tertiary" Size="Size.Large" Value="@context.Progress"/>
+                        <MudProgressLinear Style="height: 16px;" Class="progress-bar" Color="Color.Tertiary" Size="Size.Large" Value="@context.Progress"/>
                     </div>
                 </MudTd>
                 <MudTd DataLabel="ETA">@context.ETA</MudTd>
                 <MudTd DataLabel="DownloadSpeed">@context.DownloadSpeed</MudTd>
                 <MudTd DataLabel="UploadSpeed">@context.UploadSpeed</MudTd>
-                <MudTd DataLabel="Seeds">@context.Seeds / @context.Peers</MudTd>
+                <MudTd DataLabel="Seeds">@context.Seeds</MudTd>
+                <MudTd DataLabel="Peers">@context.Peers</MudTd>
             </RowTemplate>
         </MudTable>
     </div>

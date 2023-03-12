@@ -10,87 +10,88 @@
 @using VideoBlazor.SearchProviders.Utils
 @using VideoBlazor.SearchProviders.Enum
 
-<div class="search-bar">
-    <MudTextField @bind-Value="@searchInput" @onkeyup="@Enter" Label="Torrent title" Variant="Variant.Text"></MudTextField>
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchQuery">Search</MudButton>
+<div class="pa-4">
+   <div class="search-bar">
+       <MudTextField @bind-Value="@searchInput" @onkeyup="@Enter" Label="Torrent title" Variant="Variant.Text"></MudTextField>
+       <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchQuery">Search</MudButton>
+   </div>
+   
+   <MudList Clickable="true">
+       <MudDivider />
+       @foreach (var item in searchResults)
+       {
+           <div class="search-list-item">
+               @switch (item.Source)
+               {
+                   case SearchSourceType.PirateBay:
+                       <img class="source-img" src="/images/piratebay.svg" />
+                       break;
+                   case SearchSourceType.Rarbg:
+                       <img class="source-img" src="/images/rarbg.png" />
+                       break;
+                   case SearchSourceType.Linkomanija:
+                       <img class="source-img" src="/images/linkomanija-small.png" />
+                       break;
+                   default:
+                       <div class="source-img" />
+                       break;
+               }
+               <span class="search-title">@item.Title</span>
+               @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
+               {
+                   <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
+               }
+               <span class="search-right seeds mr-2">@item.Seeds</span>
+               <span class="search-right peers mr-2">@item.Peers</span>
+           </div>
+           <MudDivider />
+       }
+   </MudList>
 </div>
 
-
-<MudList Clickable="true">
-    <MudDivider />
-    @foreach (var item in searchResults)
-    {
-        <div class="search-list-item">
-            @switch (item.Source)
-            {
-                case SearchSourceType.PirateBay:
-                    <img class="source-img" src="/images/piratebay.svg" />
-                    break;
-                case SearchSourceType.Rarbg:
-                    <img class="source-img" src="/images/rarbg.png" />
-                    break;
-                case SearchSourceType.Linkomanija:
-                    <img class="source-img" src="/images/linkomanija-small.png" />
-                    break;
-                default:
-                    <div class="source-img" />
-                    break;
-            }
-            <span class="search-title">@item.Title</span>
-            @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
-            {
-                <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
-            }
-            <span class="search-right seeds mr-2">@item.Seeds</span>
-            <span class="search-right peers mr-2">@item.Peers</span>
-        </div>
-        <MudDivider />
-    }
-</MudList>
-
 <MudPopover Open="@_isSearching" Fixed="true" Class="pa-4 status-popover" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
-    <div class="status-container">
-        @foreach (var status in searchStatuses)
-        {
-            if (status.Value is null) continue;
-            <div class="status-row">
-                @switch (status.Value.Status)
-                {
-                    case ProcessStatus.NotStarted:
-                        <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.Pending" />
-                        break;
-                    case ProcessStatus.InProgress:
-                        <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
-                        break;
-                    case ProcessStatus.Finished:
-                        <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.Check" Color="Color.Success" />
-                        break;
-                    case ProcessStatus.Failed:
-                        <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" />
-                        break;
-                    default:
-                        break;
-                }
-                @switch (status.Key)
-                {
-                    case SearchSourceType.PirateBay:
-                        <img class="progress-source-img" src="/images/piratebay.svg" />
-                        break;
-                    case SearchSourceType.Rarbg:
-                        <img class="progress-source-img" src="/images/rarbg.png" />
-                        break;
-                    default:
-                        break;
-                }
-                <MudText>@status.Value.Title</MudText>
-                @if (!string.IsNullOrWhiteSpace(status.Value.Message))
-                {
-                    <MudText Class="ml-1 progress-status-text">@status.Value.Message</MudText>
-                }
-            </div>
-        }
-    </div>
-</MudPopover>
+   <div class="status-container">
+       @foreach (var status in searchStatuses)
+       {
+           if (status.Value is null) continue;
+           <div class="status-row">
+               @switch (status.Value.Status)
+               {
+                   case ProcessStatus.NotStarted:
+                       <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.Pending" />
+                       break;
+                   case ProcessStatus.InProgress:
+                       <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
+                       break;
+                   case ProcessStatus.Finished:
+                       <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.Check" Color="Color.Success" />
+                       break;
+                   case ProcessStatus.Failed:
+                       <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" />
+                       break;
+                   default:
+                       break;
+               }
+               @switch (status.Key)
+               {
+                   case SearchSourceType.PirateBay:
+                       <img class="progress-source-img" src="/images/piratebay.svg" />
+                       break;
+                   case SearchSourceType.Rarbg:
+                       <img class="progress-source-img" src="/images/rarbg.png" />
+                       break;
+                   default:
+                       break;
+               }
+               <MudText>@status.Value.Title</MudText>
+               @if (!string.IsNullOrWhiteSpace(status.Value.Message))
+               {
+                   <MudText Class="ml-1 progress-status-text">@status.Value.Message</MudText>
+               }
+           </div>
+       }
+   </div>
+</MudPopover> 
 
 @code {
     public delegate void SearchCompletedHandler(SearchQueryResult result);
