@@ -50,8 +50,9 @@
 
 <MudPopover Open="@_isSearching" Fixed="true" Class="pa-4 status-popover" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
     <div class="status-container">
-        @foreach (var status in searchStatuses) if(status.Value is not null)
+        @foreach (var status in searchStatuses)
         {
+            if (status.Value is null) continue;
             <div class="status-row">
                 @switch (status.Value.Status)
                 {

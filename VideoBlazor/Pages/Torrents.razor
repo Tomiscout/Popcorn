@@ -1,0 +1,162 @@
+﻿@using VideoBlazor.Core.Model
+@using VideoBlazor.Core.Services
+@using MonoTorrent.Client
+@using System.Timers;
+@using VideoBlazor.Torrent.Model
+@using VideoBlazor.Torrents
+
+@page "/torrents"
+
+<div id="main">
+    <div id="controls">
+        <button class="header-button" @onclick="StartSelected">
+            <i class="fa-solid fa-play fa-2xl"></i>
+        </button>
+        <button class="header-button" @onclick="PauseSelected">
+            <i class="fa-solid fa-pause fa-2xl"></i>
+        </button>
+        <button class="header-button" @onclick="DeleteSelected">
+            <i class="fas fa-trash fa-2xl"></i>
+        </button>
+        <button class="header-button" @onclick="OpenSettings">
+            <i class="fas fa-cog fa-2xl"></i>
+        </button>
+    </div>
+    <div id="content">
+        <MudTable @ref="_table" Items="@torrents" T="TorrentViewModel"
+                  Hover="true"
+                  @bind-SelectedItems="selectedItems"
+                  OnRowClick="@OnRowClick"
+                  Dense="true"
+                  MultiSelection="true">
+            <HeaderContent>
+                <MudTh><MudTableSortLabel Style="width:300px; max-width:250px;" SortBy="new Func<TorrentViewModel, object>(x => x.Title)">Title</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.Size)">Size</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.Status)">Status</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel Style="max-width:50px" SortBy="new Func<TorrentViewModel, object>(x => x.Progress)">Progress</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.ETA)">ETA</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.DownloadSpeed)">Download speed</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.UploadSpeed)">Upload speed</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel Style="max-width:40px" SortBy="new Func<TorrentViewModel, object>(x => x.Seeds)">Seeds/Peers</MudTableSortLabel></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd Style="max-width: 300px;" DataLabel="Title">@context.Title</MudTd>
+                <MudTd DataLabel="Size">@context.Size</MudTd>
+                <MudTd DataLabel="Status">@context.Status</MudTd>
+                <MudTd DataLabel="Progress">
+                    <div style="display: flex; flex-direction: column;align-items: center;">
+                        <span>@context.Progress %</span>
+                        <MudProgressLinear Color="Color.Tertiary" Size="Size.Large" Value="@context.Progress"/>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="ETA">@context.ETA</MudTd>
+                <MudTd DataLabel="DownloadSpeed">@context.DownloadSpeed</MudTd>
+                <MudTd DataLabel="UploadSpeed">@context.UploadSpeed</MudTd>
+                <MudTd DataLabel="Seeds">@context.Seeds / @context.Peers</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </div>
+    <div id="details">
+        
+    </div>
+</div>
+
+
+
+@code {
+    private MudTable<TorrentViewModel> _table;
+    private HashSet<TorrentViewModel> selectedItems = new HashSet<TorrentViewModel>();
+    
+    List<TorrentManager> _torrentManagers = new List<TorrentManager>();
+    List<TorrentViewModel> torrents = new List<TorrentViewModel>();
+    Timer _pollTimer;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _pollTimer = new Timer();
+        _pollTimer.Interval = 1000;
+        _pollTimer.Elapsed += PollInformation;
+        _pollTimer.AutoReset = true;
+        _pollTimer.Enabled = true;
+
+        torrents = TorrentCore.GetTorrentsDisplay();
+        Application.Current?.MainPage?.Dispatcher.Dispatch(async () =>
+        {
+            StateHasChanged();
+        });
+        
+        /*torrents.Add(new()
+        {
+            Id = Guid.NewGuid(),
+            Title = "Puss in boots",
+            Progress = 68.9,
+            Size = "12 GB",
+            Seeds = 2,
+            Peers = 40,
+            DownloadSpeed = "12kb/s",
+            UploadSpeed = "12kb/s",
+            ETA = "5h",
+            Ratio = 0.5
+        });
+        torrents.Add(new()
+        {
+            Id = Guid.NewGuid(),
+            Title = "Shrek",
+            Progress = 6.9,
+            Size = "1 GB",
+            Seeds = 20,
+            Peers = 4,
+            DownloadSpeed = "120kb/s",
+            UploadSpeed = "120kb/s",
+            ETA = "1h",
+            Ratio = 0.8
+        });*/
+    }
+
+    private async Task StartSelected()
+    {
+        await TorrentCore.StartTorrents(selectedItems.Select(s => s.Id).ToList());
+    }
+
+    private async Task PauseSelected()
+    {
+        await TorrentCore.StopTorrents(selectedItems.Select(s => s.Id).ToList());
+    }
+
+    public void DeleteSelected()
+    {
+
+    }
+
+    public void OpenSettings()
+    {
+
+    }
+    
+    public void OnRowClick(TableRowClickEventArgs<TorrentViewModel> args)
+    {
+    }
+
+    private void PollInformation(object? sender, ElapsedEventArgs e)
+    {
+        var updated = TorrentCore.GetTorrentsDisplay();
+        foreach (var newModel in updated)
+        {
+            foreach (var current in torrents)
+            {
+                if (current.Id != newModel.Id) continue;
+                current.Progress = newModel.Progress;
+                current.DownloadSpeed = newModel.DownloadSpeed;
+                current.UploadSpeed = newModel.UploadSpeed;
+                current.Status = newModel.Status;
+                current.Peers = newModel.Peers;
+                current.Seeds = newModel.Seeds;
+            }
+        }
+        Application.Current?.MainPage?.Dispatcher.Dispatch(async () =>
+        {
+            StateHasChanged();
+        });
+    }
+
+}

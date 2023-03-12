@@ -33,12 +33,12 @@ namespace VideoBlazor.SearchProviders
             from provider in _searchProviders
             select ProcessSearchProviderAsync(provider, query, resultHandler);
 
-            List<Task> downloadTasks = searchTasksQuery.ToList();
+            List<Task> searchTasks = searchTasksQuery.ToList();
 
-            while (downloadTasks.Any())
+            while (searchTasks.Any())
             {
-                Task finishedTask = await Task.WhenAny(downloadTasks);
-                downloadTasks.Remove(finishedTask);
+                Task finishedTask = await Task.WhenAny(searchTasks);
+                searchTasks.Remove(finishedTask);
             }
         }
 

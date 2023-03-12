@@ -8,6 +8,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.SearchProviders
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoPlayer", "VideoPlayer\VideoPlayer.csproj", "{A81C8D30-C7B1-47B8-A361-69E6BFFDA94D}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.Torrents", "VideoBlazor.Torrents\VideoBlazor.Torrents.csproj", "{A05ABD5E-5847-45B7-9CD6-C0B592B0E0D8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,6 +30,10 @@ Global
 		{A81C8D30-C7B1-47B8-A361-69E6BFFDA94D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A81C8D30-C7B1-47B8-A361-69E6BFFDA94D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A81C8D30-C7B1-47B8-A361-69E6BFFDA94D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A05ABD5E-5847-45B7-9CD6-C0B592B0E0D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A05ABD5E-5847-45B7-9CD6-C0B592B0E0D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A05ABD5E-5847-45B7-9CD6-C0B592B0E0D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A05ABD5E-5847-45B7-9CD6-C0B592B0E0D8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -9,4 +9,5 @@
     <_LastSelectedProfileId>MSIX-win10-x86.pubxml</_LastSelectedProfileId>
     <PackageOptionalProjectsInIdeBuilds>False</PackageOptionalProjectsInIdeBuilds>
   </PropertyGroup>
+
 </Project>
