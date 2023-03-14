@@ -1,7 +1,6 @@
-﻿
-using VideoBlazor.SearchProviders.Enum;
+﻿using VideoBlazor.Shared.Enum;
 
-namespace VideoBlazor.SearchProviders.Model
+namespace VideoBlazor.Shared.Models
 {
     public class SearchResult
     {

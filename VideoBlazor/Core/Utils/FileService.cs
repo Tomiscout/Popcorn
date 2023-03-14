@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 using VideoBlazor.Core.Exceptions;
+using VideoBlazor.Shared;
 
 namespace VideoBlazor.Core.Utils;
 

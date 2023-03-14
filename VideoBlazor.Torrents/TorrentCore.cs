@@ -76,6 +76,16 @@ public static class TorrentCore
         }
     }
 
+    public static async Task AddTorrentFile(string path)
+    {
+        
+    }
+    
+    public static async Task AddTorrentMagnet(string path)
+    {
+        
+    }
+    
     private static async Task InitManager(TorrentManager manager)
     {
         manager.TorrentStateChanged += delegate (object o, TorrentStateChangedEventArgs e) {

@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace VideoBlazor.Core.Utils
+namespace VideoBlazor.Shared
 {
     /// <summary>
     /// Usage: string executablePath = FileAssociation.GetExecFileAssociatedToExtension(pathExtension, "open");

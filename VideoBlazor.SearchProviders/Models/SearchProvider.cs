@@ -1,5 +1,5 @@
 ﻿
-using VideoBlazor.SearchProviders.Enum;
+using VideoBlazor.Shared.Enum;
 
 namespace VideoBlazor.SearchProviders.Model
 {

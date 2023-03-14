@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Text;
+﻿using System.Net;
 using System.Text.Json;
-using System.Threading.Tasks;
-using VideoBlazor.SearchProviders.Enum;
-using VideoBlazor.SearchProviders.Model;
+using VideoBlazor.Shared.Enum;
 using VideoBlazor.SearchProviders.Models;
 using VideoBlazor.SearchProviders.Utils;
+using VideoBlazor.Shared.Models;
 
 namespace VideoBlazor.SearchProviders.Providers.PirateBay
 {
@@ -45,7 +40,7 @@ namespace VideoBlazor.SearchProviders.Providers.PirateBay
                     Title = x.Name,
                     Seeds = int.Parse(x.Seeders),
                     Peers = int.Parse(x.Leechers),
-                    MagnetLink = TorrentUtils.BuildMagnetLink(x.Name, x.InfoHash, _pirateBayTrackers),
+                    MagnetLink = TorrentUtils.BuildMagnetLink(x.Name, x.InfoHash, _pirateBayTrackers), //TODO fix dependency
                     Size = long.Parse(x.Size)
                 }).ToList(),
                 Source = SearchSourceType.PirateBay,

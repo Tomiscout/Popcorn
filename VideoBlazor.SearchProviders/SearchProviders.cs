@@ -1,7 +1,7 @@
-﻿using VideoBlazor.SearchProviders.Enum;
-using VideoBlazor.SearchProviders.Providers.Linkomanija;
+﻿using VideoBlazor.SearchProviders.Providers.Linkomanija;
 using VideoBlazor.SearchProviders.Providers.PirateBay;
 using VideoBlazor.SearchProviders.Providers.Rarbg;
+using VideoBlazor.Shared.Enum;
 
 namespace VideoBlazor.SearchProviders
 {
@@ -83,11 +83,12 @@ namespace VideoBlazor.SearchProviders
             }
         }
 
-        public static async Task DownloadAndOpenTorrent(SearchSourceType source, string torrentUrl)
+        public static async Task<string> DownloadTorrent(SearchSourceType source, string torrentUrl)
         {
             var provider = _searchProviders.FirstOrDefault(s => s.Source == source);
-            if(provider is null) return;
-            await ((ITorrentDownloader)provider).DownloadTorrent(torrentUrl);
+            if(provider is null) return null;
+            
+            return await ((ITorrentDownloader)provider).DownloadTorrent(torrentUrl);
         }
     }
 }

@@ -1,13 +1,13 @@
-﻿using VideoBlazor.SearchProviders.Enum;
-using VideoBlazor.SearchProviders.Exceptions;
+﻿using VideoBlazor.SearchProviders.Exceptions;
 using VideoBlazor.SearchProviders.Models;
-using VideoBlazor.SearchProviders.Model;
 using HtmlAgilityPack;
 using System;
 using VideoBlazor.SearchProviders.Utils;
 using System.Net;
 using System.IO.Compression;
 using Microsoft.AspNetCore.WebUtilities;
+using VideoBlazor.Shared.Enum;
+using VideoBlazor.Shared.Models;
 
 namespace VideoBlazor.SearchProviders.Providers.Linkomanija
 {
@@ -102,7 +102,7 @@ namespace VideoBlazor.SearchProviders.Providers.Linkomanija
                 var torrentFileName = WebUtility.UrlDecode(url.Substring(url.IndexOf("name=") + 5));
                 var path = Path.Join(TorrentUtils.GetTorrentsFolder(), torrentFileName);
                 File.Delete(path);
-                using var fs = new FileStream(path, FileMode.CreateNew);
+                await using var fs = new FileStream(path, FileMode.CreateNew);
                 await response.Content.CopyToAsync(fs);
                 return path;
             } catch(Exception e)

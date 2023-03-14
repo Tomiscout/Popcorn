@@ -1,11 +1,11 @@
 ﻿using Microsoft.AspNetCore.WebUtilities;
 using System.Text.Json;
-using VideoBlazor.SearchProviders.Enum;
+using VideoBlazor.Shared.Enum;
 using VideoBlazor.SearchProviders.Exceptions;
-using VideoBlazor.SearchProviders.Model;
 using VideoBlazor.SearchProviders.Models;
 using VideoBlazor.SearchProviders.Providers.Rarbg.DTO;
 using VideoBlazor.SearchProviders.Providers.Rarbg.Exceptions;
+using VideoBlazor.Shared.Models;
 
 namespace VideoBlazor.SearchProviders.Providers.Rarbg
 {

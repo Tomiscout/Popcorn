@@ -8,7 +8,8 @@
 @using VideoBlazor.SearchProviders.Models
 @using VideoBlazor.SearchProviders.MovieDb
 @using VideoBlazor.SearchProviders.Utils
-@using VideoBlazor.SearchProviders.Enum
+@using VideoBlazor.Shared.Enum
+@using VideoBlazor.Shared.Models
 
 <div class="pa-4">
    <div class="search-bar">
@@ -97,10 +98,7 @@
     public delegate void SearchCompletedHandler(SearchQueryResult result);
 
     public string searchInput { get; set; } = "";
-    public string mediaSearchInput { get; set; } = "";
     public List<SearchResult> searchResults = new List<SearchResult>();
-    public List<SearchResult> mediaTorrentResults = new List<SearchResult>();
-    public List<MovieDbSearchResult> mediaSearchResults = new List<MovieDbSearchResult>();
     public Dictionary<SearchSourceType, SearchQueryStatus> searchStatuses = new Dictionary<SearchSourceType, SearchQueryStatus>();
     private bool _isSearching = false;
 
@@ -112,7 +110,7 @@
         });*@
     }
 
-    public void Enter(KeyboardEventArgs e)
+    private void Enter(KeyboardEventArgs e)
     {
         if (e.Code == "Enter" || e.Code == "NumpadEnter")
         {
@@ -120,7 +118,7 @@
         }
     }
 
-    public async Task SearchQuery() {
+    private async Task SearchQuery() {
         searchStatuses.Clear();
         var sources = SearchProviders.GetSearchProvidersSources();
         foreach(var source in sources) {
@@ -149,15 +147,8 @@
         await SearchProviders.SearchQuery(searchInput, handler);
     }
 
-    public async void DownloadTorrent(SearchResult item) {
-        if(!string.IsNullOrWhiteSpace(item.MagnetLink)) {
-            TorrentUtils.OpenMagnetLink(item.MagnetLink);
-        }
-        else
-        {
-            //TODO progress spinner enable
-            await SearchProviders.DownloadAndOpenTorrent(item.Source, item.TorrentFileLink);
-            //TODO progress spinner disable
-        }
+    private async void DownloadTorrent(SearchResult item)
+    {
+        await TorrentUtils.StartTorrentDownload(item);
     }
 }

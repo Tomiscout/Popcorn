@@ -1,4 +1,4 @@
-﻿using VideoBlazor.SearchProviders.Enum;
+﻿using VideoBlazor.Shared.Enum;
 using VideoBlazor.SearchProviders.Models;
 
 namespace VideoBlazor.SearchProviders

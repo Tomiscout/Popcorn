@@ -1,10 +1,9 @@
-﻿
-namespace VideoBlazor.SearchProviders.Enum
+﻿namespace VideoBlazor.Shared.Enum
 {
-	public enum SearchSourceType
-	{
+    public enum SearchSourceType
+    {
         None,
-		PirateBay,
+        PirateBay,
         Yts,
         Rarbg,
         Limetorrents,

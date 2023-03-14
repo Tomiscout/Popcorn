@@ -1,9 +1,8 @@
-﻿using Microsoft.AspNetCore.Components.WebView.Maui;
-using VideoBlazor.Data;
-using VideoBlazor.Core;
+﻿using VideoBlazor.Core;
 using MudBlazor.Services;
-using VideoBlazor.SearchProviders.Utils;
 using VideoBlazor.SearchProviders.MovieDb;
+using VideoBlazor.SearchProviders.Utils;
+using VideoBlazor.Torrent;
 using VideoBlazor.Torrents;
 
 namespace VideoBlazor;

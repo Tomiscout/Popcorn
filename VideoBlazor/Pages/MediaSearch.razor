@@ -10,7 +10,8 @@
 @using VideoBlazor.SearchProviders.MovieDb
 @using VideoBlazor.SearchProviders.Omdb
 @using VideoBlazor.SearchProviders.Utils
-@using VideoBlazor.SearchProviders.Enum
+@using VideoBlazor.Shared.Enum
+@using VideoBlazor.Shared.Models
 
 <div class="pa-4">
     @if (Selected is null)
@@ -320,27 +321,27 @@
         await SearchProviders.SearchImdbQuery(imdbId, item.Title, handler);
     }
 
-    public void Back() {
+    private void Back() {
         Selected = null;
     }
 
-    public string GetClassForMetascore() {
-        int score = (int)Selected.Ratings.Metascore;
+    private string GetClassForMetascore()
+    {
+        if (Selected?.Ratings?.Metascore is null) return string.Empty;
+        
+        var score = (int)Selected.Ratings.Metascore;
         if (score >= 80)
         {
             return "metascore-good";
         }
-        else if (score >= 60)
+        if (score >= 60)
         {
             return "metascore-ok";
         }
-        else
-        {
-            return "metascore-bad";
-        }
+        return "metascore-bad";
     }
 
-    public async Task SearchMediaQuery()
+    private async Task SearchMediaQuery()
     {
         try{
             mediaSearchResults.Clear();
@@ -352,15 +353,8 @@
         
     }
 
-    public async void DownloadTorrent(SearchResult item) {
-        if(!string.IsNullOrWhiteSpace(item.MagnetLink)) {
-            TorrentUtils.OpenMagnetLink(item.MagnetLink);
-        }
-        else
-        {
-            //TODO progress spinner enable
-            await SearchProviders.DownloadAndOpenTorrent(item.Source, item.TorrentFileLink);
-            //TODO progress spinner disable
-        }
+    private async void DownloadTorrent(SearchResult item)
+    {
+        await TorrentUtils.StartTorrentDownload(item);
     }
 }
