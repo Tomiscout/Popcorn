@@ -9,6 +9,7 @@ namespace VideoBlazor.Shared.Models
         public int Peers { get; set; }
         public string MagnetLink { get; set; }
         public string TorrentFileLink { get; set; }
+        public string TorrentFilePath { get; set; }
         public SearchSourceType Source { get; set; }
         public List<string> Genres { get; set; }
         public List<string> Tags { get; set; }

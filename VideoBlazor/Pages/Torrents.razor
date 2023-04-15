@@ -4,6 +4,8 @@
 @using System.Timers;
 @using VideoBlazor.Torrent.Model
 @using VideoBlazor.Torrents
+@inject TorrentCore _torrentCore
+@inject IModalService modal
 
 @page "/torrents"
 
@@ -68,20 +70,28 @@
 @code {
     private MudTable<TorrentViewModel> _table;
     private HashSet<TorrentViewModel> selectedItems = new HashSet<TorrentViewModel>();
-    
+
+    TorrentAddModel _torrentAddModel = null;
     List<TorrentManager> _torrentManagers = new List<TorrentManager>();
     List<TorrentViewModel> torrents = new List<TorrentViewModel>();
     Timer _pollTimer;
     
     protected override async Task OnInitializedAsync()
     {
+        _torrentAddModel = _torrentCore.GetTorrentAddModel();
+        if (_torrentAddModel is not null)
+        {
+            var parameters = new ModalParameters().Add("inputData", _torrentAddModel);
+            modal.Show<TorrentAddModal>("Add torrent", parameters);
+        }
+        
         _pollTimer = new Timer();
         _pollTimer.Interval = 1000;
         _pollTimer.Elapsed += PollInformation;
         _pollTimer.AutoReset = true;
         _pollTimer.Enabled = true;
 
-        torrents = TorrentCore.GetTorrentsDisplay();
+        torrents = _torrentCore.GetTorrentsDisplay();
         Application.Current?.MainPage?.Dispatcher.Dispatch(async () =>
         {
             StateHasChanged();
@@ -117,12 +127,12 @@
 
     private async Task StartSelected()
     {
-        await TorrentCore.StartTorrents(selectedItems.Select(s => s.Id).ToList());
+        await _torrentCore.StartTorrents(selectedItems.Select(s => s.Id).ToList());
     }
 
     private async Task PauseSelected()
     {
-        await TorrentCore.StopTorrents(selectedItems.Select(s => s.Id).ToList());
+        await _torrentCore.StopTorrents(selectedItems.Select(s => s.Id).ToList());
     }
 
     public void DeleteSelected()
@@ -141,7 +151,7 @@
 
     private void PollInformation(object? sender, ElapsedEventArgs e)
     {
-        var updated = TorrentCore.GetTorrentsDisplay();
+        var updated = _torrentCore.GetTorrentsDisplay();
         foreach (var newModel in updated)
         {
             foreach (var current in torrents)

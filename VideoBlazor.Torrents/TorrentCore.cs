@@ -1,13 +1,23 @@
-﻿using MonoTorrent.Client;
+﻿using System.Diagnostics;
+using MonoTorrent;
+using MonoTorrent.Client;
+using VideoBlazor.Shared;
+using VideoBlazor.Shared.Models;
 using VideoBlazor.Torrent.Model;
 
 namespace VideoBlazor.Torrents;
     
-public static class TorrentCore
+public class TorrentCore
 {
-    private static ClientEngine _engine;
-    private static Dictionary<Guid, TorrentManager> _managers = new Dictionary<Guid, TorrentManager>();
-    public static void Initialize()
+    private static readonly bool _builtInTorrentClient = true; //TODO get this from settings
+    private string _defaultDownloadFolder = @"C:\Users\brazi\Downloads\test";
+    private ClientEngine _engine;
+    private Dictionary<Guid, TorrentManager> _managers = new Dictionary<Guid, TorrentManager>();
+
+    private TorrentAddModel _torrentToAdd = null;
+
+
+    public TorrentCore()
     {
         _engine = new ClientEngine(new EngineSettings()
         {
@@ -15,32 +25,14 @@ public static class TorrentCore
         });
         LoadSavedTorrents().ConfigureAwait(false);
     }
-    private static async Task<List<TorrentManager>> LoadSavedTorrents()
-    {
-        var torrent = await MonoTorrent.Torrent.LoadAsync(@"C:\Users\brazi\Downloads\The.Last.of.Us.S01E08.When.We.Are.in.Need.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb.mkv.torrent");
-        //string[] torrentFiles = Directory.GetFiles(torrentDirectory, "*.torrent");
-
-        //https://github.com/alanmcgovern/monotorrent/blob/master/src/Samples/SampleClient/StandardDownloader.cs
-        await _engine.AddAsync(torrent, @"C:\Users\brazi\Downloads\test", new TorrentSettings());
-        foreach (var manager in _engine.Torrents)
-        {
-            await InitManager(manager);
-            
-            _managers.Add(Guid.NewGuid(), manager);
-            
-            //TODO dont start torrents with stop status
-            //await manager.StartAsync();
-            
-        }
-        
-        return new List<TorrentManager>();
-    }
-
-    public static List<TorrentViewModel> GetTorrentsDisplay()
+  
+    public List<TorrentViewModel> GetTorrentsDisplay()
     {
         var returnList = new List<TorrentViewModel>();
         foreach (var t in _managers)
         {
+            if (t.Value.Torrent == null) continue;
+            
             returnList.Add(new TorrentViewModel
             {
                 Id = t.Key,
@@ -60,7 +52,7 @@ public static class TorrentCore
         return returnList;
     }
 
-    public static async Task StartTorrents(List<Guid> ids)
+    public async Task StartTorrents(List<Guid> ids)
     {
         foreach (var id in ids)
         {
@@ -68,32 +60,132 @@ public static class TorrentCore
         }
     }
     
-    public static async Task StopTorrents(List<Guid> ids)
+    public async Task StopTorrents(List<Guid> ids)
     {
         foreach (var id in ids)
         {
             await _managers[id].StopAsync();
         }
     }
+    
+    public async Task StartMetadataFetch(Guid id)
+    {
+        await _managers[id].WaitForMetadataAsync();
+    }
 
-    public static async Task AddTorrentFile(string path)
+    public async Task SubmitTorrentAdd(TorrentAddModel model)
     {
-        
+        //Change settings, directory, file stuff
+        //Start download
+    }
+
+    public async Task AddTorrentFile(string path)
+    {
+        await ResetTorrentToAdd();
+        _torrentToAdd = new TorrentAddModel
+        {
+            Id = Guid.NewGuid(),
+            DownloadDirectory = _defaultDownloadFolder,
+            TorrentPath = path
+        };
+        await AddTorrentFromAddModel(_torrentToAdd);
+    }
+
+    public async Task AddTorrentMagnet(string magnet)
+    {
+        await ResetTorrentToAdd();
+        _torrentToAdd = new TorrentAddModel
+        {
+            Id = Guid.NewGuid(),
+            DownloadDirectory = _defaultDownloadFolder,
+            Magnet = magnet,
+        };
+        await AddTorrentFromAddModel(_torrentToAdd);
+    }
+
+    private async Task AddTorrentFromAddModel(TorrentAddModel model)
+    {
+        TorrentManager manager;
+        if (!string.IsNullOrWhiteSpace(model.Magnet))
+        {
+            manager = await _engine.AddAsync(MagnetLink.Parse(model.Magnet), model.DownloadDirectory, new TorrentSettings());
+        }
+        else
+        {
+            var torrent = await MonoTorrent.Torrent.LoadAsync(model.TorrentPath);
+            manager = await _engine.AddAsync(torrent, model.DownloadDirectory, new TorrentSettings());
+        }
+        await InitManager(manager);
+        _managers.Add(model.Id, manager);
+    }
+
+    public TorrentAddModel GetTorrentAddModel()
+    {
+        return _torrentToAdd;
     }
     
-    public static async Task AddTorrentMagnet(string path)
+    private async Task LoadSavedTorrents()
     {
-        
+        //string[] torrentFiles = Directory.GetFiles(torrentDirectory, "*.torrent");
+
+        var torrent = await MonoTorrent.Torrent.LoadAsync(@"C:\Users\brazi\Downloads\The.Last.of.Us.S01E08.When.We.Are.in.Need.1080p.AMZN.WEB-DL.DDP5.1.H.264-NTb.mkv.torrent");
+        await LoadTorrent(torrent);
     }
     
-    private static async Task InitManager(TorrentManager manager)
+    public async Task ResetTorrentToAdd()
+    {
+        if (_torrentToAdd is null) return;
+
+        var manager = _managers[_torrentToAdd.Id];
+        //manager.ContainingDirectory TODO delete files, if any.
+        await _engine.RemoveAsync(manager);
+        _managers.Remove(_torrentToAdd.Id);
+        
+        _torrentToAdd = null;
+    }
+
+    private async Task LoadTorrent(MonoTorrent.Torrent torrent, string downloadDirectory = null)
+    {
+        //https://github.com/alanmcgovern/monotorrent/blob/master/src/Samples/SampleClient/StandardDownloader.cs
+        var manager = await _engine.AddAsync(torrent, downloadDirectory ?? _defaultDownloadFolder, new TorrentSettings());
+        await InitManager(manager);
+        _managers.Add(Guid.NewGuid(), manager); //TODO load guid
+    }
+    
+    public async Task StartTorrentDownload(SearchResult item, bool builtIn)
+    {
+        if(!string.IsNullOrWhiteSpace(item.MagnetLink)) {
+            if (builtIn)
+            {
+                await AddTorrentMagnet(item.MagnetLink);
+            }
+            else
+            {
+                OpenMagnetLinkSystem(item.MagnetLink);
+            }
+        }
+        else
+        {
+            //TODO Catch and log
+            if (builtIn)
+            {
+                await AddTorrentFile(item.TorrentFilePath);
+            }
+            else
+            {
+                OpenTorrentFileSystem(item.MagnetLink);
+            }
+        }
+    }
+    
+    private async Task InitManager(TorrentManager manager)
     {
         manager.TorrentStateChanged += delegate (object o, TorrentStateChangedEventArgs e) {
                 
         };
     }
     
-    private static string FormatBytes(long bytes, bool perSecond = false)
+    private string FormatBytes(long bytes, bool perSecond = false)
     {
         string[] sizes = { "B", "KB", "MB", "GB", "TB" };
         int order = 0;
@@ -109,5 +201,16 @@ public static class TorrentCore
             return $"{returnString}/s";
         }
         return returnString;
+    }
+    
+    public static void OpenMagnetLinkSystem(string magnetLink)
+    {
+        var command = FileAssociation.GetExecFileAssociatedToExtension(".torrent");
+        Process.Start(command, $"\"{magnetLink}\"");
+    }
+        
+    public static void OpenTorrentFileSystem(string path)
+    {
+        Process.Start(path);
     }
 }

@@ -35,7 +35,6 @@ public static class MauiProgram
 		ImageUtils.EnsureImageFolder();
 		TorrentUtils.EnsureTorrentsFolder();
         MovieDbProvider.Initialize();
-        TorrentCore.Initialize();
 
         return builder.Build();
 	}

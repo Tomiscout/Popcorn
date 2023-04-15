@@ -1,0 +1,86 @@
+@using VideoBlazor.Core.Model
+@using VideoBlazor.Core.Services;
+@using VideoBlazor.Core;
+@using VideoBlazor.Core.Enums;
+@using VideoBlazor.Platforms.Windows
+@using VideoBlazor.Torrent.Model
+@using VideoBlazor.Torrents
+@inject TorrentCore _torrentCore;
+@inject IFolderPicker _folderPicker
+
+@page "/addTorrent"
+
+
+<div>
+    @if (fetchingMetadata)
+    {
+        <span>Fetching metadata...</span>
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
+    }
+    <EditForm Model="@inputData" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator/>
+        <MudGrid>
+            <MudItem xs="12" sm="7">
+                <MudCard>
+                    <MudCardContent>
+                        <MudTextField Label="Title" Disabled="@fetchingMetadata" Readonly="true"
+                                      @bind-Value="inputData.Title" For="@(() => inputData.Title)"/>
+                        <MudTextField Label="Download directory" Disabled="@fetchingMetadata" Class="mt-3"
+                                      @bind-Value="inputData.DownloadDirectory" For="@(() => inputData.DownloadDirectory)"/>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Download</MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="5">
+                <MudPaper Class="pa-4 mud-height-full">
+                    <MudText Typo="Typo.subtitle2">Validation Summary</MudText>
+                    @if (success)
+                    {
+                        <MudText Color="Color.Success">Success</MudText>
+                    }
+                    else
+                    {
+                        <MudText Color="@Color.Error">
+                            <ValidationSummary/>
+                        </MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12">
+                <MudText Typo="Typo.body2" Align="Align.Center">
+                    Fill out the form correctly to see the success message.
+                </MudText>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</div>
+
+
+
+@code {
+    [CascadingParameter] BlazoredModalInstance BlazoredModal { get; set; } = default!;
+
+    [Parameter] public TorrentAddModel? inputData { get; set; }
+    bool success;
+    bool fetchingMetadata = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        fetchingMetadata = true;
+        StateHasChanged();
+        await _torrentCore.StartMetadataFetch(inputData.Id);
+        fetchingMetadata = false;
+        StateHasChanged();
+    }
+
+    public async Task HandleValidSubmit()
+    {
+        success = true;
+        await _torrentCore.SubmitTorrentAdd(inputData);
+        await BlazoredModal.CloseAsync();
+    }
+
+    
+}

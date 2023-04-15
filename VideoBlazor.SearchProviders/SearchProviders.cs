@@ -13,8 +13,8 @@ namespace VideoBlazor.SearchProviders
         private static List<ISearchProvider> _searchProviders = new List<ISearchProvider>()
         {
             new PirateBaySearchProvider(),
-            new RarbgSearchProvider(),
-            new LinkomanijaProvider(),
+            /*new RarbgSearchProvider(),
+            new LinkomanijaProvider(),*/
         };
         
         public static List<SearchSourceType> GetSearchProvidersSources()

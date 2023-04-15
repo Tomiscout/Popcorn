@@ -1,5 +1,7 @@
 ﻿using Blazored.Modal;
 using VideoBlazor.Core.Services;
+using VideoBlazor.SearchProviders.Utils;
+using VideoBlazor.Torrents;
 
 namespace VideoBlazor.Core
 {
@@ -9,6 +11,8 @@ namespace VideoBlazor.Core
         {
             services.AddSingleton<FolderService>();
             services.AddSingleton<MediaItemService>();
+            services.AddSingleton<TorrentCore>();
+            services.AddSingleton<TorrentUtils>();
             services.AddBlazoredModal();
         }
     }

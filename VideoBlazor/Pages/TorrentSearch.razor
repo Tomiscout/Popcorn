@@ -10,6 +10,9 @@
 @using VideoBlazor.SearchProviders.Utils
 @using VideoBlazor.Shared.Enum
 @using VideoBlazor.Shared.Models
+@using VideoBlazor.Torrents
+@inject TorrentCore _torrentCore;
+@inject NavigationManager _navManager;
 
 <div class="pa-4">
    <div class="search-bar">
@@ -40,7 +43,8 @@
                <span class="search-title">@item.Title</span>
                @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
                {
-                   <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
+                    <span class="search-right mr-2" @onclick="() => DownloadTorrent(item, true)"><i class="fa fa-reply"></i></span>
+                    <span class="search-right mr-2" @onclick="() => DownloadTorrent(item, false)"><i class="fa fa-magnet"></i></span>
                }
                <span class="search-right seeds mr-2">@item.Seeds</span>
                <span class="search-right peers mr-2">@item.Peers</span>
@@ -147,8 +151,18 @@
         await SearchProviders.SearchQuery(searchInput, handler);
     }
 
-    private async void DownloadTorrent(SearchResult item)
+    private async void DownloadTorrent(SearchResult item, bool builtIn)
     {
-        await TorrentUtils.StartTorrentDownload(item);
+        if (string.IsNullOrWhiteSpace(item.MagnetLink))
+        {
+            item.TorrentFilePath = await SearchProviders.DownloadTorrent(item.Source, item.TorrentFileLink);
+        }
+        
+        await _torrentCore.StartTorrentDownload(item, builtIn);
+
+        if (builtIn)
+        {
+            _navManager.NavigateTo("/torrents");
+        }
     }
 }

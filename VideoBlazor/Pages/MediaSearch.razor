@@ -12,6 +12,9 @@
 @using VideoBlazor.SearchProviders.Utils
 @using VideoBlazor.Shared.Enum
 @using VideoBlazor.Shared.Models
+@using VideoBlazor.Torrents
+@inject TorrentCore _torrentCore;
+@inject NavigationManager _navManager;
 
 <div class="pa-4">
     @if (Selected is null)
@@ -355,6 +358,14 @@
 
     private async void DownloadTorrent(SearchResult item)
     {
-        await TorrentUtils.StartTorrentDownload(item);
+        if (string.IsNullOrWhiteSpace(item.MagnetLink))
+        {
+            item.TorrentFilePath = await SearchProviders.DownloadTorrent(item.Source, item.TorrentFileLink);
+        }
+        await _torrentCore.StartTorrentDownload(item, false);
+        if (false) //TODO setting from config
+        {
+            _navManager.NavigateTo("/torrents");
+        }
     }
 }
