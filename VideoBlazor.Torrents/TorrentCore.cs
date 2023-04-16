@@ -3,6 +3,7 @@ using MonoTorrent;
 using MonoTorrent.Client;
 using VideoBlazor.Shared;
 using VideoBlazor.Shared.Models;
+using VideoBlazor.Shared.Utils;
 using VideoBlazor.Torrent.Model;
 
 namespace VideoBlazor.Torrents;
@@ -38,11 +39,11 @@ public class TorrentCore
                 Id = t.Key,
                 Title = t.Value.Torrent.Name,
                 Progress = Math.Round(t.Value.Progress, 2),
-                Size = FormatBytes(t.Value.Torrent.Size),
+                Size = StringUtils.FormatBytes(t.Value.Torrent.Size),
                 Seeds = 0,
                 Peers = t.Value.OpenConnections,
-                DownloadSpeed = FormatBytes(t.Value.Monitor.DownloadSpeed, true),
-                UploadSpeed = FormatBytes(t.Value.Monitor.UploadSpeed, true),
+                DownloadSpeed = StringUtils.FormatBytes(t.Value.Monitor.DownloadSpeed, true),
+                UploadSpeed = StringUtils.FormatBytes(t.Value.Monitor.UploadSpeed, true),
                 Status = t.Value.State.ToString(),
                 ETA = "TODO",
                 Ratio = t.Value.Monitor.DataBytesDownloaded > 0 ? Math.Round((double)t.Value.Monitor.DataBytesUploaded / t.Value.Monitor.DataBytesDownloaded, 2) : 0
@@ -68,9 +69,11 @@ public class TorrentCore
         }
     }
     
-    public async Task StartMetadataFetch(Guid id)
+    public async Task<TorrentManager> StartMetadataFetch(Guid id)
     {
         await _managers[id].WaitForMetadataAsync();
+        await _managers[id].StopAsync();
+        return _managers[id];
     }
 
     public async Task SubmitTorrentAdd(TorrentAddModel model)
@@ -117,6 +120,7 @@ public class TorrentCore
         }
         await InitManager(manager);
         _managers.Add(model.Id, manager);
+        await manager.StartAsync();
     }
 
     public TorrentAddModel GetTorrentAddModel()
@@ -135,13 +139,40 @@ public class TorrentCore
     public async Task ResetTorrentToAdd()
     {
         if (_torrentToAdd is null) return;
+        if(!_managers.ContainsKey(_torrentToAdd.Id))
+        {
+            _torrentToAdd = null;
+            return;
+        }
 
         var manager = _managers[_torrentToAdd.Id];
-        //manager.ContainingDirectory TODO delete files, if any.
         await _engine.RemoveAsync(manager);
         _managers.Remove(_torrentToAdd.Id);
         
         _torrentToAdd = null;
+    }
+
+
+    public async Task RemoveTorrent(Guid id)
+    {
+        var manager = _managers[id];
+        await manager.StopAsync();
+        foreach (var file in manager.Files)
+        {
+            if (!File.Exists(file.FullPath)) continue;
+
+            File.Delete(file.FullPath);
+        }
+        await _engine.RemoveAsync(manager);
+        _managers.Remove(id);
+    }
+
+    public async Task RemoveTorrents(List<Guid> ids)
+    {
+        foreach (var id in ids)
+        {
+            await RemoveTorrent(id);
+        }
     }
 
     private async Task LoadTorrent(MonoTorrent.Torrent torrent, string downloadDirectory = null)
@@ -184,25 +215,7 @@ public class TorrentCore
                 
         };
     }
-    
-    private string FormatBytes(long bytes, bool perSecond = false)
-    {
-        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-        int order = 0;
-        while (bytes >= 1024 && order < sizes.Length - 1)
-        {
-            order++;
-            bytes /= 1024;
-        }
 
-        var returnString = $"{bytes:0.#} {sizes[order]}";
-        if (perSecond)
-        {
-            return $"{returnString}/s";
-        }
-        return returnString;
-    }
-    
     public static void OpenMagnetLinkSystem(string magnetLink)
     {
         var command = FileAssociation.GetExecFileAssociatedToExtension(".torrent");

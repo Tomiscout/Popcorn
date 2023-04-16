@@ -1,11 +1,12 @@
-﻿@using VideoBlazor.Core.Model
+﻿@using System.Text.Json;
+@using VideoBlazor.Core.Model
 @using VideoBlazor.Core.Services
 @using MonoTorrent.Client
 @using System.Timers;
 @using VideoBlazor.Torrent.Model
 @using VideoBlazor.Torrents
 @inject TorrentCore _torrentCore
-@inject IModalService modal
+@inject IDialogService dialog
 
 @page "/torrents"
 
@@ -75,16 +76,23 @@
     List<TorrentManager> _torrentManagers = new List<TorrentManager>();
     List<TorrentViewModel> torrents = new List<TorrentViewModel>();
     Timer _pollTimer;
-    
+
     protected override async Task OnInitializedAsync()
     {
+
+        var searchResult = JsonSerializer.Deserialize<Shared.Models.SearchResult>("{\"Title\":\"Shrek 2 (2004) 1080p BrRip x264 - 1GB - YIFY\",\"Seeds\":232,\"Peers\":31,\"MagnetLink\":\"magnet:?xt=urn:btih:BC30A6186B6E3C86E560D8741EDBF277D06C6136\\u0026dn=Shrek 2 (2004) 1080p BrRip x264 - 1GB - YIFY\\u0026tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969%2Fannounce\\u0026tr=udp%3A%2F%2Ftracker.openbittorrent.com%3A6969%2Fannounce\\u0026tr=udp%3A%2F%2F9.rarbg.to%3A2710%2Fannounce\\u0026tr=udp%3A%2F%2F9.rarbg.me%3A2780%2Fannounce\\u0026tr=udp%3A%2F%2F9.rarbg.to%3A2730%2Fannounce\\u0026tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337\\u0026tr=http%3A%2F%2Fp4p.arenabg.com%3A1337%2Fannounce\\u0026tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce\\u0026tr=udp%3A%2F%2Ftracker.tiny-vps.com%3A6969%2Fannounce\\u0026tr=udp%3A%2F%2Fopen.stealth.si%3A80%2Fannounce\",\"TorrentFileLink\":null,\"TorrentFilePath\":null,\"Source\":1,\"Genres\":null,\"Tags\":null,\"Image\":null,\"Description\":null,\"UploadedDate\":\"0001-01-01T00:00:00\",\"Size\":1074613682,\"FilesCount\":0,\"Imdb\":null,\"Category\":null,\"TorrentPageUrl\":null}");
+        await _torrentCore.StartTorrentDownload(searchResult, true);
+
         _torrentAddModel = _torrentCore.GetTorrentAddModel();
         if (_torrentAddModel is not null)
         {
-            var parameters = new ModalParameters().Add("inputData", _torrentAddModel);
-            modal.Show<TorrentAddModal>("Add torrent", parameters);
+            var parameters = new DialogParameters();
+            parameters.Add("inputData", _torrentAddModel);
+
+            var options = new DialogOptions { CloseOnEscapeKey = true };
+            dialog.Show<TorrentAddModal>("Add torrent", parameters, options);
         }
-        
+
         _pollTimer = new Timer();
         _pollTimer.Interval = 1000;
         _pollTimer.Elapsed += PollInformation;
@@ -96,9 +104,11 @@
         {
             StateHasChanged();
         });
-        
-        /*torrents.Add(new()
-        {
+
+
+
+            /*torrents.Add(new()
+            {
             Id = Guid.NewGuid(),
             Title = "Puss in boots",
             Progress = 68.9,
@@ -107,11 +117,11 @@
             Peers = 40,
             DownloadSpeed = "12kb/s",
             UploadSpeed = "12kb/s",
-            ETA = "5h",
-            Ratio = 0.5
-        });
-        torrents.Add(new()
-        {
+        ETA = "5h",
+        Ratio = 0.5
+            });
+            torrents.Add(new()
+            {
             Id = Guid.NewGuid(),
             Title = "Shrek",
             Progress = 6.9,
@@ -135,9 +145,9 @@
         await _torrentCore.StopTorrents(selectedItems.Select(s => s.Id).ToList());
     }
 
-    public void DeleteSelected()
+    public async Task DeleteSelected()
     {
-
+        await _torrentCore.RemoveTorrents(selectedItems.Select(s => s.Id).ToList());
     }
 
     public void OpenSettings()
