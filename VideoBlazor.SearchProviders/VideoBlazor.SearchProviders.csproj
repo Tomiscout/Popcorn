@@ -19,7 +19,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\VideoBlazor.Shared\VideoBlazor.Shared.csproj" />
+	  <ProjectReference Include="..\VideoBlazor.Domain\VideoBlazor.Domain.csproj" />
 	  <ProjectReference Include="..\VideoBlazor.Torrents\VideoBlazor.Torrents.csproj" />
 	</ItemGroup>
 

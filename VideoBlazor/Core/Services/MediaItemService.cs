@@ -1,25 +1,36 @@
 ﻿using Microsoft.Maui.Graphics;
 using VideoBlazor.Core.Enums;
 using VideoBlazor.Core.Model;
+using VideoBlazor.Persistence;
+using static MudBlazor.CategoryTypes;
 
 namespace VideoBlazor.Core.Services
 {
 	public class MediaItemService
 	{
         private static readonly string _jsonFormat = "mediaItems-{0}.json";
-        
+
+        private readonly JsonRepository _jsonRepository;
+        private readonly ImageRepository _imageRepository;
+
+        public MediaItemService(JsonRepository jsonRepository, ImageRepository imageRepository)
+        {
+            _jsonRepository = jsonRepository;
+            _imageRepository = imageRepository;
+        }
+
         public async Task<MediaItem> LoadMediaItem(Guid id) {
             return await LoadMediaItem(id.ToString());
         }
         public async Task<MediaItem> LoadMediaItem(string id)
         {
             var mediaPath = string.Format(_jsonFormat, id);
-            return await JsonUtils.LoadJsonAsync<MediaItem>(mediaPath);
+            return await _jsonRepository.LoadJsonAsync<MediaItem>(mediaPath);
         }
 
         public async Task SaveMediaItem(MediaItem item)
         {
-            await JsonUtils.SaveJson(item, string.Format(_jsonFormat, item.Id.ToString()));
+            await _jsonRepository.SaveJson(item, string.Format(_jsonFormat, item.Id.ToString()));
         }
 
         public async Task<IList<MediaItem>> LoadMediaItems()
@@ -27,10 +38,10 @@ namespace VideoBlazor.Core.Services
             try
             {
                 var search = string.Format(_jsonFormat, "*");
-                var allPaths = Directory.EnumerateFiles(JsonUtils.GetDataFolder(), search, SearchOption.TopDirectoryOnly).ToList();
+                var allPaths = Directory.EnumerateFiles(_jsonRepository.GetDataFolder(), search, SearchOption.TopDirectoryOnly).ToList();
                 var result = new List<MediaItem>();
                 foreach (var path in allPaths) {
-                    result.Add(await JsonUtils.LoadJsonAsync<MediaItem>(Path.GetFileName(path)));
+                    result.Add(await _jsonRepository.LoadJsonAsync<MediaItem>(Path.GetFileName(path)));
                 }
                 return result;
             }
@@ -46,7 +57,7 @@ namespace VideoBlazor.Core.Services
             mediaItem.Id = Guid.NewGuid();
             if (!string.IsNullOrWhiteSpace(mediaItem.ImagePath))
             {
-                ImageUtils.SaveImage(mediaItem.ImagePath, mediaItem.Id.ToString());
+                _imageRepository.SaveImage(mediaItem.ImagePath, mediaItem.Id.ToString());
             }
 
             await SaveMediaItem(mediaItem);
@@ -74,16 +85,33 @@ namespace VideoBlazor.Core.Services
 
         public async Task CreateMediaItemFromScan(MediaItem item, MediaScanResult scanResult)
         {
+            item.Files = GetFilesFromScanResult(scanResult);
+            await AddMediaItem(item);
+        }
+
+        public List<MediaFile> GetFilesFromScanResult(MediaScanResult scanResult)
+        {
+            var files = new List<MediaFile>();
             foreach (var path in scanResult.Files)
             {
-                item.Files.Add(new MediaFile
+                files.Add(new MediaFile
                 {
                     Path = path,
                     Title = Path.GetFileName(path),
                     Type = FileType.File
                 });
             }
-            await AddMediaItem(item);
+            return files;
+        }
+
+        public async Task<MediaItem> RescanItem(MediaItem item)
+        {
+            var scanResult = await MediaLoader.ScanFolder(item.FolderDirectory);
+            
+            item.Files = scanResult.SelectMany(GetFilesFromScanResult).ToList();
+            await SaveMediaItem(item);
+
+            return item;
         }
 
         public List<MediaFile> GetFilesForDirectory(string rootDirectory, IList<MediaFile> files)

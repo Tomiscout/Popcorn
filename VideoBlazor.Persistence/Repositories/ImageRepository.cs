@@ -4,19 +4,25 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace VideoBlazor.Core
+namespace VideoBlazor.Persistence
 {
-    public static class ImageUtils
+    public class ImageRepository
     {
-        private static Dictionary<string, string> _imageCache = new Dictionary<string, string>();
-        private static readonly string _imageFolder = Path.Join(FileSystem.Current.AppDataDirectory, "images/");
-        public static string GetImageFolder()
+        private Dictionary<string, string> _imageCache = new Dictionary<string, string>();
+        private readonly string _imageFolder = Path.Join(FileSystem.Current.AppDataDirectory, "images/");
+
+        public ImageRepository()
         {
-            return _imageFolder;
+            EnsureImageFolder();
+        }
+
+        public string GetImageFolder()
+        {
+            return _imageFolder; 
         }
        
 
-        public static void SaveImage(string imagePath, string newFilename)
+        public void SaveImage(string imagePath, string newFilename)
         {
             //Save image
             var extension = Path.GetExtension(imagePath);
@@ -27,7 +33,7 @@ namespace VideoBlazor.Core
             LoadImage(newFilePath);
         }
 
-        public static async Task<string> LoadImage(string fileName, bool saveCache = true)
+        public async Task<string> LoadImage(string fileName, bool saveCache = true)
         {
             var appPath = Path.Join(_imageFolder, fileName);
             if (!File.Exists(fileName) && File.Exists(appPath))
@@ -55,7 +61,7 @@ namespace VideoBlazor.Core
             return imageData;
         }
 
-        private static string GetWebImageFormat(string format) => format.ToLower() switch
+        private string GetWebImageFormat(string format) => format.ToLower() switch
         {
             ".png" => "image/png",
             ".jpg" => "image/jpeg",
@@ -66,7 +72,7 @@ namespace VideoBlazor.Core
             _ => throw new BadImageFormatException("Image format not found")
         };
 
-        public static void EnsureImageFolder()
+        public void EnsureImageFolder()
         {
             Directory.CreateDirectory(GetImageFolder());
         }

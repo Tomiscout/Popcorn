@@ -26,10 +26,15 @@
     height: 40px;
     display: flex;
     flex-direction: row;
-    align-items: stretch;
+    align-items: center;
     margin: 6px;
     padding: 4px;
     cursor: pointer;
+}
+
+.already-watched-title {
+    font-style: italic;
+    color: #8f8f8f;
 }
 
 .file-title {

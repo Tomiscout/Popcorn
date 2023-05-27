@@ -1,5 +1,8 @@
-﻿@inherits LayoutComponentBase
+﻿@using VideoBlazor.Domain.Models;
+@using VideoBlazor.Torrents;
+@inherits LayoutComponentBase
 @inject NavigationManager NavManager
+@inject IDialogService _dialogService;
 
 <MudThemeProvider IsDarkMode="true" Theme="MyCustomTheme" />
 <MudDialogProvider />
@@ -39,6 +42,17 @@
 
 	protected override void OnInitialized()
 	{
+		TorrentCore.TorrentAddEvent += OpenAddTorrentDialog;
+
 		NavManager.NavigateTo("/watch");
+	}
+
+	public void OpenAddTorrentDialog(object sender, TorrentAddModel model)
+	{
+		var parameters = new DialogParameters();
+		parameters.Add("inputData", model);
+
+		var options = new DialogOptions { CloseOnEscapeKey = true };
+		_dialogService.Show<TorrentAddModal>("Add torrent", parameters, options);
 	}
 }

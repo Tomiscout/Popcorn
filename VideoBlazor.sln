@@ -10,7 +10,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoPlayer", "VideoPlayer\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.Torrents", "VideoBlazor.Torrents\VideoBlazor.Torrents.csproj", "{A05ABD5E-5847-45B7-9CD6-C0B592B0E0D8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoBlazor.Shared", "VideoBlazor.Shared\VideoBlazor.Shared.csproj", "{0AAE96D8-07BB-4DDE-BD9C-0C7A187C69AD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.Domain", "VideoBlazor.Domain\VideoBlazor.Domain.csproj", "{0AAE96D8-07BB-4DDE-BD9C-0C7A187C69AD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoBlazor.Persistence", "VideoBlazor.Persistence\VideoBlazor.Persistence.csproj", "{63B02F0D-6A6E-4AF9-8755-51D1B6FC1167}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -40,6 +42,10 @@ Global
 		{0AAE96D8-07BB-4DDE-BD9C-0C7A187C69AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0AAE96D8-07BB-4DDE-BD9C-0C7A187C69AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0AAE96D8-07BB-4DDE-BD9C-0C7A187C69AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{63B02F0D-6A6E-4AF9-8755-51D1B6FC1167}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{63B02F0D-6A6E-4AF9-8755-51D1B6FC1167}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{63B02F0D-6A6E-4AF9-8755-51D1B6FC1167}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{63B02F0D-6A6E-4AF9-8755-51D1B6FC1167}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

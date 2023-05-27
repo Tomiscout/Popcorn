@@ -1,21 +1,27 @@
 ﻿using System.Text.Json;
 
-namespace VideoBlazor.Core
+namespace VideoBlazor.Persistence
 {
-    public static class JsonUtils
+    public class JsonRepository
     {
-        private static readonly string _rootFolder = FileSystem.Current.AppDataDirectory;
-        public static string GetDataFolder()
+        private readonly string _rootFolder = FileSystem.Current.AppDataDirectory;
+
+        public JsonRepository()
+        {
+            EnsureAppFolder();
+        }
+        
+        public string GetDataFolder()
         {
             return _rootFolder;
         }
 
-        public static async Task<T> LoadJsonAsync<T>(string fileName)
+        public async Task<T> LoadJsonAsync<T>(string fileName)
         {
             return await LoadJsonFullpathAsync<T>(Path.Join(GetDataFolder(), fileName));
         }
 
-        private static async Task<T> LoadJsonFullpathAsync<T>(string fileName)
+        private async Task<T> LoadJsonFullpathAsync<T>(string fileName)
         {
             if(!File.Exists(fileName))
             {
@@ -25,14 +31,14 @@ namespace VideoBlazor.Core
             return JsonSerializer.Deserialize<T>(json);
         }
 
-        public static async Task SaveJson(object data, string fileName)
+        public async Task SaveJson(object data, string fileName)
         {
             var jsonString = JsonSerializer.Serialize(data);
             var path = Path.Join(GetDataFolder(), fileName);
             await File.WriteAllTextAsync(path, jsonString);
         }
 
-        public static void EnsureAppFolder()
+        public void EnsureAppFolder()
         {
             Directory.CreateDirectory(GetDataFolder());
         }

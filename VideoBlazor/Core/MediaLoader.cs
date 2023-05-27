@@ -10,18 +10,27 @@ namespace VideoBlazor.Core
 	//With given folder scan media and subfolders, group folders
 	internal static class MediaLoader
 	{
-		private static readonly string[] _videoFormats = new string[]{ ".mkv", ".mp4", ".m4v", ".mpeg", ".avi", ".wmv", ".vp6", ".vp7", ".webm", ".amc", ".psv",
+		public static readonly string[] VideoFormats = new string[]{ ".mkv", ".mp4", ".m4v", ".mpeg", ".avi", ".wmv", ".vp6", ".vp7", ".webm", ".amc", ".psv",
 			".3gp", ".av1", ".hdmov", ".ogv", ".vc1", ".mp4v", ".mpeg4", ".mpg", ".mov", ".vid", ".h264", ".mp2v", ".m1v", ".xvid", ".divx"};
 
 		public static async Task<IList<MediaScanResult>> ScanFolder(string folder)
 		{
 			var resultList = new List<MediaScanResult>();
+			string[] rootDirectories;
 
-            var rootDirectories = Directory.GetDirectories(folder);
-			//TODO filter out existing dirs
-			
-			//Dirs
-			foreach (var rootDirectory in rootDirectories)
+            try
+			{
+				rootDirectories = Directory.GetDirectories(folder);
+            } catch(Exception e)
+			{
+				//TODO Log
+				//happends on rescan folder, when it doesnt exist anymore
+				return resultList;
+			}
+            //TODO filter out existing dirs
+
+            //Dirs
+            foreach (var rootDirectory in rootDirectories)
 			{
                 var allPaths = Directory.EnumerateFiles(rootDirectory, "*.*", SearchOption.AllDirectories).ToList();
                 var scanResult = new MediaScanResult
@@ -31,7 +40,7 @@ namespace VideoBlazor.Core
                     Files = new List<string>(),
                 };
 
-				foreach (var format in _videoFormats)
+				foreach (var format in VideoFormats)
 				{
 					var resultPaths = allPaths.Where(p => p.EndsWith(format));
                     scanResult.Files.AddRange(resultPaths.ToList());
@@ -47,7 +56,7 @@ namespace VideoBlazor.Core
 			var allFiles = Directory.GetFiles(folder);
 			foreach(var file in allFiles)
 			{
-                foreach (var format in _videoFormats)
+                foreach (var format in VideoFormats)
                 {
                     if(file.EndsWith(format))
 					{

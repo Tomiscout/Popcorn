@@ -6,26 +6,39 @@
 @using VideoBlazor.Core.Services
 @using VideoBlazor.Core.Enums;
 @using VideoBlazor.Core.Utils
+@using VideoBlazor.Core;
 @inject NavigationManager NavigationManager
 @inject MediaItemService MediaItemService
+@inject FolderService FolderService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JsRunTime
 
-<MudButton Variant="Variant.Filled" @onclick="OnBack">
+<div class="ma-3">
+    <MudButton Variant="Variant.Filled" @onclick="OnBack">
     <i class="fa-solid fa-arrow-left"></i>
-    <span>Back</span>
-</MudButton>
+        <span class="ml-1">Back</span>
+    </MudButton>
 
-<MudButton Variant="Variant.Filled" @onclick="OnDelete">
-    <i class="fa-solid fa-trash mr-1"></i>
-    <span>Delete</span>
-</MudButton>
+    <MudButton Variant="Variant.Filled" @onclick="OnDelete">
+        <i class="fa-solid fa-trash mr-1"></i>
+        <span class="ml-1">Delete</span>
+    </MudButton>
+
+    <MudButton Variant="Variant.Filled" @onclick="OpenFolderExplorer">
+        <i class="fa-solid fa-folder-open"></i>
+        <span class="ml-1">Open folder</span>
+    </MudButton>
+
+    <MudButton Variant="Variant.Filled" @onclick="RescanFolder">
+        <i class="fa-solid fa-arrows-rotate"></i>
+        <span class="ml-1">Rescan folder</span>
+    </MudButton>
+</div>
 
 @if(item is null) {
     <h4>No item</h4>
 } else {
     
-    <h3>@item.Title</h3>
     <div id="item-info-box">
         @if (string.IsNullOrWhiteSpace(item.Image))
         {
@@ -33,13 +46,16 @@
 		} else {
             <img id="item-image" src="@item.Image" />
 		}
-        <span id="item-description">Descripton</span>
+        <div style="flex: 1; flex-direction:row;">
+            <h3>@item.Title</h3>
+            <span id="item-description">Descripton</span>
+        </div>
     </div>
 
     <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
     <MudTabPanel Text="Files">
         <div class="navigation-container">
-            <p class="nav-item" @onclick=" OpenRootFolder">Root</p>
+                <p class="nav-item" @onclick=" OpenRootFolder">Root</p>
             @foreach(var folder in navigation) {
                 <span><i class="fa-solid fa-chevron-right ml-1"></i></span> <!-- Have to wrap in span because of blazor font-awesome bug -->
                     <p class="ml-1 nav-item" @onclick="()=> OpenFolderFromNavigation(folder)">@folder.Title</p>
@@ -51,7 +67,11 @@
             @foreach (var file in currentFiles)
             {
                 <div class="file-list-item" @onclick="() => ClickFile(file)">
-                    <span class="file-title">@file.Title</span>
+                    @if(file.Type == FileType.Folder)
+                    {
+                        <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.Folder" />
+                    }
+                    <span class="file-title @ItemWatchedStyle(file)">@file.Title</span>
                     @if (file.EpisodeTags is not null)
                     {
                         @foreach (var tag in file.EpisodeTags)
@@ -115,12 +135,17 @@
 
     protected override async Task OnInitializedAsync()
     {
-        item = await MediaItemService.LoadMediaItem(Id);
-        OpenRootFolder();
+        await InitialLoad();
 
         if(item.History is null) {
             item.History = new List<PlaybackHistory>();
         }
+    }
+
+    private async Task InitialLoad()
+    {
+        item = await MediaItemService.LoadMediaItem(Id);
+        await OpenRootFolder();
     }
 
     public void OpenFolder(MediaFile folder) {
@@ -160,6 +185,16 @@
             OpenFolder(file);
     }
 
+    public string ItemWatchedStyle(MediaFile file)
+    {
+        if(file.Type == FileType.File)
+        {
+            return item.History.Any(h => h.Filename == file.Path) ? "already-watched-title" : string.Empty;
+        }
+
+        return string.Empty; //TODO implement watched folders
+    }
+
     private async Task OpenFile(MediaFile file)
     {
         await MediaItemService.AddHistoryItem(item.Id, new PlaybackHistory
@@ -195,11 +230,17 @@
 
     private async Task RecalculateTags()
     {
-        var files = currentFiles.Where(f => f.Type == FileType.File && f.FormatTags is null);
-
-        foreach (var file in files)
+        var files = currentFiles.Where(f => f.Type == FileType.File && f.FormatTags is null).ToList();
+        if(!files.Any())
         {
-            var parsed = await ParseFilename(file.Path);
+            return;
+        }
+
+        var parsedTags = await ParseFilesTagsFromPaths(files.Select(f => f.Path).ToList());
+        for (var i = 0; i < parsedTags?.Count; i++)
+        {
+            var file = files[i];
+            var parsed = parsedTags[i];
 
             file.EpisodeTags = new List<string>();
             if (parsed.Seasons is not null)
@@ -235,6 +276,20 @@
         OnBack();
     }
 
+    public void OpenFolderExplorer()
+    {
+        FolderService.OpenFolderInExplorer(item.FolderDirectory);
+    }
+
+    public async void RescanFolder()
+    {
+        item = await MediaItemService.RescanItem(item);
+
+        //Reopen page
+        await OpenRootFolder();
+        StateHasChanged();
+    }
+
     private string GetFileIcon(FileType type)
     {
         return type switch
@@ -245,25 +300,18 @@
         };
     }
 
-    private async Task<ParsedFilenameModel> ParseFilename(string path)
+    private async Task<List<ParsedFilenameModel>> ParseFilesTagsFromPaths(List<string> paths)
     {
+        var filenames = paths.Select(p => Path.GetFileName(p)).ToArray();
         try
         {
-            return await JsRunTime.InvokeAsync<ParsedFilenameModel>("FilenameParser.ParseFilename", new object[2] { Path.GetFileName(path), true });
+            return await JsRunTime.InvokeAsync<List<ParsedFilenameModel>>("FilenameParser.ParseFilename", new[] { filenames });
         }
-        catch (Exception)
+        catch (Exception e)
         {
             //TODO log
+            return null;
         }
-        //Dirty fallback
-        try
-        {
-            return await JsRunTime.InvokeAsync<ParsedFilenameModel>("FilenameParser.ParseFilename", new object[2] { Path.GetFileName(path), false });
-        } catch(Exception)
-        {
-            //TODO log
-        }
-        return null;
     }
 
 }

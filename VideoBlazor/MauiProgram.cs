@@ -31,8 +31,7 @@ public static class MauiProgram
 #endif
 
 		ServiceRegister.RegisterServices(builder.Services);
-		JsonUtils.EnsureAppFolder();
-		ImageUtils.EnsureImageFolder();
+
 		TorrentUtils.EnsureTorrentsFolder();
         MovieDbProvider.Initialize();
 

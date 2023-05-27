@@ -1,4 +1,6 @@
-namespace VideoBlazor.Torrent.Model;
+using Microsoft.AspNetCore.Components;
+
+namespace VideoBlazor.Domain.Models;
 
 public class TorrentAddModel
 {

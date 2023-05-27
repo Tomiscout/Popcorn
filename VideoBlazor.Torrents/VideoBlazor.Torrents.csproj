@@ -18,7 +18,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\VideoBlazor.Shared\VideoBlazor.Shared.csproj" />
+	  <ProjectReference Include="..\VideoBlazor.Domain\VideoBlazor.Domain.csproj" />
 	</ItemGroup>
 
 </Project>

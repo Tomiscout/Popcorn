@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using VideoBlazor.Core.Model;
 using VideoBlazor.Pages;
+using VideoBlazor.Persistence;
 using VideoBlazor.Platforms.Windows;
 
 namespace VideoBlazor.Core.Services
@@ -14,26 +15,28 @@ namespace VideoBlazor.Core.Services
     {
         private static readonly string _jsonName = "folders.json";
         private readonly IFolderPicker _folderPicker;
+        private readonly JsonRepository _jsonRepository;
 
-        public FolderService(IFolderPicker folderPicker)
+        public FolderService(IFolderPicker folderPicker, JsonRepository jsonRepository)
         {
             _folderPicker = folderPicker;
+            _jsonRepository = jsonRepository;
         }
 
         public async Task SaveFolders(IList<Folder> folders)
         {
-            await JsonUtils.SaveJson(folders, _jsonName);
+            await _jsonRepository.SaveJson(folders, _jsonName);
         }
 
         public async Task<IList<Folder>> LoadSavedFolders()
         {
             try
             {
-                return await JsonUtils.LoadJsonAsync<IList<Folder>>(_jsonName);
+                return await _jsonRepository.LoadJsonAsync<IList<Folder>>(_jsonName);
             } catch(FileNotFoundException)
             {
                 var emptyList = new List<Folder>();
-                await JsonUtils.SaveJson(emptyList, _jsonName);
+                await _jsonRepository.SaveJson(emptyList, _jsonName);
                 return emptyList;
             }
         }
@@ -42,7 +45,7 @@ namespace VideoBlazor.Core.Services
         {
             var folders = await LoadSavedFolders();
             folders.Remove(folders.FirstOrDefault(x => x.Path == path));
-            await JsonUtils.SaveJson(folders, _jsonName);
+            await _jsonRepository.SaveJson(folders, _jsonName);
         }
 
         public async Task<string> OpenFolderPicker()
@@ -50,9 +53,14 @@ namespace VideoBlazor.Core.Services
             return await _folderPicker.PickFolder();
         }
 
+        public void OpenFolderInExplorer(string path)
+        {
+            Process.Start("explorer.exe", path);
+        }
+
         public void OpenRootFolderExplorer()
         {
-            Process.Start("explorer.exe", JsonUtils.GetDataFolder());
+            OpenFolderInExplorer(_jsonRepository.GetDataFolder());
         }
     }
 }

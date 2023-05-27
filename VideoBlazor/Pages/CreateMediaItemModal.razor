@@ -2,10 +2,12 @@
 @using VideoBlazor.Core.Services;
 @using VideoBlazor.Core;
 @using VideoBlazor.Core.Enums;
+@using VideoBlazor.Persistence;
 @using VideoBlazor.Platforms.Windows
 
 @inject MediaItemService MediaItemService
 @inject IFolderPicker _folderPicker
+@inject ImageRepository _imageRepository
 
 @page "/createMediaItem"
 
@@ -66,7 +68,7 @@
 		var filePath = await _folderPicker.PickImageFile();
 		if(filePath is not null) {
 			createItem.ImagePath = filePath;
-			createItem.Image = await ImageUtils.LoadImage(filePath, false);
+			createItem.Image = await _imageRepository.LoadImage(filePath, false);
 		}
 	}
 }

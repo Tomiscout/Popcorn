@@ -35,9 +35,11 @@
 
     <ItemGroup>
         <!-- App Icon -->
-        <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+        <MauiIcon Include="Resources\AppIcon\appicon.png">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </MauiIcon>
 
-        <!-- Splash Screen -->
+      <!-- Splash Screen -->
         <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
 
         <!-- Images -->
@@ -80,11 +82,15 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\VideoBlazor.Persistence\VideoBlazor.Persistence.csproj" />
       <ProjectReference Include="..\VideoBlazor.SearchProviders\VideoBlazor.SearchProviders.csproj" />
       <ProjectReference Include="..\VideoBlazor.Torrents\VideoBlazor.Torrents.csproj" />
     </ItemGroup>
 
     <ItemGroup>
+      <Content Update="wwwroot\favicon.ico">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
       <Content Update="wwwroot\js\filenameParser.js">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Content>
