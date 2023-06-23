@@ -1,106 +1,68 @@
-﻿using H.Pipes;
-using H.Pipes.Args;
+﻿using PipeMethodCalls;
+using PipeMethodCalls.NetJson;
 using System;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
-using VideoPlayer.Pipes.PipeEvents;
-using WebSiteRatings;
+using VideoPlayer.Shared;
 
 namespace VideoPlayer.Pipes
 {
     public static class PipeManager
     {
-        public static readonly string PipeName = "BlazorVideoPlayer";
-        //private static ILogger logger = new Logger<PipeManager>();
-        private static PipeServer<PipeEvent> _server;
+        //private static readonly string PipeFileName = "pipeName.txt";
+        private static readonly string _pipeFileName = @"C:\Projects\VideoBlazor\pipeName.txt";
+        
+        private static PipeClientWithCallback<IAppPlayerServer, IPlayerPipeClient> pipeClient;
 
+        public static Action<string> Print;
+        
         public static async Task Initialize(string[] args)
         {
-            if (args.Length > 0 && DoesPipeExist())
-            {
-                if (await PipeManager.PassMediaToRunningInstance(args[0]))
-                {
-                    Environment.Exit(0);
-                }
-            }
-            else
-            {
-                await CreateServer();
-            }
+            await ConnectToAppPipe();
         }
 
         public static void Test()
         {
-            var running = _server?.IsStarted;
-            var clients = _server?.ConnectedClients;
-        }
-
-        public static async Task CreateServer()
-        {
             
-            _server = new PipeServer<PipeEvent>(PipeName);
-            /*server.ClientDisconnected += (o, args) =>
-            {
-                Console.WriteLine($"Client {args.Connection.PipeName} disconnected");
-            };*/
-            _server.ExceptionOccurred += (o, args) =>
-            {
-                var e = args.Exception;
-            };
-
-            _server.MessageReceived += MessageReceivedHandler;
-
-            await _server.StartAsync();
-            
+            Print.Invoke($"Test");
         }
 
-        private static void MessageReceivedHandler(object sender, ConnectionMessageEventArgs<PipeEvent> args)
+        public static async Task ConnectToAppPipe()
         {
-            if(args.Message.EventName == "LoadedMedia")
+            var pipeName = await GetPipeName();
+
+            // Initialize the pipe client. Note that the type parameters are exactly
+            // the same passed in the server example, but in reverse order.
+            // The first type parameters indicates what the other process can do,
+            // while the second one indicates the functionality this process exposes.
+            pipeClient = new PipeClientWithCallback<IAppPlayerServer, IPlayerPipeClient>(
+                new NetJsonPipeSerializer(), pipeName, () => new PlayerPipeClient());
+
+            // We wait until the connection is established
+            await pipeClient.ConnectAsync();
+        }
+
+        private static async Task<string> GetPipeName()
+        {
+            /*var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            var parent = Directory.GetParent(exePath).Parent;
+            var pipeFile = Path.Combine(parent.FullName, PipeFileName);
+            */
+            if(!File.Exists(_pipeFileName))
             {
-                ((MainWindow)App.Current.Windows[0]).LoadMedia(((LoadedMediaEvent)args.Message).FilePath);
+                Console.WriteLine("No pipe name found! Exiting...");
+                Environment.Exit(0);
             }
+
+            return await File.ReadAllTextAsync(_pipeFileName);
         }
 
-        public static async Task<bool> PassMediaToRunningInstance(string filePath)
-        {
-            try
-            {
-                await using var client = new PipeClient<LoadedMediaEvent>(PipeName);
-                client.ExceptionOccurred += (o, args) =>
-                {
-                    var e = args.Exception;
-                };
-                await client.ConnectAsync();
-                await client.WriteAsync(new LoadedMediaEvent
-                {
-                    EventName = "LoadedMedia",
-                    FilePath = filePath,
-                });
-                return true;
-            } catch (Exception e)
-            {
-                //Failed to connect
-                return false;
-            }
-           
-        }
-
-        //Refer to https://berserkerdotnet.github.io/blog/detecting-namedpipe-exists/
-        private static bool DoesPipeExist()
-        {
-            return File.Exists($"\\\\.\\pipe\\{PipeName}");
-        }
-
-        
         private sealed class Destructor
         {
             ~Destructor()
             {
                 //TODO test
-                _server.StopAsync().Wait();
-                _server.DisposeAsync().ConfigureAwait(false);
+                pipeClient?.Dispose();
             }
         }
     }

@@ -8,7 +8,6 @@ using VideoBlazor.Shared;
 using VideoBlazor.Shared.Models;
 using VideoBlazor.Shared.Utils;
 using VideoBlazor.Torrent.Model;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace VideoBlazor.Torrents;
     

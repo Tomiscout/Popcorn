@@ -1,0 +1,90 @@
+﻿@using System.Text.Json;
+@using VideoBlazor.Core.Model;
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@namespace SharedPages
+
+<div class="row">
+    <div class="header">
+        <h3 class="title">@HeaderTitle</h3>
+        <div class="progress-bar"></div>
+    </div>
+    <div class="container" id="slider-container">
+        <button class="handle left-handle" @onclick="() => Click(false)">
+            <div class="text">&#8249;</div>
+        </button>
+        
+        <div class="slider" id="@SliderId">
+            @foreach (var (item, i) in Items.Select((value, i) => (value, i)))
+            {
+                <div class="item" id="@SliderId-@i" @onclick="() => OnItemClick(item)">
+                    @if (string.IsNullOrWhiteSpace(item.Image))
+                    {
+                        <img src="/images/default-media.png" />
+                    }
+                    else
+                    {
+                        <img src="@item.Image" alt="@item.Title" />
+                    }
+                    <span>@item.Title</span>
+                </div>
+            }
+        </div>
+        <button class="handle right-handle" @onclick="() => Click()">
+            <div class="text">&#8250;</div>
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public IList<MediaItem> Items { get; set; }
+
+    [Parameter]
+    public string HeaderTitle { get; set; }
+
+    public int sliderIndex = 0;
+    private string SliderId = $"slider-{Guid.NewGuid().ToString("N")}";
+
+    public async Task Click(bool forward = true)
+    {
+        var perScreen = await GetItemsPerScreen();
+        if (forward)
+        {
+            if (Items.Count - (sliderIndex + 1) * perScreen > 0)
+            {
+                sliderIndex++;
+            } else
+            {
+                sliderIndex = 0;
+            }
+        }
+        else
+        {
+            if (sliderIndex > 0)
+            {
+                sliderIndex--;
+            } else
+            {
+                sliderIndex = (int)Math.Ceiling((double)Items.Count / perScreen) - 1;
+            }
+        }
+        await SetSliderIndex(sliderIndex);
+    }
+
+    public void OnItemClick(MediaItem item)
+    {
+        NavigationManager.NavigateTo($"/itemDetails/{item.Id}");
+    }
+
+    private async Task SetSliderIndex(int index)
+    {
+        await JSRuntime.InvokeVoidAsync("setSliderIndex", new object[] { SliderId, index });
+    }
+
+    private async Task<int> GetItemsPerScreen()
+    {
+        var strValue = await JSRuntime.InvokeAsync<string>("getItemsPerScreen", new object[] { SliderId });
+        return int.Parse(strValue);
+    }
+}

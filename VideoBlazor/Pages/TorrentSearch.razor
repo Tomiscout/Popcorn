@@ -3,6 +3,7 @@
 @using VideoBlazor.Core.Enums
 @using VideoBlazor.Core.Model
 @using VideoBlazor.Core.Utils
+@using VideoBlazor.Core.Filenames
 @using VideoBlazor.SearchProviders.Model
 @using VideoBlazor.SearchProviders
 @using VideoBlazor.SearchProviders.Models
@@ -13,6 +14,7 @@
 @using VideoBlazor.Torrents
 @inject TorrentCore _torrentCore;
 @inject NavigationManager _navManager;
+@inject IJSRuntime JsRunTime
 
 <div class="pa-4">
    <div class="search-bar">
@@ -41,6 +43,29 @@
                        break;
                }
                <span class="search-title">@item.Title</span>
+
+                @if (item.EpisodeTags is not null)
+                {
+                    @foreach (var tag in item.EpisodeTags)
+                    {
+                        <MudChip Variant="Variant.Outlined" Color="Color.Primary">@tag</MudChip>
+                    }
+                }
+                @if (item.OtherTags is not null)
+                {
+                    @foreach (var tag in item.OtherTags)
+                    {
+                        <MudChip Variant="Variant.Outlined" Color="Color.Secondary">@tag</MudChip>
+                    }
+                }
+                @if (item.FormatTags is not null)
+                {
+                    @foreach (var tag in item.FormatTags)
+                    {
+                        <MudChip Variant="Variant.Outlined" Color="Color.Info">@tag</MudChip>
+                    }
+                }
+               
                @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
                {
                     <span class="search-right mr-2" @onclick="() => DownloadTorrent(item, true)"><i class="fa fa-reply"></i></span>
@@ -141,6 +166,8 @@
                 searchResults.AddRange(result.Results);
                 searchStatuses[result.Source].Status = ProcessStatus.Finished;
                 searchResults = searchResults.OrderByDescending(r => r.Seeds).ToList();
+
+                RecalculateResultsTags();
             } else {
                 searchStatuses[result.Source].Status = ProcessStatus.Failed;
                 Console.WriteLine(result.Error);
@@ -149,6 +176,38 @@
         };
 
         await SearchProviders.SearchQuery(searchInput, handler);
+    }
+
+    //TODO dublicate
+    private async void RecalculateResultsTags()
+    {
+        var parsedTags = await ParseFilesTagsFromPaths(searchResults.Select(s => s.Title).ToList());
+        for (var i = 0; i < parsedTags?.Count; i++)
+        {
+            var file = searchResults[i];
+            var parsed = parsedTags[i];
+
+            file.EpisodeTags = new List<string>();
+            if (parsed.Seasons is not null)
+            {
+                file.EpisodeTags.Add($"Season {parsed.Seasons.FirstOrDefault()}");
+            }
+            if (parsed.Episodes is not null)
+            {
+                file.EpisodeTags.Add($"Episode {parsed.Episodes.FirstOrDefault()}");
+            }
+
+            file.FormatTags = new List<string>();
+            if (!string.IsNullOrWhiteSpace(parsed.Resolution))
+            {
+                file.FormatTags.Add(parsed.Resolution);
+            }
+            if (!string.IsNullOrWhiteSpace(parsed.VideoCodec))
+            {
+                file.FormatTags.Add(parsed.VideoCodec);
+            }
+        }
+        StateHasChanged();
     }
 
     private async void DownloadTorrent(SearchResult item, bool builtIn)
@@ -163,6 +222,21 @@
         if (builtIn)
         {
             _navManager.NavigateTo("/torrents");
+        }
+    }
+
+    //TODO dublicate
+    private async Task<List<ParsedFilenameModel>> ParseFilesTagsFromPaths(List<string> paths)
+    {
+        var filenames = paths.Select(p => Path.GetFileName(p)).ToArray();
+        try
+        {
+            return await JsRunTime.InvokeAsync<List<ParsedFilenameModel>>("FilenameParser.ParseFilename", new[] { filenames });
+        }
+        catch (Exception e)
+        {
+            //TODO log
+            return null;
         }
     }
 }

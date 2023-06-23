@@ -1,43 +1,39 @@
 ﻿@using VideoBlazor.Core.Model
 @using VideoBlazor.Core.Services
+@using SharedPages
 @inject MediaItemService MediaItemService
-@inject NavigationManager NavigationManager
 @page "/watch"
 
-@if (items == null)
+@if(recentItems?.Count > 0)
 {
- <p><em>Loading...</em></p>
-} else if(items.Count == 0)
-{
-	<p>No media</p>
-} else {
-    <div class="items-cards">
-        @foreach(var item in items) {
-            <div class="item card" @onclick="() => OnItemClick(item)">
-
-                @if (string.IsNullOrWhiteSpace(item.Image))
-                {
-                    <img src="/images/default-media.png" />
-                }
-                else
-                {
-                    <img src="@item.Image" alt="@item.Title" />
-                }
-                <span>@item.Title</span>
-            </div>
-        }
-    </div>
+    <SelectorCarousel Items="recentItems" HeaderTitle="Continue Watching" />
+    <SelectorCarousel Items="newItems" HeaderTitle="New" />
 }
 
+<MudDivider />
+
 @code {
-    public IList<MediaItem> items;
+    public IList<MediaItem> recentItems;
+    public IList<MediaItem> newItems;
 
     protected override async Task OnInitializedAsync()
     {
-        items = await MediaItemService.LoadMediaItems();
+        await LoadRecentItems();
     }
-    
-    public void OnItemClick(MediaItem item) {
-        NavigationManager.NavigateTo($"/itemDetails/{item.Id}");
+
+    private async Task LoadRecentItems()
+    {
+        var allItems = await MediaItemService.LoadMediaItems();
+
+        recentItems = allItems?
+        .Where(x => x.History?.LastOrDefault() != null)
+        .OrderBy(x => x.History?.LastOrDefault()?.PlaybackTime ?? DateTime.MaxValue)
+        .Reverse()
+        .ToList();
+
+        newItems = allItems?
+        .Where(x => x.History?.LastOrDefault() == null)
+        .ToList();
+
     }
 }

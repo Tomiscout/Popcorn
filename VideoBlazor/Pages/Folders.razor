@@ -36,9 +36,6 @@
     <MudButton Variant="Variant.Filled" @onclick="AddNewFolder">
     	<span>Add folder</span>
     </MudButton>
-    <MudButton Variant="Variant.Filled" @onclick="OpenRootFolder">
-    	<span>Open root folder</span>
-    </MudButton>
     
     <div class="mb-3"></div>
     <h2>Media</h2>
@@ -119,9 +116,6 @@
 		folders = await FolderService.LoadSavedFolders();
 	}
 
-	public void OpenRootFolder() {
-		FolderService.OpenRootFolderExplorer();
-	}
 
 	public async Task ScanFolders() {
 		groupedScanResults = new Dictionary<string, IList<MediaScanResult>>();

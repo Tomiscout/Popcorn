@@ -83,6 +83,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\VideoBlazor.Persistence\VideoBlazor.Persistence.csproj" />
+      <ProjectReference Include="..\VideoBlazor.PlayerServer\VideoBlazor.PlayerServer.csproj" />
       <ProjectReference Include="..\VideoBlazor.SearchProviders\VideoBlazor.SearchProviders.csproj" />
       <ProjectReference Include="..\VideoBlazor.Torrents\VideoBlazor.Torrents.csproj" />
     </ItemGroup>
@@ -90,6 +91,9 @@
     <ItemGroup>
       <Content Update="wwwroot\favicon.ico">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </Content>
+      <Content Update="wwwroot\js\sliderFunctions.js">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Content>
       <Content Update="wwwroot\js\filenameParser.js">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

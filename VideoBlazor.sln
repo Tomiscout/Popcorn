@@ -12,7 +12,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.Torrents", "Vid
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.Domain", "VideoBlazor.Domain\VideoBlazor.Domain.csproj", "{0AAE96D8-07BB-4DDE-BD9C-0C7A187C69AD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoBlazor.Persistence", "VideoBlazor.Persistence\VideoBlazor.Persistence.csproj", "{63B02F0D-6A6E-4AF9-8755-51D1B6FC1167}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.Persistence", "VideoBlazor.Persistence\VideoBlazor.Persistence.csproj", "{63B02F0D-6A6E-4AF9-8755-51D1B6FC1167}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoPlayer.Shared", "VideoPlayer.Shared\VideoPlayer.Shared.csproj", "{6AF65432-935C-41DE-AB2A-EEFBB1F4E327}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoBlazor.PlayerServer", "VideoBlazor.PlayerServer\VideoBlazor.PlayerServer.csproj", "{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -46,6 +50,14 @@ Global
 		{63B02F0D-6A6E-4AF9-8755-51D1B6FC1167}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{63B02F0D-6A6E-4AF9-8755-51D1B6FC1167}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{63B02F0D-6A6E-4AF9-8755-51D1B6FC1167}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6AF65432-935C-41DE-AB2A-EEFBB1F4E327}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6AF65432-935C-41DE-AB2A-EEFBB1F4E327}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6AF65432-935C-41DE-AB2A-EEFBB1F4E327}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6AF65432-935C-41DE-AB2A-EEFBB1F4E327}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

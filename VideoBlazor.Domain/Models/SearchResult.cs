@@ -21,5 +21,9 @@ namespace VideoBlazor.Shared.Models
         public string Imdb { get; set; }
         public string Category { get; set; }
         public string TorrentPageUrl { get; set; }
+
+        public List<string> EpisodeTags { get; set; }
+        public List<string> FormatTags { get; set; }
+        public List<string> OtherTags { get; set; }
     }
 }

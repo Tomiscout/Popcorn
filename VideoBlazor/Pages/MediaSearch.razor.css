@@ -73,7 +73,7 @@
 }
 
 .media-list-item:hover {
-    background-color: aliceblue;
+    background-color: #4d4f5f;
 }
 
 .media-info-container {
@@ -109,7 +109,6 @@
     align-items: stretch;
     margin: 6px;
     padding: 4px;
-    background: #ffffffd6;
 }
 
 .selected-media-header {

@@ -34,6 +34,7 @@ namespace WebSiteRatings
 
         private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            PipeManager.Print = LogInBrowser;
             Core.Initialize();
 
             Environment.GetCommandLineArgs();
@@ -112,6 +113,7 @@ namespace WebSiteRatings
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
             });
 
+            //TODO fix task was canceled exception
             WebView?.Dispatcher?.Invoke(() => WebView?.CoreWebView2?.PostWebMessageAsJson(json));
         }
 
@@ -141,8 +143,8 @@ namespace WebSiteRatings
         {
             PipeManager.Test();
 
-            var path = @"C:\Users\brazi\Desktop\naruto.mkv";
-            LoadMedia(path);
+           // var path = @"C:\Users\brazi\Desktop\naruto.mkv";
+            //LoadMedia(path);
             return false;
 
             try
@@ -230,6 +232,11 @@ namespace WebSiteRatings
         {
             //TODO
             return false;
+        }
+
+        private void LogInBrowser(string message)
+        {
+            WebView?.Dispatcher?.Invoke(() => WebView?.CoreWebView2?.ExecuteScriptAsync($"console.log('{message}')"));
         }
 
 

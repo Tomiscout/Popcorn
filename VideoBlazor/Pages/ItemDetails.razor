@@ -187,6 +187,8 @@
 
     public string ItemWatchedStyle(MediaFile file)
     {
+        if (item.History is null) return string.Empty;
+        
         if(file.Type == FileType.File)
         {
             return item.History.Any(h => h.Filename == file.Path) ? "already-watched-title" : string.Empty;
@@ -300,6 +302,7 @@
         };
     }
 
+    //TODO dublicate
     private async Task<List<ParsedFilenameModel>> ParseFilesTagsFromPaths(List<string> paths)
     {
         var filenames = paths.Select(p => Path.GetFileName(p)).ToArray();
