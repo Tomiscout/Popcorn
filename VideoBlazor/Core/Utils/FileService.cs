@@ -6,7 +6,7 @@ namespace VideoBlazor.Core.Utils;
 
 public static class FileService
 {
-    public static void LaunchMediaFile(string path)
+    public static void LaunchMediaFileDefault(string path)
     {
         try
         {

@@ -5,6 +5,7 @@ using Microsoft.Web.WebView2.Core;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -13,6 +14,7 @@ using System.Web;
 using System.Windows;
 using VideoPlayer.Contracts;
 using VideoPlayer.Pipes;
+using VideoPlayer.Shared.PipeEvents;
 
 namespace WebSiteRatings
 {
@@ -37,7 +39,7 @@ namespace WebSiteRatings
             PipeManager.Print = LogInBrowser;
             Core.Initialize();
 
-            Environment.GetCommandLineArgs();
+            Task.Run(async () => await PipeManager.Initialize(this));
 
             _libVLC = new LibVLC();
             _mediaPlayer = new MediaPlayer(_libVLC);
@@ -50,6 +52,10 @@ namespace WebSiteRatings
 
         public void LoadMedia(string path)
         {
+            if(!File.Exists(path))
+            {
+                //TODO popover file not found
+            }
             var media = new Media(_libVLC, path);
             _mediaPlayer.Play(media);
             PostEvent("track_loaded", new TrackLoadedEvent()
@@ -68,8 +74,12 @@ namespace WebSiteRatings
         {
             PipeManager.Test();
 
-            var path = @"C:\Users\brazi\Desktop\naruto.mkv";
-            LoadMedia(path);
+            //var path = @"C:\Users\brazi\Desktop\naruto.mkv";
+            var envVars = Environment.GetCommandLineArgs();
+            LogInBrowser($"Args: {string.Join(", ", envVars)}");
+            if (envVars.Length > 1) {
+                LoadMedia(envVars[1]);
+            }
             return true;
         }
 
@@ -115,6 +125,11 @@ namespace WebSiteRatings
 
             //TODO fix task was canceled exception
             WebView?.Dispatcher?.Invoke(() => WebView?.CoreWebView2?.PostWebMessageAsJson(json));
+        }
+
+        public void SetMediaInfo(MediaInfoEvent infoEvent)
+        {
+            //TODO set media info
         }
 
         private bool Play(object data)

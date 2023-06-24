@@ -19,11 +19,5 @@ namespace WebSiteRatings
                 .AddJsonFile("appsettings.json")
                 .Build();
         }
-
-        protected override void OnStartup(StartupEventArgs e)
-        {
-            Console.WriteLine("Video player started");
-            Task.Run(async () => await PipeManager.Initialize(e.Args));
-        }
     }
 }

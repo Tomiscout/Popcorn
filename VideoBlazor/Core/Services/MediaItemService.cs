@@ -1,8 +1,8 @@
-﻿using Microsoft.Maui.Graphics;
-using VideoBlazor.Core.Enums;
+﻿using VideoBlazor.Core.Enums;
 using VideoBlazor.Core.Model;
 using VideoBlazor.Persistence;
-using static MudBlazor.CategoryTypes;
+using VideoBlazor.Domain.Models;
+using VideoBlazor.Domain.Enum;
 
 namespace VideoBlazor.Core.Services
 {

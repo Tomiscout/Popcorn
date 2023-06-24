@@ -1,10 +1,5 @@
-﻿using Microsoft.Maui.Controls;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
+using VideoBlazor.Domain.Models;
 
 namespace VideoBlazor.PlayerServer
 {
@@ -13,14 +8,30 @@ namespace VideoBlazor.PlayerServer
         //TODO change this after figuring out how to build everything
         private static readonly string _playerExePath = @"C:\Projects\VideoBlazor\VideoPlayer\bin\Debug\net7.0-windows\VideoPlayer.exe";
         
-        public static void LaunchPlayer()
+        public static async Task OpenFile(string filePath, MediaItem item)
+        {
+            if (ServerPipeManager.IsConnected())
+            {
+                await ServerPipeManager.LoadMediaEvent(filePath);
+                await ServerPipeManager.SendMediaInfoEvent(item);
+            } else
+            {
+                Task.Run(async () => await ServerPipeManager.StartServer()).ConfigureAwait(false);
+                LaunchPlayer(filePath);
+
+                //TODO send Media info event. Problem is pipe is connected, but data is not recieved at start
+            }
+        }
+
+        public static void LaunchPlayer(string mediaPath)
         {
             var path = GetPlayerExePath();
             if(!File.Exists(path))
             {
                 throw new FileNotFoundException("VideoPlayer path is not found. " + path);
             }
-            Process.Start(path);
+            var arguments = new List<string>() { mediaPath };
+            Process.Start(path, arguments);
         }
 
         public static string GetPlayerExePath()

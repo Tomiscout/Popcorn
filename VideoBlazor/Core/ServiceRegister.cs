@@ -15,6 +15,7 @@ namespace VideoBlazor.Core
             services.AddSingleton<TorrentCore>();
             services.AddSingleton<TorrentUtils>();
             services.AddSingleton<ImageRepository>();
+            services.AddSingleton<SettingsRepository>();
             services.AddSingleton<JsonRepository>();
             services.AddBlazoredModal();
         }

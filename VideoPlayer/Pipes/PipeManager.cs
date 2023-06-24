@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using VideoPlayer.Shared;
+using WebSiteRatings;
 
 namespace VideoPlayer.Pipes
 {
@@ -16,9 +17,9 @@ namespace VideoPlayer.Pipes
 
         public static Action<string> Print;
         
-        public static async Task Initialize(string[] args)
+        public static async Task Initialize(MainWindow window)
         {
-            await ConnectToAppPipe();
+            await ConnectToAppPipe(window);
         }
 
         public static void Test()
@@ -27,7 +28,7 @@ namespace VideoPlayer.Pipes
             Print.Invoke($"Test");
         }
 
-        public static async Task ConnectToAppPipe()
+        public static async Task ConnectToAppPipe(MainWindow window)
         {
             var pipeName = await GetPipeName();
 
@@ -36,10 +37,14 @@ namespace VideoPlayer.Pipes
             // The first type parameters indicates what the other process can do,
             // while the second one indicates the functionality this process exposes.
             pipeClient = new PipeClientWithCallback<IAppPlayerServer, IPlayerPipeClient>(
-                new NetJsonPipeSerializer(), pipeName, () => new PlayerPipeClient());
+                new NetJsonPipeSerializer(), pipeName, () => new PlayerPipeClient(window));
 
             // We wait until the connection is established
             await pipeClient.ConnectAsync();
+
+            await pipeClient.WaitForRemotePipeCloseAsync();
+
+            pipeClient.Dispose();
         }
 
         private static async Task<string> GetPipeName()
@@ -50,6 +55,9 @@ namespace VideoPlayer.Pipes
             */
             if(!File.Exists(_pipeFileName))
             {
+#if DEBUG
+                return $"DEBUG_PIPE-{Guid.NewGuid()}";
+#endif
                 Console.WriteLine("No pipe name found! Exiting...");
                 Environment.Exit(0);
             }
