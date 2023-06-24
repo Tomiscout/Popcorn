@@ -13,7 +13,7 @@ namespace VideoPlayer.Pipes
         //private static readonly string PipeFileName = "pipeName.txt";
         private static readonly string _pipeFileName = @"C:\Projects\VideoBlazor\pipeName.txt";
         
-        private static PipeClientWithCallback<IAppPlayerServer, IPlayerPipeClient> pipeClient;
+        private static PipeClientWithCallback<Shared.IPipeServer, IPipeClient> pipeClient;
 
         public static Action<string> Print;
         
@@ -36,15 +36,22 @@ namespace VideoPlayer.Pipes
             // the same passed in the server example, but in reverse order.
             // The first type parameters indicates what the other process can do,
             // while the second one indicates the functionality this process exposes.
-            pipeClient = new PipeClientWithCallback<IAppPlayerServer, IPlayerPipeClient>(
-                new NetJsonPipeSerializer(), pipeName, () => new PlayerPipeClient(window));
+            pipeClient = new PipeClientWithCallback<Shared.IPipeServer, IPipeClient>(
+                new NetJsonPipeSerializer(), pipeName, () => new PipeClient(window));
 
             // We wait until the connection is established
             await pipeClient.ConnectAsync();
 
+            await PingServerOnInit();
+
             await pipeClient.WaitForRemotePipeCloseAsync();
 
             pipeClient.Dispose();
+        }
+
+        private static async Task PingServerOnInit()
+        {
+            await pipeClient.InvokeAsync(x => x.OnClientInitialized());
         }
 
         private static async Task<string> GetPipeName()
@@ -69,9 +76,13 @@ namespace VideoPlayer.Pipes
         {
             ~Destructor()
             {
-                //TODO test
-                pipeClient?.Dispose();
+                Dispose();
             }
+        }
+
+        public static void Dispose()
+        {
+            pipeClient?.Dispose();
         }
     }
 }

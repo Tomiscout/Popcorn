@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace VideoBlazor.Shared.Utils
@@ -26,6 +27,55 @@ namespace VideoBlazor.Shared.Utils
             }
 
             return sizeString;
+        }
+
+        private static readonly string[] TagsToRemove = { "bluray", "blu-ray", "dts-hd", "aac", "dsr" };
+        public static (string, List<string>) SanitizeFilename(string filename, string[] tags)
+        {
+            var name = filename.Trim();
+            var removedTags = new List<string>();
+            
+            // Remove extension
+            var extension = Path.GetExtension(filename);
+            if(!string.IsNullOrWhiteSpace(extension))
+            {
+                name = name.Replace(extension, "");
+            }
+
+            // If contains no spaces, but more than 1 dot - replace with spaces
+            if (!name.Contains(" ") && name.Count(c => c == '.') > 1)
+            {
+                name = name.Replace(".", " ");
+            }
+
+            // If contains any of tags - remove
+            foreach (var tag in tags)
+            {
+                if (name.ToLower().Contains(tag))
+                {
+                    var index = name.ToLower().IndexOf(tag);
+                    name = name.Remove(index, tag.Length);
+                    removedTags.Add(tag);
+                }
+            }
+
+            // If contains [ ], ( ) and some contents - remove with contents
+            var regex = new Regex(@"\[(.*?)\]|\((.*?)\)");
+            var matches = regex.Matches(name).Cast<Match>().Select(m => m.Value);
+            name = regex.Replace(name, "");
+
+            // If contains two+ spaces - remove them
+            while (name.Contains("  "))
+            {
+                name = name.Replace("  ", " ");
+            }
+            
+            if(string.IsNullOrWhiteSpace(name))
+            {
+                return (filename, removedTags);
+            }
+
+            return (name, removedTags);
         }
     }
 }

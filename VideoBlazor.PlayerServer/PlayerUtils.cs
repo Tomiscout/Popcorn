@@ -14,12 +14,11 @@ namespace VideoBlazor.PlayerServer
             {
                 await ServerPipeManager.LoadMediaEvent(filePath);
                 await ServerPipeManager.SendMediaInfoEvent(item);
-            } else
+            }
+            else
             {
-                Task.Run(async () => await ServerPipeManager.StartServer()).ConfigureAwait(false);
+                Task.Run(async () => await ServerPipeManager.StartServer(item)).ConfigureAwait(false);
                 LaunchPlayer(filePath);
-
-                //TODO send Media info event. Problem is pipe is connected, but data is not recieved at start
             }
         }
 

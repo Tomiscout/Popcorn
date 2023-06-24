@@ -19,5 +19,10 @@ namespace WebSiteRatings
                 .AddJsonFile("appsettings.json")
                 .Build();
         }
+        
+        private void Window_Destroying(object sender, EventArgs e)
+        {
+            PipeManager.Dispose();
+        }
     }
 }

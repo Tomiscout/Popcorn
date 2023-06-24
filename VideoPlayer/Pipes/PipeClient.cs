@@ -10,13 +10,20 @@ using WebSiteRatings;
 
 namespace VideoPlayer.Pipes
 {
-    internal class PlayerPipeClient : IPlayerPipeClient
+    internal class PipeClient : IPipeClient
     {
         private MainWindow _mainWindow;
         
-        public PlayerPipeClient(MainWindow mainWindow)
+        public PipeClient(MainWindow mainWindow)
         {
             _mainWindow = mainWindow;
+        }
+
+        //TODO dont work
+        public void Kill()
+        {
+            PipeManager.Dispose();
+            _mainWindow.Close();
         }
 
         public void LoadMedia(LoadMediaEvent loadEvent)

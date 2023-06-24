@@ -166,17 +166,17 @@ body {
   fill-rule: evenodd;
 }
 
-
 #volume-control {
 	margin: auto auto;
   width: inherit;
-	height: 150px;
+	height: 130px;
 	width: 5px;
 	background: #555;
 }
 
 #volume-popup {
   position: absolute;
+  padding-top: 10px;
   width: 40px;
   height: 140px;
   background-color: rgba(0, 0, 0, 0.737);
@@ -185,7 +185,7 @@ body {
 .ui-slider-range-min {
   height: 140px;
   width: 5px;
-  bottom: 0px;
+  bottom: 10px;
   background: red;
   position: absolute;
   border: none;

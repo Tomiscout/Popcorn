@@ -15,6 +15,8 @@ const volumePopup = $("#volume-popup");
 
 const playButton = playPauseButton.querySelector('.playing');
 const pauseButton = playPauseButton.querySelector('.paused');
+const lowVolumeButton = volumeButton.querySelector('.low-volume');
+const midVolumeButton = volumeButton.querySelector('.mid-volume');
 const fullVolumeButton = volumeButton.querySelector('.full-volume');
 const mutedButton = volumeButton.querySelector('.muted');
 const maximizeButton = fullScreenButton.querySelector('.maximize');
@@ -77,6 +79,8 @@ class Video {
   }
 
   setVolume(volume) {
+    this.volume = volume;
+    recalculateVolumeButton();
     postMessage({name: 'volume', data: volume});
   }
 
@@ -176,7 +180,7 @@ const displayControls = () => {
   controlsTimeout = setTimeout(() => {
     controlsContainer.style.opacity = '0';
     document.body.style.cursor = 'none';
-  }, 5000 * 300);
+  }, 5000);
 };
 
 const playPause = () => {
@@ -214,9 +218,24 @@ function recalculateFullscreenButton(){
 
 function recalculateVolumeButton() {
   if (video.muted || video.volume === 0) {
+    lowVolumeButton.style.display = 'none';
+    midVolumeButton.style.display = 'none';
     fullVolumeButton.style.display = 'none';
     mutedButton.style.display = '';
+  } else if(video.volume <= 0.33) {
+    lowVolumeButton.style.display = '';
+    midVolumeButton.style.display = 'none';
+    fullVolumeButton.style.display = 'none';
+    mutedButton.style.display = 'none';
+  }
+  else if(video.volume <= 0.66) {
+    lowVolumeButton.style.display = 'none';
+    midVolumeButton.style.display = '';
+    fullVolumeButton.style.display = 'none';
+    mutedButton.style.display = 'none';
   } else {
+    lowVolumeButton.style.display = 'none';
+    midVolumeButton.style.display = 'none';
     fullVolumeButton.style.display = '';
     mutedButton.style.display = 'none';
   }
@@ -224,11 +243,11 @@ function recalculateVolumeButton() {
 
 function recalculatePlayButton() {
   if (video.paused) {
-    playButton.style.display = 'none';
-    pauseButton.style.display = '';
-  } else {
     playButton.style.display = '';
     pauseButton.style.display = 'none';
+  } else {
+    playButton.style.display = 'none';
+    pauseButton.style.display = '';
   }
 }
 
@@ -299,7 +318,8 @@ volume.on("mouseleave", () => {
 $("#volume-control").slider({
   min: 0,
   max: 100,
-  value: 0,
+  animate: "fast",
+  value: 85,
   range: "min",
   orientation : 'vertical',
   slide: function(event, ui) {

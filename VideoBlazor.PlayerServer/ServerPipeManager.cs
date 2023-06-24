@@ -15,15 +15,15 @@ namespace VideoBlazor.PlayerServer
     public static class ServerPipeManager
     {
         private static readonly string _pipeNameFile = @"C:\Projects\VideoBlazor\pipeName.txt";
-        private static PipeServerWithCallback<IPlayerPipeClient, IAppPlayerServer> _pipeServer;
+        private static PipeServerWithCallback<IPipeClient, VideoPlayer.Shared.IPipeServer> _pipeServer;
 
-        public static async Task StartServer()
+        public static async Task StartServer(MediaItem initialItem)
         {
             var pipeName = GeneratePipeName();
             await File.WriteAllTextAsync(_pipeNameFile, pipeName);
 
-            _pipeServer = new PipeServerWithCallback<IPlayerPipeClient, IAppPlayerServer>(
-                new NetJsonPipeSerializer(), pipeName, () => new AppPlayerServer());
+            _pipeServer = new PipeServerWithCallback<IPipeClient, VideoPlayer.Shared.IPipeServer>(
+                new NetJsonPipeSerializer(), pipeName, () => new PipeServer(initialItem));
 
             // We wait for a connection (this could be a long time).
             await EnsureConnection();
@@ -44,7 +44,6 @@ namespace VideoBlazor.PlayerServer
         
         public static bool IsConnected() => _pipeServer != null && _pipeServer.State == PipeState.Connected;
 
-        
         private static AsyncTimeoutPolicy _listenerTimeoutPolicy = Policy.TimeoutAsync(
         TimeSpan.FromSeconds( 10 ),
         TimeoutStrategy.Optimistic);
@@ -62,28 +61,13 @@ namespace VideoBlazor.PlayerServer
             }
         }
 
-        private static async Task WaitForEstablishedConnection()
-        {
-            int tryCount = 0;
-            while(!IsConnected() || tryCount > 100)
-            {
-                await Task.Delay(TimeSpan.FromMilliseconds(100));
-            }
-            if(!IsConnected())
-            {
-                throw new Exception("Failed to wait for pipes connection");
-            }
-        }
-
         public static async Task LoadMediaEvent(string path)
         {
-            await WaitForEstablishedConnection();
             await _pipeServer.InvokeAsync(x => x.LoadMedia(new LoadMediaEvent() { FilePath = path }));
         }
 
         public static async Task SendMediaInfoEvent(MediaItem item)
         {
-            await WaitForEstablishedConnection();
             await _pipeServer.InvokeAsync(x => x.MediaInfo(new MediaInfoEvent()
             {
                 Folders = item.Files
@@ -92,7 +76,13 @@ namespace VideoBlazor.PlayerServer
         
         public static void Dispose()
         {
-            Debug.WriteLine("DESTRUCTR");
+            Debug.WriteLine("Destructor dispose");
+            _pipeServer?.Dispose();
+        }
+
+        public static void GracefullDispose()
+        {
+            _pipeServer.InvokeAsync(x => x.Kill()).RunSynchronously();
             _pipeServer?.Dispose();
         }
     }

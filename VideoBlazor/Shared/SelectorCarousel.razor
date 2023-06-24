@@ -1,5 +1,6 @@
 ﻿@using System.Text.Json;
 @using VideoBlazor.Core.Model;
+@using VideoBlazor.Domain.Models;
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @namespace SharedPages
@@ -26,7 +27,7 @@
                     {
                         <img src="@item.Image" alt="@item.Title" />
                     }
-                    <span>@item.Title</span>
+                    <span>@item.GetDisplayTitle()</span>
                 </div>
             }
         </div>

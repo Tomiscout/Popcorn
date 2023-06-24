@@ -76,7 +76,6 @@ namespace WebSiteRatings
 
             //var path = @"C:\Users\brazi\Desktop\naruto.mkv";
             var envVars = Environment.GetCommandLineArgs();
-            LogInBrowser($"Args: {string.Join(", ", envVars)}");
             if (envVars.Length > 1) {
                 LoadMedia(envVars[1]);
             }
@@ -156,11 +155,12 @@ namespace WebSiteRatings
 
         private bool SetFullscreen(object data)
         {
-            PipeManager.Test();
+            /*PipeManager.Test();
+            LogInBrowser(_mediaPlayer.State.ToString());*/
 
-           // var path = @"C:\Users\brazi\Desktop\naruto.mkv";
+
+            // var path = @"C:\Users\brazi\Desktop\naruto.mkv";
             //LoadMedia(path);
-            return false;
 
             try
             {
@@ -253,33 +253,5 @@ namespace WebSiteRatings
         {
             WebView?.Dispatcher?.Invoke(() => WebView?.CoreWebView2?.ExecuteScriptAsync($"console.log('{message}')"));
         }
-
-
-        /* 
-
-     private void RecalculateVolumeIcon()
-     {
-         var volume = _mediaPlayer?.Volume ?? 100;
-         VolumeMute.Visibility = Visibility.Hidden;
-         VolumeMin.Visibility = Visibility.Hidden;
-         VolumeMed.Visibility = Visibility.Hidden;
-         VolumeMax.Visibility = Visibility.Hidden;
-         if (volume == 0)
-         {
-             VolumeMute.Visibility = Visibility.Visible;
-         } else if (volume <= 33)
-         {
-             VolumeMute.Visibility = Visibility.Visible;
-         }
-         else if (volume <= 66)
-         {
-             VolumeMed.Visibility = Visibility.Visible;
-         }
-         else
-         {
-             VolumeMax.Visibility = Visibility.Visible;
-         }
-     }
-        */
     }
 }
