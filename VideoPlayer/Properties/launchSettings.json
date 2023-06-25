@@ -2,7 +2,7 @@
   "profiles": {
     "VideoPlayer": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\brazi\\Downloads\\Shutter Island (2010) [1080p]\\Shutter.Island.2010.1080p.BluRay.x264.YIFY.mp4\" hello"
+      "commandLineArgs": "\"C:\\Users\\brazi\\Desktop\\naruto.mkv\""
     }
   }
 }

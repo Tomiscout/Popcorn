@@ -4,7 +4,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using VideoPlayer.Shared;
-using WebSiteRatings;
+using VideoPlayer;
 
 namespace VideoPlayer.Pipes
 {

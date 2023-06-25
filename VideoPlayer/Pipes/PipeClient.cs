@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using VideoPlayer.Shared;
 using VideoPlayer.Shared.PipeEvents;
-using WebSiteRatings;
+using VideoPlayer;
 
 namespace VideoPlayer.Pipes
 {

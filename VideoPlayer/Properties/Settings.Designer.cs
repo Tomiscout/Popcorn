@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace WebSiteRatings.Properties
+namespace VideoPlayer.Properties
 {
 
 

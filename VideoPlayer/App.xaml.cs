@@ -4,7 +4,7 @@ using System.Windows;
 using Microsoft.Extensions.Configuration;
 using VideoPlayer.Pipes;
 
-namespace WebSiteRatings
+namespace VideoPlayer
 {
     /// <summary>
     /// Interaction logic for App.xaml

@@ -16,7 +16,7 @@ using VideoPlayer.Contracts;
 using VideoPlayer.Pipes;
 using VideoPlayer.Shared.PipeEvents;
 
-namespace WebSiteRatings
+namespace VideoPlayer
 {
     //https://blogs.msmvps.com/bsonnino/2021/02/27/using-the-new-webview2-in-a-wpf-app/
     /// <summary>
@@ -27,7 +27,6 @@ namespace WebSiteRatings
     {
         LibVLC _libVLC;
         MediaPlayer _mediaPlayer;
-        private int _currentVolume = 100;
 
         public MainWindow()
         {
@@ -62,6 +61,8 @@ namespace WebSiteRatings
             {
                 FileName = Path.GetFileName(path),
             });
+
+            //Activate(); For some reason it crashes
         }
 
         private void WebViewInitialized(object sender, CoreWebView2InitializationCompletedEventArgs e)
@@ -87,6 +88,7 @@ namespace WebSiteRatings
             var message = e.WebMessageAsJson;
             var webEvent = JsonSerializer.Deserialize<WebEvent>(message);
 
+            Debug.WriteLine(webEvent.Name);
             var success = webEvent.Name switch
             {
                 "play_status_changed" => Play(webEvent.Data),

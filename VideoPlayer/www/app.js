@@ -57,6 +57,7 @@ class Video {
   requestFullscreen() {
     this.fullscreen = true;
     postMessage({name: 'fullscreen', data: true});
+    setTimeout(videoContainer.focus(), 100); //Dont know if necessary
   }
 
   exitFullscreen() {
@@ -193,11 +194,15 @@ const playPause = () => {
 };
 
 const toggleMute = () => {
+  volumeButton.blur();
+
   video.toggleMute();
   recalculateVolumeButton();
 };
 
 const toggleFullScreen = () => {
+  fullScreenButton.blur();
+
   if (!video.fullscreen) {
     video.requestFullscreen();
   } else {
@@ -205,6 +210,29 @@ const toggleFullScreen = () => {
   }
   recalculateFullscreenButton();
 };
+
+const exitFullscreen = () => {
+  if (!video.fullscreen) return;
+
+  video.exitFullscreen();
+  recalculateFullscreenButton();
+}
+
+//TODo update slider value. Also its kinda messy
+const upHandler = () => {
+  video.volume += 15;
+  if(video.volume > 100) {
+    video.volume = 100;
+  }
+  video.setVolume(video.volume);
+}
+const downHandler = () => {
+  video.volume -= 15;
+  if(video.volume < 0) {
+    video.volume = 0;
+  }
+  video.setVolume(video.volume);
+}
 
 function recalculateFullscreenButton(){
   if (!video.fullscreen) {
@@ -251,18 +279,19 @@ function recalculatePlayButton() {
   }
 }
 
+
+const keyCallbacks = {
+  'Space'  : playPause,
+  'KeyM'  : toggleMute,
+  'KeyF'  : toggleFullScreen,
+  'Escape'  : exitFullscreen,
+  "ArrowLeft"  : video.skipBackward,
+  "ArrowRight" : video.skipForward,
+  "ArrowUp"    : upHandler,
+  "ArrowDown"  : downHandler,
+}
 document.addEventListener('keyup', (event) => {
-  if (event.code === 'Space') {
-    playPause(); 
-  }
-
-  if (event.code === 'KeyM') {
-    toggleMute();
-  }
-
-  if (event.code === 'KeyF') {
-    toggleFullScreen();
-  }
+  keyCallbacks[event.code]?.();
 
   displayControls();
 });
@@ -279,21 +308,27 @@ progressBar.addEventListener('click', (event) => {
 playPauseButton.addEventListener('click', playPause);
 
 rewindButton.addEventListener('click', () => {
+  rewindButton.blur();
   video.skipBackward();
 });
 
 fastForwardButton.addEventListener('click', () => {
+  fastForwardButton.blur();
   video.skipForward();
 });
 
 nextButton.addEventListener('click', video.playNextTitle);
 
 episodesButton.addEventListener('click', () => {
+  episodesButton.blur();
+
   //TODO display episodes from list
   video.selectEpisode('episode-id');
 });
 
 subtitlesButton.addEventListener('click', () => {
+  subtitlesButton.blur();
+
   //TODO display subtitles from list
   video.selectSubtitle('subtitle-id');
 });
@@ -347,11 +382,3 @@ function timeFormat(duration) {
 
   return ret;
 }
-
-/**
- * hunger games
- * hp
- * death note
- * house oof dragon
- * naruto
- */
