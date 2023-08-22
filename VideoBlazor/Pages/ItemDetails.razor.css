@@ -1,6 +1,5 @@
 ﻿#item-info-box {
     display: flex;
-    flow-direction: columns;
     width: 100%;
     height: 150px;
     margin: 10px;

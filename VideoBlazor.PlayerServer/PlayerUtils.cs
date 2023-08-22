@@ -14,12 +14,11 @@ namespace VideoBlazor.PlayerServer
             {
                 await ServerPipeManager.LoadMediaEvent(filePath);
                 await ServerPipeManager.SendMediaInfoEvent(item);
+                return;
             }
-            else
-            {
-                Task.Run(async () => await ServerPipeManager.StartServer(item)).ConfigureAwait(false);
-                LaunchPlayer(filePath);
-            }
+
+            Task.Run(async () => await ServerPipeManager.StartServer(item)).ConfigureAwait(false); //TODO is this okay?
+            LaunchPlayer(filePath);
         }
 
         public static void LaunchPlayer(string mediaPath)

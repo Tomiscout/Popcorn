@@ -30,7 +30,7 @@ namespace VideoBlazor.Shared.Utils
         }
 
         private static readonly string[] TagsToRemove = { "bluray", "blu-ray", "dts-hd", "aac", "dsr" };
-        public static (string, List<string>) SanitizeFilename(string filename, string[] tags)
+        public static (string, List<string>) SanitizeFilename(string filename, List<string> tags)
         {
             var name = filename.Trim();
             var removedTags = new List<string>();
@@ -70,6 +70,10 @@ namespace VideoBlazor.Shared.Utils
                 name = name.Replace("  ", " ");
             }
             
+            if(removedTags.Count == 0)
+            {
+                removedTags = tags;
+            }
             if(string.IsNullOrWhiteSpace(name))
             {
                 return (filename, removedTags);

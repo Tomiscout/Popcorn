@@ -10,7 +10,6 @@
 
 <h1>Settings</h1>
 
-<MudButton OnClick="StartPlayer">Start test player</MudButton>
 <MudButton Variant="Variant.Filled" @onclick="OpenRootFolder">
     <span>Open root folder</span>
 </MudButton>
@@ -21,7 +20,7 @@
     {
         <MudSwitch @bind-Checked="@_settings.UseInternalPlayer" Label="Use internal media player" Color="Color.Tertiary" />
         <MudSwitch @bind-Checked="@_settings.UseInternalTorrentClient" Label="Use internal torrent client" Color="Color.Tertiary" />
-        <MudButton OnClick="SaveSettings">Save settings</MudButton>
+        <MudButton Variant="Variant.Filled" OnClick="SaveSettings">Save settings</MudButton>
     }
 </div>
 
@@ -31,11 +30,6 @@
     protected override async Task OnInitializedAsync()
     {
         _settings = await SettingsRepository.GetSettings();
-    }
-
-    public async Task StartPlayer()
-    {
-        PlayerUtils.LaunchPlayer(@"C:\Users\brazi\Downloads\Enchanted (2007) [BluRay] [1080p] [YTS.AM]\Enchanted.2007.1080p.BluRay.x264-[YTS.AM].mp4");
     }
 
     public void OpenRootFolder()

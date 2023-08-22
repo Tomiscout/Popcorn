@@ -18,7 +18,7 @@ public class MediaItem
     {
         if(string.IsNullOrWhiteSpace(ShortTitle))
         {
-            var (parsed, tags) = StringUtils.SanitizeFilename(Title, Array.Empty<string>());
+            var (parsed, _) = StringUtils.SanitizeFilename(Title, new List<string>());
             ShortTitle = parsed;
         }
         return ShortTitle;

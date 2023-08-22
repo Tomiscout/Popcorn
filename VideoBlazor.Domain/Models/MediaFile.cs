@@ -5,7 +5,7 @@ namespace VideoBlazor.Domain.Models;
 
 public class MediaFile
 {
-    public string Path { get; set; }
+    public string Path { get; set; }  //TODO this should be renamed to FilePath, but file migration would be needed. Or just keep it whatever
     public string Title { get; set; }
     public string ShortTitle { get; set; } = null;
     public FileType Type { get; set; }
@@ -21,7 +21,12 @@ public class MediaFile
 
     public void ParseTitle()
     {
-        var (parsed, tags) = StringUtils.SanitizeFilename(Title, FormatTags.ToArray());
+        if(FormatTags is null)
+        {
+            ShortTitle = Title;
+            return;
+        }
+        var (parsed, tags) = StringUtils.SanitizeFilename(Title, FormatTags);
         ShortTitle = parsed;
         FormatTags = tags;
     }

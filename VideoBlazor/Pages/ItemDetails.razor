@@ -52,9 +52,18 @@
 		} else {
             <img id="item-image" src="@item.Image" />
 		}
-        <div style="flex: 1; flex-direction:row;">
+        <div style="flex: 1; flex-direction: column;">
             <h3>@item.Title</h3>
             <span id="item-description">Descripton</span>
+            <div>
+                @if(nextTrack is not null)
+                {
+                    <MudButton Variant="Variant.Filled" @onclick="OnPlayNext">
+                        <i class="fa-solid fa-play"></i>
+                        <span class="ml-1">Play next: @nextTrack.Title</span>
+                    </MudButton>
+                }
+            </div>
         </div>
     </div>
 
@@ -75,9 +84,13 @@
                 <div class="file-list-item" @onclick="() => ClickFile(file)">
                     @if(file.Type == FileType.Folder)
                     {
-                        <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.Folder" />
+                            <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.Folder" />
+                    } else
+                    {
+                            <span class="ma-1"><i class="fa-solid fa-film fa-lg"></i></span>
                     }
-                        <span class="file-title @ItemWatchedStyle(file)">@file.GetDisplayTitle()</span>
+                    <span class="file-title @ItemWatchedStyle(file)">@file.GetDisplayTitle()</span>
+
                     @if (file.EpisodeTags is not null)
                     {
                         @foreach (var tag in file.EpisodeTags)
@@ -122,6 +135,10 @@
 			    </div>
                 <MudDivider />
             }
+            <MudButton Variant="Variant.Filled" @onclick="OnCleanHistory">
+                <i class="fa-solid fa-trash mr-1"></i>
+                <span class="ml-1">Clean history</span>
+            </MudButton>
         }
     </MudTabPanel>
     </MudTabs>
@@ -138,6 +155,7 @@
     public MediaItem item;
     public List<MediaFile> currentFiles = new List<MediaFile>();
     public List<MediaFile> navigation = new List<MediaFile>();
+    public MediaFile nextTrack = null;
 
     private SettingsModel _settings;
 
@@ -156,16 +174,17 @@
     {
         item = await MediaItemService.LoadMediaItem(Id);
         await OpenRootFolder();
+        RefreshNextTrack();
     }
 
-    public void OpenFolder(MediaFile folder) {
-        LoadFolder(folder);
+    public async Task OpenFolder(MediaFile folder) {
+        await LoadFolder(folder);
         navigation.Add(folder);
     }
 
-    public void OpenFolderFromNavigation(MediaFile folder)
+    public async Task OpenFolderFromNavigation(MediaFile folder)
     {
-        LoadFolder(folder);
+        await LoadFolder(folder);
 
         var currentIndex = navigation.FindIndex(n => n.Path == folder.Path);
         if (currentIndex == -1) return;
@@ -192,7 +211,7 @@
         if (file.Type == FileType.File)
             await OpenFile(file);
         else if (file.Type == FileType.Folder)
-            OpenFolder(file);
+            await OpenFolder(file);
     }
 
     public string ItemWatchedStyle(MediaFile file)
@@ -301,6 +320,21 @@
         OnBack();
     }
 
+    public async Task OnPlayNext()
+    {
+        if (nextTrack is not null)
+        {
+            await ClickFile(nextTrack);
+        }
+        RefreshNextTrack();
+    }
+
+    public async void OnCleanHistory()
+    {
+        await MediaItemService.CleanHistory(item);
+        RefreshNextTrack();
+    }
+
     public void OpenFolderExplorer()
     {
         FolderService.OpenFolderInExplorer(item.FolderDirectory);
@@ -313,6 +347,18 @@
         //Reopen page
         await OpenRootFolder();
         StateHasChanged();
+    }
+
+    private void RefreshNextTrack()
+    {
+        try
+        {
+            nextTrack = MediaItemService.GetNextFile(item);
+        }
+        catch (Exception e)
+        {
+            //TODO handle
+        }
     }
 
     private string GetFileIcon(FileType type)
