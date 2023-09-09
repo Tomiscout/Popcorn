@@ -1,6 +1,9 @@
 ﻿using Blazored.Modal;
 using VideoBlazor.Core.Services;
+using VideoBlazor.Domain.Interfaces;
 using VideoBlazor.Persistence;
+using VideoBlazor.Persistence.Repositories;
+using VideoBlazor.PlayerServer;
 using VideoBlazor.SearchProviders.Utils;
 using VideoBlazor.Torrents;
 
@@ -17,6 +20,8 @@ namespace VideoBlazor.Core
             services.AddSingleton<ImageRepository>();
             services.AddSingleton<SettingsRepository>();
             services.AddSingleton<JsonRepository>();
+            services.AddSingleton<PlayerService>();
+            services.AddSingleton<IMediaItemRepository, MediaItemRepository>();
             services.AddBlazoredModal();
         }
     }

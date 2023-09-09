@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using VideoPlayer.Shared;
 using VideoPlayer;
+using VideoPlayer.Shared.PipeEvents.Server;
 
 namespace VideoPlayer.Pipes
 {
@@ -49,11 +50,6 @@ namespace VideoPlayer.Pipes
             pipeClient.Dispose();
         }
 
-        private static async Task PingServerOnInit()
-        {
-            await pipeClient.InvokeAsync(x => x.OnClientInitialized());
-        }
-
         private static async Task<string> GetPipeName()
         {
             /*var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
@@ -83,6 +79,17 @@ namespace VideoPlayer.Pipes
         public static void Dispose()
         {
             pipeClient?.Dispose();
+        }
+
+        //Events
+        private static async Task PingServerOnInit()
+        {
+            await pipeClient.InvokeAsync(x => x.OnClientInitialized());
+        }
+
+        public static async Task SendTrackPlayedEvent(TrackPlayedEvent e)
+        {
+            await pipeClient.InvokeAsync(x => x.TrackPlayed(e));
         }
     }
 }

@@ -2,19 +2,28 @@
 using LibVLCSharp.WPF;
 using MahApps.Metro.Controls;
 using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Wpf;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Web;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Shapes;
+using VideoBlazor.Domain.Models;
 using VideoPlayer.Contracts;
+using VideoPlayer.Domain.Extensions;
 using VideoPlayer.Pipes;
 using VideoPlayer.Shared.PipeEvents;
+using VideoPlayer.Shared.PipeEvents.Server;
 
 namespace VideoPlayer
 {
@@ -27,39 +36,84 @@ namespace VideoPlayer
     {
         LibVLC _libVLC;
         MediaPlayer _mediaPlayer;
+        private static MediaItem _currentMediaItem = null;
 
         public MainWindow()
         {
+            PlayerCore.Initialize();
             InitializeComponent();
         }
-
-        private void MetroWindow_Loaded(object sender, RoutedEventArgs e)
+        
+        private async void MetroWindow_Loaded(object sender, RoutedEventArgs e)
         {
             PipeManager.Print = LogInBrowser;
             Core.Initialize();
 
-            Task.Run(async () => await PipeManager.Initialize(this));
+            Task.Run(async () => await PipeManager.Initialize(this)); //TODO this
 
             _libVLC = new LibVLC();
             _mediaPlayer = new MediaPlayer(_libVLC);
             _mediaPlayer.TimeChanged += RecalculateSeekValue;
             _mediaPlayer.LengthChanged += SendLengthEvent;
             _mediaPlayer.EndReached += PlaybackEndReached;
-            WebView.CoreWebView2InitializationCompleted += WebViewInitialized;
+            await InitializeWebView2();
+
             VideoView.MediaPlayer = _mediaPlayer;
+        }
+
+        private async Task InitializeWebView2()
+        {
+            WebView.CoreWebView2InitializationCompleted += WebViewInitialized;
+
+            var asemblyFolder = Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName;
+            var webPath = $"{asemblyFolder}\\web-player\\build\\"; //React bundle copied by post-build script
+
+            try
+            {
+                var op = new CoreWebView2EnvironmentOptions("--disable-web-security");
+                var env = await CoreWebView2Environment.CreateAsync(options: op);
+                await WebView.EnsureCoreWebView2Async(env);
+
+                WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                    "app.local",
+                    webPath,
+                    CoreWebView2HostResourceAccessKind.Allow
+                );
+                WebView.Source = new Uri($"file:///{webPath.Replace(@"\", "/")}index.html");
+                WebView.Focus();
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine("Failed to initialize webview", e);
+            }
         }
 
         public void LoadMedia(string path)
         {
-            if(!File.Exists(path))
+            var media = new MediaFile //TODO this could be prettier
+            {
+                Path = path,
+                FormatTags = new List<string>() { System.IO.Path.GetExtension(path) }
+            };
+            media.ParseTitle();
+            LoadMedia(media);
+        }
+
+        //TODO dublicate code
+        public void LoadMedia(MediaFile file)
+        {
+            if (!File.Exists(file.Path))
             {
                 //TODO popover file not found
             }
-            var media = new Media(_libVLC, path);
+            var media = new Media(_libVLC, file.Path);
             _mediaPlayer.Play(media);
-            PostEvent("track_loaded", new TrackLoadedEvent()
+
+            PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
             {
-                FileName = Path.GetFileName(path),
+                FileName = file.Path,
+                Title = file.Title,
+                ShortTitle = file.GetDisplayTitle()
             });
 
             //Activate(); For some reason it crashes
@@ -67,8 +121,8 @@ namespace VideoPlayer
 
         private void WebViewInitialized(object sender, CoreWebView2InitializationCompletedEventArgs e)
         {
+            
             WebView.CoreWebView2.WebMessageReceived += WebMessageReceived;
-
         }
 
         private bool PlayerInitialized()
@@ -128,8 +182,9 @@ namespace VideoPlayer
             WebView?.Dispatcher?.Invoke(() => WebView?.CoreWebView2?.PostWebMessageAsJson(json));
         }
 
-        public void SetMediaInfo(MediaInfoEvent infoEvent)
+        public void SetMediaInfo(MediaItem item)
         {
+            _currentMediaItem = item;
             //TODO set media info
         }
 
@@ -149,7 +204,7 @@ namespace VideoPlayer
             }
             catch (Exception e)
             {
-                //TODO log
+                Debug.WriteLine("Failed media player play/pause", e);
                 return false;
             }
             return true;
@@ -189,7 +244,7 @@ namespace VideoPlayer
             }
             catch (Exception e)
             {
-                //TODO log
+                Debug.WriteLine("Failed to change fullscreen status", e);
                 return false;
             }
             return true;
@@ -199,12 +254,12 @@ namespace VideoPlayer
         {
             try
             {
-                var time = (long)Math.Round(((JsonElement)data).GetDouble());
+                var time = (long)Math.Round(double.Parse(((JsonElement)data).GetString()));
                 _mediaPlayer.Time = time;
             }
             catch (Exception e)
             {
-                //TODO log
+                Debug.WriteLine("Failed to set playback time", e);
                 return false;
             }
             return true;
@@ -221,10 +276,11 @@ namespace VideoPlayer
             {
                 var time = ((JsonElement)data).GetInt64();
                 _mediaPlayer.Time += time * 1000;
+                PostEvent("current_time", _mediaPlayer.Time);
             }
             catch (Exception e)
             {
-                //TODO log
+                Debug.WriteLine("Failed to playback skip", e);
                 return false;
             }
             return true;
@@ -239,7 +295,7 @@ namespace VideoPlayer
             }
             catch (Exception e)
             {
-                //TODO log
+                Debug.WriteLine("Failed to set volume", e);
                 return false;
             }
             return true;
@@ -247,8 +303,24 @@ namespace VideoPlayer
 
         private bool PlayNextTitle()
         {
-            //TODO
-            return false;
+            var nextItem = _currentMediaItem?.GetNextMediaFile();
+            if (nextItem is null) return false;
+
+            //Update history
+            PipeManager.SendTrackPlayedEvent(new TrackPlayedEvent
+            {
+                ItemId = _currentMediaItem.Id,
+                HistoryItem = new PlaybackHistory
+                {
+                    Filename = nextItem.Path,
+                    Title = nextItem.Title,
+                    PlaybackTime = DateTime.Now
+                }
+            }).ConfigureAwait(false);
+
+            LoadMedia(nextItem);
+
+            return true;
         }
 
         private void LogInBrowser(string message)

@@ -15,6 +15,9 @@ namespace VideoPlayer.Contracts
         [JsonPropertyName("title")]
         public string Title { get; set; }
 
+        [JsonPropertyName("shortTitle")]
+        public string ShortTitle { get; set; }
+
         [JsonPropertyName("episodeTitle")]
         public string EpisodeTitle { get; set; }
         

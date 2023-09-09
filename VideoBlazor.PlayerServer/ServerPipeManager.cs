@@ -3,12 +3,11 @@ using PipeMethodCalls.NetJson;
 using Polly;
 using Polly.Retry;
 using Polly.Timeout;
-using System;
 using System.Diagnostics;
-using System.Threading.Tasks;
+using VideoBlazor.Domain.Interfaces;
 using VideoBlazor.Domain.Models;
 using VideoPlayer.Shared;
-using VideoPlayer.Shared.PipeEvents;
+using VideoPlayer.Shared.PipeEvents.Client;
 
 namespace VideoBlazor.PlayerServer
 {
@@ -17,13 +16,13 @@ namespace VideoBlazor.PlayerServer
         private static readonly string _pipeNameFile = @"C:\Projects\VideoBlazor\pipeName.txt";
         private static PipeServerWithCallback<IPipeClient, VideoPlayer.Shared.IPipeServer> _pipeServer;
 
-        public static async Task StartServer(MediaItem initialItem)
+        public static async Task StartServer(MediaItem initialItem, IMediaItemRepository mediaItemRepository)
         {
             var pipeName = GeneratePipeName();
             await File.WriteAllTextAsync(_pipeNameFile, pipeName);
 
             _pipeServer = new PipeServerWithCallback<IPipeClient, VideoPlayer.Shared.IPipeServer>(
-                new NetJsonPipeSerializer(), pipeName, () => new PipeServer(initialItem));
+                new NetJsonPipeSerializer(), pipeName, () => new PipeServer(initialItem, mediaItemRepository));
 
             // We wait for a connection (this could be a long time).
             await EnsureConnection();
@@ -61,18 +60,9 @@ namespace VideoBlazor.PlayerServer
             }
         }
 
-        public static async Task LoadMediaEvent(string path)
-        {
-            await _pipeServer.InvokeAsync(x => x.LoadMedia(new LoadMediaEvent() { FilePath = path }));
-        }
+        public static async Task LoadMediaEvent(string path) => await _pipeServer.InvokeAsync(x => x.LoadMedia(new LoadMediaEvent() { FilePath = path }));
 
-        public static async Task SendMediaInfoEvent(MediaItem item)
-        {
-            await _pipeServer.InvokeAsync(x => x.MediaInfo(new MediaInfoEvent()
-            {
-                Folders = item.Files
-            }));
-        }
+        public static async Task SendMediaInfoEvent(MediaItem item) => await _pipeServer.InvokeAsync(x => x.MediaInfo(item));
         
         public static void Dispose()
         {

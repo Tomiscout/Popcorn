@@ -5,8 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using VideoPlayer.Shared;
-using VideoPlayer.Shared.PipeEvents;
 using VideoPlayer;
+using VideoBlazor.Domain.Models;
+using VideoPlayer.Shared.PipeEvents.Client;
 
 namespace VideoPlayer.Pipes
 {
@@ -32,9 +33,9 @@ namespace VideoPlayer.Pipes
             _mainWindow.LoadMedia(loadEvent.FilePath);
         }
 
-        public void MediaInfo(MediaInfoEvent infoEvent)
+        public void MediaInfo(MediaItem mediaItem)
         {
-            _mainWindow.SetMediaInfo(infoEvent);
+            _mainWindow.SetMediaInfo(mediaItem);
         }
     }
 }

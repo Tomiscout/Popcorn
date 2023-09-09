@@ -3,25 +3,34 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VideoBlazor.Domain.Interfaces;
 using VideoBlazor.Domain.Models;
 using VideoPlayer.Shared;
+using VideoPlayer.Shared.PipeEvents.Server;
 
 namespace VideoBlazor.PlayerServer
 {
     public class PipeServer : IPipeServer
     {
         private MediaItem _initialItem;
-        
-        public PipeServer(MediaItem initialItem)
+        private readonly IMediaItemRepository _mediaItemRepository;
+
+        public PipeServer(MediaItem initialItem, IMediaItemRepository mediaItemRepository)
         {
             _initialItem = initialItem;
+            _mediaItemRepository = mediaItemRepository;
         }
 
         public async Task OnClientInitialized() {
             // Hacky way to fix sync problems at start. This wont be a problem at this point
             // TODO maybe this hack is unnecessary, i was testing on broken file
-            //await ServerPipeManager.SendMediaInfoEvent(_initialItem);
-            _initialItem = null;
+            await ServerPipeManager.SendMediaInfoEvent(_initialItem);
+        }
+
+        public async Task TrackPlayed(TrackPlayedEvent e)
+        {
+            await _mediaItemRepository.AddHistoryItem(e.ItemId, e.HistoryItem);
+            //Update UI somehow?
         }
     }
 }

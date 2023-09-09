@@ -1,8 +1,9 @@
 ﻿@using VideoBlazor.Core.Model
 @using VideoBlazor.Core.Services
+@using VideoBlazor.Domain.Interfaces;
 @using VideoBlazor.Domain.Models
 @using SharedPages
-@inject MediaItemService MediaItemService
+@inject IMediaItemRepository MediaItemRepository
 @page "/watch"
 
 @if(recentItems?.Count > 0)
@@ -24,7 +25,7 @@
 
     private async Task LoadRecentItems()
     {
-        var allItems = await MediaItemService.LoadMediaItems();
+        var allItems = await MediaItemRepository.LoadMediaItems();
 
         recentItems = allItems?
         .Where(x => x.History?.LastOrDefault() != null)

@@ -7,8 +7,8 @@ public class MediaFile
 {
     public string Path { get; set; }  //TODO this should be renamed to FilePath, but file migration would be needed. Or just keep it whatever
     public string Title { get; set; }
-    public string ShortTitle { get; set; } = null;
-    public FileType Type { get; set; }
+    public string ShortTitle { get; set; } = string.Empty;
+    public FileType Type { get; set; } = FileType.File;
 
     public List<string> EpisodeTags { get; set; }
     public List<string> FormatTags { get; set; }
@@ -16,11 +16,24 @@ public class MediaFile
 
     public string GetDisplayTitle()
     {
-        return Type == FileType.Folder || string.IsNullOrWhiteSpace(ShortTitle) ? Title : ShortTitle; //Controversial
+        if(Type == FileType.Folder)
+        {
+            return Title;
+        }
+
+        if(string.IsNullOrWhiteSpace(ShortTitle))
+        {
+            ParseTitle();
+        }
+        return string.IsNullOrWhiteSpace(ShortTitle) ? Title : ShortTitle;
     }
 
     public void ParseTitle()
     {
+        if (string.IsNullOrWhiteSpace(Title))
+        {
+            Title = System.IO.Path.GetFileName(Path); //Could be implemented in getter setter
+        }
         if(FormatTags is null)
         {
             ShortTitle = Title;

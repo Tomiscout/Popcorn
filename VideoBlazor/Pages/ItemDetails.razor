@@ -8,14 +8,19 @@
 @using VideoBlazor.Core.Utils
 @using VideoBlazor.Core;
 @using VideoBlazor.Domain.Enum;
+@using VideoBlazor.Domain.Interfaces;
+@using VideoPlayer.Domain.Extensions;
+@using VideoBlazor.Domain.Helpers;
 @using VideoBlazor.Domain.Models;
 @using VideoBlazor.Persistence;
 @using VideoBlazor.PlayerServer;
 @using VideoBlazor.Shared.Utils;
 @inject NavigationManager NavigationManager
 @inject MediaItemService MediaItemService
+@inject IMediaItemRepository MediaItemRepository
 @inject FolderService FolderService
 @inject SettingsRepository SettingsRepository
+@inject PlayerService PlayerService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JsRunTime
 
@@ -172,7 +177,7 @@
 
     private async Task InitialLoad()
     {
-        item = await MediaItemService.LoadMediaItem(Id);
+        item = await MediaItemRepository.LoadMediaItem(Id);
         await OpenRootFolder();
         RefreshNextTrack();
     }
@@ -196,14 +201,14 @@
 
     public async Task OpenFile(PlaybackHistory historyItem)
     {
-        await MediaItemService.AddHistoryItem(item.Id, new PlaybackHistory
+        await MediaItemRepository.AddHistoryItem(item.Id, new PlaybackHistory
         {
             Filename = historyItem.Filename,
             Title = historyItem.Title,
             PlaybackTime = DateTime.Now
         });
         await LaunchFile(historyItem.Filename);
-        item = await MediaItemService.LoadMediaItem(Id);
+        item = await MediaItemRepository.LoadMediaItem(Id);
     }
 
     public async Task ClickFile(MediaFile file)
@@ -228,14 +233,14 @@
 
     private async Task OpenFile(MediaFile file)
     {
-        await MediaItemService.AddHistoryItem(item.Id, new PlaybackHistory
+        await MediaItemRepository.AddHistoryItem(item.Id, new PlaybackHistory
         {
             Filename = file.Path,
             Title = file.Title,
             PlaybackTime = DateTime.Now
         });
         await LaunchFile(file.Path);
-        item = await MediaItemService.LoadMediaItem(Id); //Why is this needed? just to refresh i guess
+        item = await MediaItemRepository.LoadMediaItem(Id); //Why is this needed? just to refresh i guess
     }
 
     private async Task LaunchFile(string path) {
@@ -247,7 +252,7 @@
 
         if(_settings.UseInternalPlayer)
         {
-            await PlayerUtils.OpenFile(path, item);
+            await PlayerService.OpenFile(path, item);
         } else
         {
             FileService.LaunchMediaFileDefault(path);
@@ -256,12 +261,12 @@
 
     private async Task LoadFolder(MediaFile folder)
     {
-        currentFiles = MediaItemService.GetFilesForDirectory(folder.Path, item.Files);
+        currentFiles = MediaItemHelper.GetFilesForDirectory(folder.Path, item.Files);
         await RecalculateTags();
     }
 
     public async Task OpenRootFolder() {
-        currentFiles = MediaItemService.GetFilesForDirectory(item.FolderDirectory, item.Files);
+        currentFiles = MediaItemHelper.GetFilesForDirectory(item.FolderDirectory, item.Files);
         navigation = new List<MediaFile>();
         await RecalculateTags();
     }
@@ -316,7 +321,7 @@
 
     public async void OnDelete()
     {
-        await MediaItemService.DeleteMediaItem(new Guid(Id));
+        await MediaItemRepository.DeleteMediaItem(new Guid(Id));
         OnBack();
     }
 
@@ -331,7 +336,7 @@
 
     public async void OnCleanHistory()
     {
-        await MediaItemService.CleanHistory(item);
+        await MediaItemRepository.CleanHistory(item);
         RefreshNextTrack();
     }
 
@@ -353,7 +358,7 @@
     {
         try
         {
-            nextTrack = MediaItemService.GetNextFile(item);
+            nextTrack = item.GetNextMediaFile();
         }
         catch (Exception e)
         {

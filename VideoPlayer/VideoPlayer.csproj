@@ -5,6 +5,13 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <UseWPF>true</UseWPF>
     <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+    <RunPostBuildEvent>Always</RunPostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <WarningLevel>7</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <WarningLevel>7</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="LibVLCSharp.WPF" Version="3.6.7" />
@@ -31,4 +38,7 @@
   <ItemGroup>
     <ProjectReference Include="..\VideoPlayer.Shared\VideoPlayer.Shared.csproj" />
   </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="xcopy /e /i /y &quot;$(ProjectDir)web-player\build&quot; &quot;$(TargetDir)\web-player\build&quot;" />
+  </Target>
 </Project>
