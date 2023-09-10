@@ -1,11 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { ReactComponent as LowVolume } from '../assets/icons/sound-min.svg';
 import { ReactComponent as MidVolume } from '../assets/icons/sound-med.svg';
 import { ReactComponent as FullVolume } from '../assets/icons/sound-max.svg';
 import { ReactComponent as MuteVolume } from '../assets/icons/sound-mute.svg';
-import { postMessage } from '../events';
+import { postMessage, createThrottledPostMessage } from '../events';
 import '../Styles/VolumeSlider.css'
 import { useEventListeners } from '../Utlis/helpers';
+import throttle from 'lodash.throttle';
 
 const VolumeControl = () => {
   const volumePopupHalfWidth = 20; //volumePopup.offsetWidth is not present on first render
@@ -15,6 +16,10 @@ const VolumeControl = () => {
   const [showPopup, setShowPopup] = useState(false);
   const volumeRef = useRef(null);
   const volumePopupRef = useRef(null);
+
+  // const throttledPostMessage = useMemo(() => throttle((type, value) => {
+  //   postMessage(type, value);
+  // }, 50), []);
 
   const onToggleMute = () => {
     const newMutedState = !muted;
@@ -29,7 +34,9 @@ const VolumeControl = () => {
     
     setVolume(vol);
     postMessage('volume', vol);
+    //throttledPostMessage('volume', vol); Deadlock is fixed now? maybe dont need this anymore
   }
+
   const upHandler = () => {
     changeVolume(volume + 0.1);
   }

@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Windows;
@@ -255,7 +256,7 @@ namespace VideoPlayer
             try
             {
                 var time = (long)Math.Round(double.Parse(((JsonElement)data).GetString()));
-                _mediaPlayer.Time = time;
+                ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.Time = time);
             }
             catch (Exception e)
             {
@@ -291,7 +292,7 @@ namespace VideoPlayer
             try
             {
                 var volume = ((JsonElement)data).GetDouble();
-                _mediaPlayer.Volume = (int)Math.Floor(volume * 100);
+                ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.Volume = (int)Math.Floor(volume * 100));
             }
             catch (Exception e)
             {

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { registerEventHandler, postMessage } from '../events';
-import { debounce } from '../Utlis/helpers';
 import '../Styles/ProgressBar.css'
 
 function timeFormat(duration) {
@@ -37,7 +36,7 @@ const ProgressBar = () => {
 
     const progressClick = (event) => {
         setCurrentTime(event);
-        debounce(postMessage('set_playback_time', event)); //TODO test/fix debounce
+        postMessage('set_playback_time', event) //TODO throttle
     }
 
     const getBackgroundSize = () => {
