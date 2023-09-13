@@ -5,10 +5,10 @@ import { ReactComponent as RewindButton } from '../assets/icons/10-back.svg';
 import { ReactComponent as ForwardButton } from '../assets/icons/10-forward.svg';
 import { ReactComponent as NextTrack } from '../assets/icons/next.svg';
 import { ReactComponent as Epsiodes } from '../assets/icons/episodes.svg';
-import { ReactComponent as Subtitles } from '../assets/icons/subtitles.svg';
 import { ReactComponent as Fullscreen } from '../assets/icons/fullscreen.svg';
 import { ReactComponent as ExitFullscreen } from '../assets/icons/minimize.svg';
 import VolumeControl from './VolumeControl';
+import SubtitleControl from './SubtitleControl';
 import TrackTitle from './TrackTitle';
 import { postMessage, registerEventHandler } from '../events';
 import { useEventListeners } from '../Utlis/helpers';
@@ -81,9 +81,7 @@ const PlaybackControls = () => {
       <button className="episodes">
         <Epsiodes />
       </button>
-      <button className="subtitles">
-        <Subtitles />
-      </button>
+      <SubtitleControl />
       <button className="fullscreen" onClick={toggleFullscreen}>
         {getFullscreenButton()}
       </button>

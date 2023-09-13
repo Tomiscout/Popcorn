@@ -1,12 +1,11 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { ReactComponent as LowVolume } from '../assets/icons/sound-min.svg';
 import { ReactComponent as MidVolume } from '../assets/icons/sound-med.svg';
 import { ReactComponent as FullVolume } from '../assets/icons/sound-max.svg';
 import { ReactComponent as MuteVolume } from '../assets/icons/sound-mute.svg';
-import { postMessage, createThrottledPostMessage } from '../events';
+import { postMessage } from '../events';
 import '../Styles/VolumeSlider.css'
 import { useEventListeners } from '../Utlis/helpers';
-import throttle from 'lodash.throttle';
 
 const VolumeControl = () => {
   const volumePopupHalfWidth = 20; //volumePopup.offsetWidth is not present on first render

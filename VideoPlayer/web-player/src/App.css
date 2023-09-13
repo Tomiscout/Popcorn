@@ -187,29 +187,11 @@ input:focus {
 #volume-popup {
   width: 40px;
   height: 140px;
-}
-
-#subtitle-popup {
-  width: 400px;
-  height: 140px;
-}
-
-#subtitle-popup p {
-  color: white;
-}
-
-#subtitle-popup {
-  display: flex;
-}
-
-.subtitle-popup-child {
-  flex: 1;
-  width: 50%;
+  padding-top: 10px;
 }
 
 .popup {
   position: absolute;
-  padding-top: 10px;
   background-color: rgba(0, 0, 0, 0.737);
   animation: fadeIn 0.2s ease-in; 
 }
