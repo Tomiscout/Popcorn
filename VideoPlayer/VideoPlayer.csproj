@@ -14,7 +14,7 @@
     <WarningLevel>7</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LibVLCSharp.WPF" Version="3.6.7" />
+    <PackageReference Include="LibVLCSharp.WPF" Version="3.7.0" />
     <PackageReference Include="MahApps.Metro" Version="2.4.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />

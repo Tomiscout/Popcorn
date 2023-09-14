@@ -18,7 +18,7 @@ const ControlBar = () => {
         controlsTimeoutRef.current = setTimeout(() => {
             controlsContainerRef.current.style.opacity = '0';
             document.body.style.cursor = 'none';
-        }, 3000 * 600);
+        }, 3000);
     };
 
     useEventListeners('keyup', { 'default': displayControls });

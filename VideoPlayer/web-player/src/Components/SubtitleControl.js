@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { postMessage, registerEventHandler } from '../events';
 import { ReactComponent as Subtitles } from '../assets/icons/subtitles.svg';
+import { ReactComponent as AddIcon } from '../assets/icons/plus.svg';
 import '../Styles/SubtitleControl.css';
 
 const SubtitleControl = () => {
   const subtitlePopupWidth = 500;
 
-  const [audioTracks, setAudioTracks] = useState([]);
-  const [subtitleTracks, setSubtitleTracks] = useState([]);
+  const [audioTracks, setAudioTracks] = useState([{ description: 'test', language: 'LT', id: 1 }]);
+  const [subtitleTracks, setSubtitleTracks] = useState([{ description: 'test', language: 'LT', id: 1 }]);
   const [selectedAudio, setSelectedAudio] = useState(-1);
   const [selectedSubtitle, setSelectedSubtitle] = useState(-1);
   const [showPopup, setShowPopup] = useState(false);
@@ -15,7 +16,7 @@ const SubtitleControl = () => {
   const subtitlePopupRef = useRef(null);
 
   useEffect(() => {
-    registerEventHandler('track_loaded', (data) => {
+    registerEventHandler('audio_subtitles_loaded', (data) => {
       setAudioTracks(data.audioTracks || []);
       setSubtitleTracks(data.subtitleTracks || []);
     });
@@ -39,6 +40,10 @@ const SubtitleControl = () => {
     setSelectedSubtitle(value);
     postMessage('subtitle_track_selected', value);
   };
+
+  const handleAddSubtitle = () => {
+    postMessage('subtitle_file_select');
+  }
 
   const handleMouseEnter = () => {
     const subtitleElement = subtitleRef.current;
@@ -87,11 +92,19 @@ const SubtitleControl = () => {
       <div id="subtitle-popup" className="popup" ref={subtitlePopupRef} style={{ width: `${subtitlePopupWidth}px`, display: showPopup ? '' : 'none' }}>
         <div className='subtitle-popup-container'>
           <div className='subtitle-popup-half'>
-            <p className='titles'>Audio</p>
+            <div className='subtitles-header'>
+              <p className='titles'>Audio</p>
+            </div>
             {renderCustomSelector(audioTracks, selectedAudio, handleAudioChange)}
           </div>
           <div className='subtitle-popup-half'>
-            <p className='titles'>Subtitles</p>
+            <div className='subtitles-header'>
+              <p className='titles'>Subtitles</p>
+              <button className='add-subtitle-button' onClick={handleAddSubtitle}>
+                <AddIcon />
+                <span>Add</span>
+              </button>
+            </div>
             {renderCustomSelector(subtitleTracks, selectedSubtitle, handleSubtitleChange)}
           </div>
         </div>

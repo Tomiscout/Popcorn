@@ -16,6 +16,7 @@ using MediaPlayer = LibVLCSharp.Shared.MediaPlayer;
 using System.Linq;
 using LibVLCSharp.Shared.Structures;
 using VideoPlayer.Utils;
+using System.Threading.Tasks;
 
 namespace VideoPlayer;
 internal static class PlayerCore
@@ -24,6 +25,7 @@ internal static class PlayerCore
     private static MediaPlayer _mediaPlayer;
 
     public static Action<string> PostWebMessage { get; set; }
+    public static Func<string> SubtitleFileSelect { get; set; }
     public static Func<bool> PlayerInitialized { get; set; }
     public static Func<bool, bool> ChangeFullscreen { get; set; }
 
@@ -36,6 +38,7 @@ internal static class PlayerCore
         Core.Initialize();
 
         _libVLC = new LibVLC();
+        _libVLC.Log += (object sender, LogEventArgs e) => Debug.WriteLine($"[LibVLC] {e.FormattedLog}");
         _mediaPlayer = new MediaPlayer(_libVLC);
         _mediaPlayer.TimeChanged += RecalculateSeekValue;
         _mediaPlayer.LengthChanged += SendLengthEvent;
@@ -73,17 +76,24 @@ internal static class PlayerCore
     private static void PlayingStarted(object sender, EventArgs e)
     {
         if (!_isLoadingTrack) return;
-        //.AddSlave(MediaSlaveType.Subtitle, "file:///C:\\Users\\Me\\Desktop\\subs.srt", true);
         PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
         {
             FileName = _currentMediaFile.Path,
             Title = _currentMediaFile.Title,
             ShortTitle = _currentMediaFile.GetDisplayTitle(),
+        });
+        SendAudioAndSubtitles();
+
+        _isLoadingTrack = false;
+    }
+
+    private static void SendAudioAndSubtitles()
+    {
+        PostEvent("audio_subtitles_loaded", new AudioAndSubtitlesLoadedEvent()
+        {
             AudioTracks = _mediaPlayer.AudioTrackDescription.Select(MapToVlcTrack).ToList(),
             SubtitleTracks = _mediaPlayer.SpuDescription.Select(MapToVlcTrack).ToList(),
         });
-
-        _isLoadingTrack = false;
     }
 
     //This is invoked 3-4 times per second
@@ -126,6 +136,37 @@ internal static class PlayerCore
         }).ConfigureAwait(false);
 
         LoadMedia(nextItem);
+
+        return true;
+    }
+
+    private static bool SubtitleFileAdd()
+    {
+        var filePath = SubtitleFileSelect();
+        if (string.IsNullOrWhiteSpace(filePath)) return true;
+
+        var currentCount = _mediaPlayer.SpuCount;
+        _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, $"file:///{filePath}", true);
+
+        //This could be avoided if 'media_subitem_added' event support was added.
+        bool isSubtitleLoaded = false;
+        Task.Run(() =>
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                Task.Delay(50).Wait();
+
+                if (_mediaPlayer.SpuCount > currentCount)
+                {
+                    isSubtitleLoaded = true;
+                    break;
+                }
+            }
+        }).Wait();
+        if (isSubtitleLoaded)
+        {
+            SendAudioAndSubtitles();
+        }
 
         return true;
     }
@@ -233,6 +274,7 @@ internal static class PlayerCore
             "initialized" => PlayerInitialized(),
             "audio_track_selected" => AudioTrackSelected(webEvent.Data),
             "subtitle_track_selected" => SubtitleTrackSelected(webEvent.Data),
+            "subtitle_file_select" => SubtitleFileAdd(),
             _ => throw new NotImplementedException()
         };
     }

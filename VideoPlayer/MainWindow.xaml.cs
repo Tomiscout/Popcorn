@@ -1,6 +1,7 @@
 ﻿using LibVLCSharp.WPF;
 using MahApps.Metro.Controls;
 using Microsoft.Web.WebView2.Core;
+using Microsoft.Win32;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -25,6 +26,7 @@ namespace VideoPlayer
             PlayerCore.PostWebMessage = PostWebMessageToWebView;
             PlayerCore.ChangeFullscreen = ChangeFullscreen;
             PlayerCore.PlayerInitialized = PlayerInitialized;
+            PlayerCore.SubtitleFileSelect = ShowSubtitleFileDialog;
             InitializeComponent();
         }
         
@@ -122,6 +124,22 @@ namespace VideoPlayer
         private void LogInBrowser(string message)
         {
             WebView?.Dispatcher?.Invoke(() => WebView?.CoreWebView2?.ExecuteScriptAsync($"console.log('{message}')"));
+        }
+
+        private string ShowSubtitleFileDialog()
+        {
+            string result = null;
+            Dispatcher.Invoke(() =>
+            {
+                OpenFileDialog openFileDialog = new OpenFileDialog();
+                openFileDialog.Filter = "Subtitle files (*.srt, *.sub, *.ssa, *.ass, *.vtt, *.idx, *.rt, *.smil, *.smi)|*.srt;*.sub;*.ssa;*.ass;*.vtt;*.idx;*.rt;*.smil;*.smi";
+
+                if (openFileDialog.ShowDialog() == true)
+                {
+                    result = openFileDialog.FileName;
+                }
+            });
+            return result;
         }
 
         public void Dispose()

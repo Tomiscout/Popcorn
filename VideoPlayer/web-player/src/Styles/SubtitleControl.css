@@ -22,6 +22,7 @@
     font-size: 18px;
     margin-left: 15px;
     margin-bottom: 4px;
+    flex-grow: 1;
 }
 
 /*Dividers*/
@@ -147,4 +148,24 @@ ul {
 
 .bold {
     font-weight: bold;
+}
+
+.add-subtitle-button {
+    display: flex;
+    align-items: center;
+}
+
+.add-subtitle-button svg {
+    width: 10px !important;
+    height: 10px !important;
+}
+
+.add-subtitle-button span {
+    font-size: 12px;
+    color: white;
+    margin-left: 2px;
+}
+
+.subtitles-header {
+    display: flex;
 }
