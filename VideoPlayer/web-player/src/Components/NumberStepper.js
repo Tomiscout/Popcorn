@@ -26,7 +26,7 @@ const NumberStepper = ({ onNumberChanged, step, reset }) => {
       <button onClick={() => handleValueChange(-step)}>
         <MinusIcon />
       </button>
-      <span>{value.toFixed(2)} s</span>
+      <span>{(value === 0 ? 0 : value).toFixed(2)} s</span>
       <button onClick={() => handleValueChange(step)}>
         <PlusIcon />
       </button>
