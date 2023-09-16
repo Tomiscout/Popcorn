@@ -15,7 +15,7 @@ namespace VideoBlazor.PlayerServer
 
         //TODO change this after figuring out how to build everything
         private const string _playerExePath = @"C:\Projects\VideoBlazor\VideoPlayer\bin\Debug\net7.0-windows\VideoPlayer.exe";
-        
+
         public async Task OpenFile(string filePath, MediaItem item)
         {
             if (ServerPipeManager.IsConnected())
@@ -32,12 +32,23 @@ namespace VideoBlazor.PlayerServer
         private void LaunchPlayer(string mediaPath)
         {
             var path = GetPlayerExePath();
-            if(!File.Exists(path))
+            if (!File.Exists(path))
             {
                 throw new FileNotFoundException("VideoPlayer path is not found. " + path);
             }
-            var arguments = new List<string>() { mediaPath };
-            Process.Start(path, arguments);
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = path,
+                Arguments = mediaPath,
+                UseShellExecute = false,
+                Environment =
+                {
+                    { "LANG", "en_US.UTF-8" }
+                }
+            };
+
+            Process.Start(startInfo);
         }
 
         private string GetPlayerExePath()

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Extensions.Configuration;
 using VideoPlayer.Pipes;
@@ -19,10 +18,11 @@ namespace VideoPlayer
                 .AddJsonFile("appsettings.json")
                 .Build();
         }
-        
+
         private void Window_Destroying(object sender, EventArgs e)
         {
             PipeManager.Dispose();
+            PlayerCore.Dispose();
         }
     }
 }

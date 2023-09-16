@@ -2,7 +2,10 @@
   "profiles": {
     "VideoPlayer": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\brazi\\Desktop\\korra.mkv\"\r\n\"C:\\Users\\brazi\\Desktop\\naruto.mkv\""
+      "commandLineArgs": "\"C:\\Users\\brazi\\Desktop\\vita_LRT.mp4\"\r\n\"C:\\Users\\brazi\\Desktop\\korra.mkv\"\r\n\"C:\\Users\\brazi\\Desktop\\naruto.mkv\"",
+      "environmentVariables": {
+        "LANG": "en_US.UTF-8"
+      }
     }
   }
 }
