@@ -2,16 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { postMessage, registerEventHandler } from '../events';
 import { ReactComponent as Subtitles } from '../assets/icons/subtitles.svg';
 import { ReactComponent as AddIcon } from '../assets/icons/plus.svg';
+import NumberStepper from './NumberStepper';
 import '../Styles/SubtitleControl.css';
 
 const SubtitleControl = () => {
   const subtitlePopupWidth = 500;
 
-  const [audioTracks, setAudioTracks] = useState([{ description: 'test', language: 'LT', id: 1 }]);
-  const [subtitleTracks, setSubtitleTracks] = useState([{ description: 'test', language: 'LT', id: 1 }]);
+  const [audioTracks, setAudioTracks] = useState([{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 }]);
+  const [subtitleTracks, setSubtitleTracks] = useState([{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 }]);
   const [selectedAudio, setSelectedAudio] = useState(-1);
   const [selectedSubtitle, setSelectedSubtitle] = useState(-1);
   const [showPopup, setShowPopup] = useState(false);
+  const [resetSubtitleDelay, setResetSubtitleDelay] = useState(false);
   const subtitleRef = useRef(null);
   const subtitlePopupRef = useRef(null);
 
@@ -24,10 +26,10 @@ const SubtitleControl = () => {
 
   useEffect(() => {
     if (audioTracks.length) {
-      setSelectedAudio(audioTracks[0]);
+      setSelectedAudio(audioTracks.find(t => t.selected)?.id || audioTracks[0].id);
     }
     if (subtitleTracks.length) {
-      setSelectedSubtitle(subtitleTracks[0]);
+      setSelectedSubtitle(subtitleTracks.find(t => t.selected)?.id || subtitleTracks[0].id);
     }
   }, [audioTracks, subtitleTracks]);
 
@@ -39,11 +41,21 @@ const SubtitleControl = () => {
   const handleSubtitleChange = (value) => {
     setSelectedSubtitle(value);
     postMessage('subtitle_track_selected', value);
+    subtitleDelayReset();
   };
 
   const handleAddSubtitle = () => {
     postMessage('subtitle_file_select');
   }
+
+  const subtitleDelayStep = 0.05;
+  const handleSubtitleDelayChanged = (newDelay) => {
+    postMessage('subtitle_delay_set', newDelay);
+  }
+  const subtitleDelayReset = () => { //hacky but idc
+    setResetSubtitleDelay(true);
+    setTimeout(() => setResetSubtitleDelay(false), 0);
+  };
 
   const handleMouseEnter = () => {
     const subtitleElement = subtitleRef.current;
@@ -76,7 +88,7 @@ const SubtitleControl = () => {
           onClick={() => handleChange(track.id)}
         >
           <div className="checkmark-container">
-            {selectedValue === track && <span className="checkmark">✓</span>}
+            {selectedValue === track.id && <span className="checkmark">✓</span>}
           </div>
           {<span className={`option-text ${selectedValue === track.id ? 'bold' : ''}`}>
             {track.id === -1 ? 'None' : track.language + ' '}
@@ -100,16 +112,19 @@ const SubtitleControl = () => {
           <div className='subtitle-popup-half'>
             <div className='subtitles-header'>
               <p className='titles'>Subtitles</p>
+            </div>
+            {renderCustomSelector(subtitleTracks, selectedSubtitle, handleSubtitleChange)}
+            <div className='subtitles-footer'>
               <button className='add-subtitle-button' onClick={handleAddSubtitle}>
                 <AddIcon />
                 <span>Add</span>
               </button>
+              <NumberStepper onNumberChanged={handleSubtitleDelayChanged} step={subtitleDelayStep} reset={resetSubtitleDelay} />
             </div>
-            {renderCustomSelector(subtitleTracks, selectedSubtitle, handleSubtitleChange)}
           </div>
         </div>
       </div>
-      <button id="subtitle-button">
+      <button className='main-button' id="subtitle-button">
         <Subtitles />
       </button>
     </div>

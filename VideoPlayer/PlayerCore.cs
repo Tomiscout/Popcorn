@@ -82,6 +82,7 @@ internal static class PlayerCore
             Title = _currentMediaFile.Title,
             ShortTitle = _currentMediaFile.GetDisplayTitle(),
         });
+        AutoSelectAudioAndSubtitles();
         SendAudioAndSubtitles();
 
         _isLoadingTrack = false;
@@ -89,12 +90,46 @@ internal static class PlayerCore
 
     private static void SendAudioAndSubtitles()
     {
-        PostEvent("audio_subtitles_loaded", new AudioAndSubtitlesLoadedEvent()
+        var @event = new AudioAndSubtitlesLoadedEvent()
         {
-            AudioTracks = _mediaPlayer.AudioTrackDescription.Select(MapToVlcTrack).ToList(),
-            SubtitleTracks = _mediaPlayer.SpuDescription.Select(MapToVlcTrack).ToList(),
-        });
+            AudioTracks = _mediaPlayer.AudioTrackDescription
+            .Select(track => MapToVlcTrack(track, track.Id == _mediaPlayer.AudioTrack))
+            .ToList(),
+            SubtitleTracks = _mediaPlayer.SpuDescription
+            .Select(track => MapToVlcTrack(track, track.Id == _mediaPlayer.Spu))
+            .ToList(),
+        };
+        PostEvent("audio_subtitles_loaded", @event);
     }
+
+    private static void AutoSelectAudioAndSubtitles()
+    {
+        if(_mediaPlayer.AudioTrackCount > 1)
+        {
+            var englishTracks = _mediaPlayer.AudioTrackDescription.Where(EnglishSelectPredicate).ToList();
+            if(englishTracks.Any())
+            {
+                _mediaPlayer.SetAudioTrack(englishTracks.First().Id);
+            }
+        }
+
+        if (_mediaPlayer.SpuCount > 1)
+        {
+            var englishTracks = _mediaPlayer.SpuDescription.Where(EnglishSelectPredicate).ToList();
+            if (englishTracks.Any())
+            {
+                _mediaPlayer.SetSpu(englishTracks.First().Id);
+            }
+        }
+    }
+
+    private static Func<TrackDescription, bool> EnglishSelectPredicate = (track) =>
+    {
+        var (lang, description) = TrackDescriptionParser.Parse(track.Name);
+        if (lang?.ToLower() == "english") return true;
+
+        return false;
+    };
 
     //This is invoked 3-4 times per second
     private static void RecalculateSeekValue(object sender, MediaPlayerTimeChangedEventArgs e)
@@ -169,6 +204,12 @@ internal static class PlayerCore
         }
 
         return true;
+    }
+
+    private static bool SubtitleDelaySet(object data)
+    {
+        var delay = ((JsonElement)data).GetDouble();
+        return ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.SetSpuDelay(Convert.ToInt64(delay * 1000000)));
     }
 
     private static bool SetPlaybackTimeSkip(object data)
@@ -275,18 +316,20 @@ internal static class PlayerCore
             "audio_track_selected" => AudioTrackSelected(webEvent.Data),
             "subtitle_track_selected" => SubtitleTrackSelected(webEvent.Data),
             "subtitle_file_select" => SubtitleFileAdd(),
+            "subtitle_delay_set" => SubtitleDelaySet(webEvent.Data),
             _ => throw new NotImplementedException()
         };
     }
 
     #region Mappings
-    private static VlcTrack MapToVlcTrack(TrackDescription track) {
-        var (name, description) = TrackDescriptionParser.Parse(track.Name);
+    private static VlcTrack MapToVlcTrack(TrackDescription track, bool isSelected) {
+        var (lang, description) = TrackDescriptionParser.Parse(track.Name);
         return new VlcTrack
         {
             Id = track.Id,
-            Language = name,
-            Description = description
+            Language = lang,
+            Description = description,
+            Selected = isSelected
         };
     }
     #endregion

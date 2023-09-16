@@ -43,7 +43,7 @@ const PlaybackControls = () => {
   const exitFullscreen = () => {
     if (fullscreen) {
       setFullscreen(false);
-      postMessage('fullscreen', fullscreen);
+      postMessage('fullscreen', false);
     }
   }
 
@@ -63,26 +63,26 @@ const PlaybackControls = () => {
 
   return (
     <div className="controls">
-      <button className="play-pause" onClick={playPause}>
+      <button className="main-button play-pause" onClick={playPause}>
         {getPlayButton()}
       </button>
-      <button className="rewind" onClick={skipBackward}>
+      <button className="main-button rewind" onClick={skipBackward}>
         <RewindButton />
       </button>
-      <button className="fast-forward" onClick={skipForward}>
+      <button className="main-button fast-forward" onClick={skipForward}>
         <ForwardButton />
       </button>
       <VolumeControl />
       <TrackTitle />
 
-      <button className="next" onClick={nextTrack}>
+      <button className="main-button next" onClick={nextTrack}>
         <NextTrack />
       </button>
-      <button className="episodes">
+      <button className="main-button episodes">
         <Epsiodes />
       </button>
       <SubtitleControl />
-      <button className="fullscreen" onClick={toggleFullscreen}>
+      <button className="main-button fullscreen" onClick={toggleFullscreen}>
         {getFullscreenButton()}
       </button>
     </div>

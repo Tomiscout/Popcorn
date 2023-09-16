@@ -23,5 +23,8 @@ namespace VideoPlayer.Contracts
 
         [JsonPropertyName("description")]
         public string Description { get; set; }
+
+        [JsonPropertyName("selected")]
+        public bool Selected { get; set; }
     }
 }

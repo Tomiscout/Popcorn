@@ -54,12 +54,15 @@ namespace VideoPlayer
                 var env = await CoreWebView2Environment.CreateAsync(options: op);
                 await WebView.EnsureCoreWebView2Async(env);
 
-                WebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    "app.local",
-                    webPath,
-                    CoreWebView2HostResourceAccessKind.Allow
-                );
-                WebView.Source = new Uri($"file:///{webPath.Replace(@"\", "/")}index.html");
+                bool useLocalWeb = Environment.GetEnvironmentVariable("UseLocal").ToLower() == "true";
+                if (useLocalWeb)
+                {
+                    WebView.Source = new Uri("http://localhost:3000/");
+                } else
+                {
+                    WebView.CoreWebView2.SetVirtualHostNameToFolderMapping( "app.local", webPath, CoreWebView2HostResourceAccessKind.Allow );
+                    WebView.Source = new Uri($"file:///{webPath.Replace(@"\", "/")}index.html");
+                }
                 WebView.Focus();
             }
             catch (Exception e)

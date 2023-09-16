@@ -109,10 +109,13 @@ input:focus {
   min-width: 50px;
   min-height: 50px;
   margin: 0px 1vw;
-  opacity: 0.4;
   transform: scale(0.9);
   transition: all 0.2s ease-in-out;
   cursor: pointer;
+}
+
+.main-button {
+  opacity: 0.4;
 }
 
 .video-container .controls button:hover {

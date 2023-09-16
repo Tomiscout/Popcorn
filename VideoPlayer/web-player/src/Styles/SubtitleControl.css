@@ -78,7 +78,7 @@
 
 .custom-select {
     max-height: 157px;
-    /* lol */
+    flex-grow: 1;
     overflow-y: auto;
     width: 100%;
 }
@@ -153,6 +153,7 @@ ul {
 .add-subtitle-button {
     display: flex;
     align-items: center;
+    opacity: 0.8;
 }
 
 .add-subtitle-button svg {
@@ -168,4 +169,9 @@ ul {
 
 .subtitles-header {
     display: flex;
+}
+
+.subtitles-footer {
+    display: flex;
+    justify-content: space-between;
 }

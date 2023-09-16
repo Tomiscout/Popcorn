@@ -100,7 +100,7 @@ const VolumeControl = () => {
           />
         </div>
       </div>
-      <button id="volume-button" onClick={onToggleMute}>
+      <button className='main-button' id="volume-button" onClick={onToggleMute}>
         {getVolumeIcon()}
       </button>
     </div>
