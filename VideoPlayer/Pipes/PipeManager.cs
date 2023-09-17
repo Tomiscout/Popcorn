@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using VideoPlayer.Shared;
 using VideoPlayer;
 using VideoPlayer.Shared.PipeEvents.Server;
+using Serilog;
 
 namespace VideoPlayer.Pipes
 {
@@ -16,7 +17,6 @@ namespace VideoPlayer.Pipes
         
         private static PipeClientWithCallback<Shared.IPipeServer, IPipeClient> pipeClient;
 
-        public static Action<string> Print;
         
         public static async Task Initialize(MainWindow window)
         {
@@ -25,8 +25,7 @@ namespace VideoPlayer.Pipes
 
         public static void Test()
         {
-            
-            Print.Invoke($"Test");
+            Log.Information("PipeManager test");
         }
 
         public static async Task ConnectToAppPipe(MainWindow window)
@@ -84,12 +83,30 @@ namespace VideoPlayer.Pipes
         //Events
         private static async Task PingServerOnInit()
         {
-            await pipeClient.InvokeAsync(x => x.OnClientInitialized());
+            try
+            {
+                await pipeClient.InvokeAsync(x => x.OnClientInitialized());
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Can't send ping server on init event");
+            }
         }
 
         public static async Task SendTrackPlayedEvent(TrackPlayedEvent e)
         {
-            await pipeClient.InvokeAsync(x => x.TrackPlayed(e));
+            if (pipeClient.State != PipeState.Connected) {
+                PlayerCore.SavePlayerHistory(e);
+            };
+
+            try
+            {
+                await pipeClient.InvokeAsync(x => x.TrackPlayed(e));
+            } catch(Exception ex)
+            {
+                Log.Error(ex, "Can't send track played event");
+                PlayerCore.SavePlayerHistory(e);
+            }
         }
     }
 }

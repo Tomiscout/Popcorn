@@ -1,16 +1,21 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using VideoBlazor.Domain.Interfaces;
 using VideoBlazor.Domain.Models;
+using VideoBlazor.Domain.Services;
 
 namespace VideoBlazor.PlayerServer
 {
     public class PlayerService
     {
+        private readonly ILogger<PlayerService> _logger;
         private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly MediaItemRefreshService _mediaItemRefreshService;
 
-        public PlayerService(IMediaItemRepository mediaItemRepository)
+        public PlayerService(ILogger<PlayerService> logger, IMediaItemRepository mediaItemRepository, MediaItemRefreshService mediaItemRefreshService)
         {
             _mediaItemRepository = mediaItemRepository;
+            _mediaItemRefreshService = mediaItemRefreshService;
         }
 
         //TODO change this after figuring out how to build everything
@@ -18,15 +23,21 @@ namespace VideoBlazor.PlayerServer
 
         public async Task OpenFile(string filePath, MediaItem item)
         {
-            if (ServerPipeManager.IsConnected())
+            try
             {
-                await ServerPipeManager.LoadMediaEvent(filePath);
-                await ServerPipeManager.SendMediaInfoEvent(item);
-                return;
-            }
+                if (ServerPipeManager.IsConnected())
+                {
+                    await ServerPipeManager.SendMediaInfoEvent(item);
+                    await ServerPipeManager.LoadMediaEvent(filePath);
+                    return;
+                }
 
-            Task.Run(async () => await ServerPipeManager.StartServer(item, _mediaItemRepository)).ConfigureAwait(false); //TODO is this okay?
-            LaunchPlayer(filePath);
+                Task.Run(async () => await ServerPipeManager.StartServer(item, _mediaItemRepository, _mediaItemRefreshService)).ConfigureAwait(false); //TODO is this okay?
+                LaunchPlayer(filePath);
+            } catch(Exception e)
+            {
+                _logger.LogError(e, "Failed to open file with internal player");
+            }
         }
 
         private void LaunchPlayer(string mediaPath)
@@ -42,13 +53,34 @@ namespace VideoBlazor.PlayerServer
                 FileName = path,
                 Arguments = mediaPath,
                 UseShellExecute = false,
+                RedirectStandardOutput = true,  // Redirect the standard output
+                RedirectStandardError = true,  // Redirect the error output
                 Environment =
                 {
                     { "LANG", "en_US.UTF-8" }
                 }
             };
+            var process = new Process() { StartInfo = startInfo };
+            // Handle standard output
+            process.OutputDataReceived += (sender, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data))
+                {
+                    Debug.WriteLine($"[VideoPlayer]: {e.Data}");
+                }
+            };
 
-            Process.Start(startInfo);
+            // Handle error output
+            process.ErrorDataReceived += (sender, e) =>
+            {
+                if (!string.IsNullOrEmpty(e.Data))
+                {
+                    Debug.WriteLine($"[VideoPlayer-ERROR]: {e.Data}");
+                }
+            };
+            process.Start();
+            process.BeginOutputReadLine();  // Start async read of standard output
+            process.BeginErrorReadLine();  // Start async read of error output
         }
 
         private string GetPlayerExePath()

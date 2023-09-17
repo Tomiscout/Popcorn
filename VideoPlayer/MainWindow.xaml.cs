@@ -2,9 +2,11 @@
 using MahApps.Metro.Controls;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Win32;
+using Serilog;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
@@ -32,8 +34,6 @@ namespace VideoPlayer
         
         private async void MetroWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            PipeManager.Print = LogInBrowser;
-
             Task.Run(async () => await PipeManager.Initialize(this)); //TODO this
 
             await InitializeWebView2();
@@ -54,12 +54,14 @@ namespace VideoPlayer
                 var env = await CoreWebView2Environment.CreateAsync(options: op);
                 await WebView.EnsureCoreWebView2Async(env);
 
-                bool useLocalWeb = Environment.GetEnvironmentVariable("UseLocal").ToLower() == "true";
+                bool useLocalWeb = Environment.GetEnvironmentVariable("UseLocal")?.ToLower() == "true";
                 if (useLocalWeb)
                 {
+                    Log.Information("Using devloper web-player from localhost");
                     WebView.Source = new Uri("http://localhost:3000/");
                 } else
                 {
+                    Log.Information("Using bundled web-player");
                     WebView.CoreWebView2.SetVirtualHostNameToFolderMapping( "app.local", webPath, CoreWebView2HostResourceAccessKind.Allow );
                     WebView.Source = new Uri($"file:///{webPath.Replace(@"\", "/")}index.html");
                 }
@@ -67,7 +69,7 @@ namespace VideoPlayer
             }
             catch (Exception e)
             {
-                Debug.WriteLine("Failed to initialize webview", e);
+                Log.Error(e, "Failed to initialize webview");
             }
         }
 
@@ -80,9 +82,10 @@ namespace VideoPlayer
         {
             PipeManager.Test();
 
-            var envVars = Environment.GetCommandLineArgs();
-            if (envVars.Length > 1) {
-                PlayerCore.LoadMedia(envVars[1]);
+            var envPaths = Environment.GetCommandLineArgs().Where(Path.IsPathFullyQualified).ToList();
+            if (envPaths.Any()) {
+                envPaths.RemoveAt(0); //DLL path
+                PlayerCore.LoadFilesFromInput(envPaths);
             }
             return true;
         }
@@ -118,15 +121,10 @@ namespace VideoPlayer
             }
             catch (Exception e)
             {
-                Debug.WriteLine("Failed to change fullscreen status", e);
+                Log.Error(e, "Failed to change fullscreen status");
                 return false;
             }
             return true;
-        }
-
-        private void LogInBrowser(string message)
-        {
-            WebView?.Dispatcher?.Invoke(() => WebView?.CoreWebView2?.ExecuteScriptAsync($"console.log('{message}')"));
         }
 
         private string ShowSubtitleFileDialog()

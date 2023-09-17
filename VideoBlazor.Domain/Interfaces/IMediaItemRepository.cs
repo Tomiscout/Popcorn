@@ -8,7 +8,7 @@ public interface IMediaItemRepository
     Task SaveMediaItem(MediaItem item);
     Task<IList<MediaItem>> LoadMediaItems();
     Task AddMediaItem(MediaItem mediaItem);
-    Task AddHistoryItem(Guid id, PlaybackHistory item);
+    Task<IList<PlaybackHistory>> AddHistoryItem(Guid id, PlaybackHistory item);
     Task DeleteMediaItem(Guid id);
     Task CleanHistory(MediaItem item);
 }

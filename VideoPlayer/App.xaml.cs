@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows;
 using Microsoft.Extensions.Configuration;
+using Serilog;
 using VideoPlayer.Pipes;
 
 namespace VideoPlayer
@@ -19,10 +20,23 @@ namespace VideoPlayer
                 .Build();
         }
 
-        private void Window_Destroying(object sender, EventArgs e)
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console()
+                .WriteTo.Debug()
+                .WriteTo.File("logs\\VideoPlayer.txt", rollingInterval: RollingInterval.Day)
+                .CreateLogger();
+
+            base.OnStartup(e);
+        }
+
+        protected override void OnExit(ExitEventArgs e)
         {
             PipeManager.Dispose();
             PlayerCore.Dispose();
+            Log.CloseAndFlush();
+            base.OnExit(e);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Blazored.Modal;
 using VideoBlazor.Core.Services;
 using VideoBlazor.Domain.Interfaces;
+using VideoBlazor.Domain.Services;
 using VideoBlazor.Persistence;
 using VideoBlazor.Persistence.Repositories;
 using VideoBlazor.PlayerServer;
@@ -22,6 +23,7 @@ namespace VideoBlazor.Core
             services.AddSingleton<JsonRepository>();
             services.AddSingleton<PlayerService>();
             services.AddSingleton<IMediaItemRepository, MediaItemRepository>();
+            services.AddSingleton<MediaItemRefreshService>();
             services.AddBlazoredModal();
         }
     }

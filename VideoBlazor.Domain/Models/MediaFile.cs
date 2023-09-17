@@ -1,4 +1,5 @@
-﻿using VideoBlazor.Domain.Enum;
+﻿using System.Text.Json.Serialization;
+using VideoBlazor.Domain.Enum;
 using VideoBlazor.Shared.Utils;
 
 namespace VideoBlazor.Domain.Models;
@@ -9,6 +10,7 @@ public class MediaFile
     public string Title { get; set; }
     public string ShortTitle { get; set; } = string.Empty;
     public FileType Type { get; set; } = FileType.File;
+    public bool Played { get; set; } = false;
 
     public List<string> EpisodeTags { get; set; }
     public List<string> FormatTags { get; set; }

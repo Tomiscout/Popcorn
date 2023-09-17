@@ -8,5 +8,6 @@ public interface IPipeClient
 {
     public void LoadMedia(LoadMediaEvent loadEvent);
     public void MediaInfo(MediaItem mediaItem);
+    public void UpdateMediaItemHistory(IList<PlaybackHistory> history);
     public void Kill();
 }

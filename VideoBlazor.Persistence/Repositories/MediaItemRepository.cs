@@ -27,7 +27,7 @@ public class MediaItemRepository : IMediaItemRepository
 
     public async Task SaveMediaItem(MediaItem item)
     {
-        await _jsonRepository.SaveJson(item, string.Format(_jsonFormat, item.Id.ToString()));
+        await _jsonRepository.SaveJsonAsync(item, string.Format(_jsonFormat, item.Id.ToString()));
     }
 
     public async Task<IList<MediaItem>> LoadMediaItems()
@@ -61,7 +61,7 @@ public class MediaItemRepository : IMediaItemRepository
         await SaveMediaItem(mediaItem);
     }
 
-    public async Task AddHistoryItem(Guid id, PlaybackHistory item)
+    public async Task<IList<PlaybackHistory>> AddHistoryItem(Guid id, PlaybackHistory item)
     {
         var mediaItem = await LoadMediaItem(id);
         if (mediaItem.History is null)
@@ -70,6 +70,7 @@ public class MediaItemRepository : IMediaItemRepository
         }
         mediaItem.History.Add(item);
         await SaveMediaItem(mediaItem);
+        return mediaItem.History;
     }
 
     public async Task DeleteMediaItem(Guid id)

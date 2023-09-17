@@ -26,7 +26,7 @@ public class SettingsRepository
 
     public async Task SaveSettings(SettingsModel settings)
     {
-        await _repository.SaveJson(settings, _settingsFile);
+        await _repository.SaveJsonAsync(settings, _settingsFile);
         _cachedSettings = settings;
     }
     

@@ -2,16 +2,23 @@
 using MudBlazor.Services;
 using VideoBlazor.SearchProviders.MovieDb;
 using VideoBlazor.SearchProviders.Utils;
-using VideoBlazor.Torrent;
-using VideoBlazor.Torrents;
+using Serilog;
 
 namespace VideoBlazor;
 
 public static class MauiProgram
 {
+    static MauiProgram() {
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .WriteTo.Debug()
+            .WriteTo.File("logs\\VideoBlazor.txt", rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+    }
+
 	public static MauiApp CreateMauiApp()
 	{
-		var builder = MauiApp.CreateBuilder();
+        var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
 			.ConfigureFonts(fonts =>
@@ -19,7 +26,8 @@ public static class MauiProgram
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
 			});
 
-		builder.Services.AddMauiBlazorWebView();
+        builder.Services.AddLogging(builder => builder.AddSerilog());
+        builder.Services.AddMauiBlazorWebView();
         builder.Services.AddMudServices();
 
 #if WINDOWS

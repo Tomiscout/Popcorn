@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using VideoBlazor.Domain.Interfaces;
 using VideoBlazor.Domain.Models;
+using VideoBlazor.Domain.Services;
 using VideoPlayer.Shared;
 using VideoPlayer.Shared.PipeEvents.Server;
 
@@ -14,11 +15,13 @@ namespace VideoBlazor.PlayerServer
     {
         private MediaItem _initialItem;
         private readonly IMediaItemRepository _mediaItemRepository;
+        private readonly MediaItemRefreshService _mediaItemRefreshService;
 
-        public PipeServer(MediaItem initialItem, IMediaItemRepository mediaItemRepository)
+        public PipeServer(MediaItem initialItem, IMediaItemRepository mediaItemRepository, MediaItemRefreshService mediaItemRefreshService)
         {
             _initialItem = initialItem;
             _mediaItemRepository = mediaItemRepository;
+            _mediaItemRefreshService = mediaItemRefreshService;
         }
 
         public async Task OnClientInitialized() {
@@ -29,8 +32,9 @@ namespace VideoBlazor.PlayerServer
 
         public async Task TrackPlayed(TrackPlayedEvent e)
         {
-            await _mediaItemRepository.AddHistoryItem(e.ItemId, e.HistoryItem);
-            //Update UI somehow?
+            var newHistory = await _mediaItemRepository.AddHistoryItem(e.ItemId, e.HistoryItem);
+            await ServerPipeManager.UpdateMediaItemHistory(newHistory);
+            _mediaItemRefreshService.RequestRefresh();
         }
     }
 }

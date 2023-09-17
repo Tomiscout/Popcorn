@@ -9,12 +9,12 @@
 @using VideoBlazor.Core;
 @using VideoBlazor.Domain.Enum;
 @using VideoBlazor.Domain.Interfaces;
+@using VideoBlazor.Domain.Services;
 @using VideoPlayer.Domain.Extensions;
-@using VideoBlazor.Domain.Helpers;
 @using VideoBlazor.Domain.Models;
 @using VideoBlazor.Persistence;
 @using VideoBlazor.PlayerServer;
-@using VideoBlazor.Shared.Utils;
+@inject MediaItemRefreshService RefreshService;
 @inject NavigationManager NavigationManager
 @inject MediaItemService MediaItemService
 @inject IMediaItemRepository MediaItemRepository
@@ -73,7 +73,7 @@
     </div>
 
     <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
-    <MudTabPanel Text="Files">
+    <MudTabPanel Text="Files" @onclick="LoadMediaItem">
         <div class="navigation-container">
                 <p class="nav-item" @onclick=" OpenRootFolder">Root</p>
             @foreach(var folder in navigation) {
@@ -125,7 +125,7 @@
             }
         </MudList>
     </MudTabPanel>
-    <MudTabPanel Text="Watch history">
+    <MudTabPanel Text="Watch history" @onclick="LoadMediaItem">
         @if (item.History is null) { 
             <span>No history</span>
         } else {
@@ -163,9 +163,11 @@
     public MediaFile nextTrack = null;
 
     private SettingsModel _settings;
+    private Debouncer _openFileDebouncer = new Debouncer(1000);
 
     protected override async Task OnInitializedAsync()
     {
+        RefreshService.OnRefreshRequested += RefreshLoadMediaItem;
         _settings = await SettingsRepository.GetSettings();
 
         await InitialLoad();
@@ -177,9 +179,28 @@
 
     private async Task InitialLoad()
     {
-        item = await MediaItemRepository.LoadMediaItem(Id);
+        await LoadMediaItem();
         await OpenRootFolder();
         RefreshNextTrack();
+    }
+
+    public void Dispose()
+    {
+        RefreshService.OnRefreshRequested -= RefreshLoadMediaItem;
+    }
+
+    private async Task LoadMediaItem()
+    {
+        item = await MediaItemRepository.LoadMediaItem(Id);
+    }
+
+    private async Task RefreshLoadMediaItem()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadMediaItem();
+            StateHasChanged();
+        });
     }
 
     public async Task OpenFolder(MediaFile folder) {
@@ -197,18 +218,6 @@
         for(var i = navigation.Count - 1; i > currentIndex; i--) {
             navigation.RemoveAt(i);
         }
-    }
-
-    public async Task OpenFile(PlaybackHistory historyItem)
-    {
-        await MediaItemRepository.AddHistoryItem(item.Id, new PlaybackHistory
-        {
-            Filename = historyItem.Filename,
-            Title = historyItem.Title,
-            PlaybackTime = DateTime.Now
-        });
-        await LaunchFile(historyItem.Filename);
-        item = await MediaItemRepository.LoadMediaItem(Id);
     }
 
     public async Task ClickFile(MediaFile file)
@@ -231,16 +240,37 @@
         return string.Empty; //TODO implement watched folders
     }
 
+    private async Task OpenFile(PlaybackHistory historyItem)
+    {
+        await _openFileDebouncer.Debounce(async () =>
+        {
+            await MediaItemRepository.AddHistoryItem(item.Id, new PlaybackHistory
+                {
+                    Filename = historyItem.Filename,
+                    Title = historyItem.Title,
+                    PlaybackTime = DateTime.Now
+                });
+            await LaunchFile(historyItem.Filename);
+            await LoadMediaItem();
+        });
+    }
     private async Task OpenFile(MediaFile file)
     {
-        await MediaItemRepository.AddHistoryItem(item.Id, new PlaybackHistory
+        await _openFileDebouncer.Debounce(async () =>
         {
-            Filename = file.Path,
-            Title = file.Title,
-            PlaybackTime = DateTime.Now
+            if (!_settings.UseInternalPlayer)
+            {
+                await MediaItemRepository.AddHistoryItem(item.Id, new PlaybackHistory
+                    {
+                        Filename = file.Path,
+                        Title = file.Title,
+                        PlaybackTime = DateTime.Now
+                    });
+            }
+
+            await LaunchFile(file.Path);
+            await LoadMediaItem();
         });
-        await LaunchFile(file.Path);
-        item = await MediaItemRepository.LoadMediaItem(Id); //Why is this needed? just to refresh i guess
     }
 
     private async Task LaunchFile(string path) {
@@ -261,12 +291,12 @@
 
     private async Task LoadFolder(MediaFile folder)
     {
-        currentFiles = MediaItemHelper.GetFilesForDirectory(folder.Path, item.Files);
+        currentFiles = item.Files.GetFilesForDirectory(folder.Path);
         await RecalculateTags();
     }
 
     public async Task OpenRootFolder() {
-        currentFiles = MediaItemHelper.GetFilesForDirectory(item.FolderDirectory, item.Files);
+        currentFiles = item.Files.GetFilesForDirectory(item.FolderDirectory);
         navigation = new List<MediaFile>();
         await RecalculateTags();
     }
@@ -337,6 +367,7 @@
     public async void OnCleanHistory()
     {
         await MediaItemRepository.CleanHistory(item);
+        item.RecalculatePlayedFiles(item.Files, false);
         RefreshNextTrack();
     }
 

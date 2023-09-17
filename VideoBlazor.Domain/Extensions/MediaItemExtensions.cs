@@ -1,6 +1,6 @@
 ﻿using VideoBlazor.Domain.Enum;
-using VideoBlazor.Domain.Helpers;
 using VideoBlazor.Domain.Models;
+using VideoBlazor.Shared.Utils;
 
 namespace VideoPlayer.Domain.Extensions;
 
@@ -42,10 +42,107 @@ public static class MediaItemExtensions
         return result;
     }
 
+    public static void RecalculatePlayedFiles(this MediaItem item, IList<MediaFile> filesToCalculate, bool cache = true) { 
+        foreach(var file in filesToCalculate)
+        {
+            if (file.Played && !cache) continue;
+            if(file.Type == FileType.Folder)
+            {
+                file.Played = IsFolderPlayed(item, file);
+            } else
+            {
+                file.Played = item.History?.Any(h => h.Filename == file.Path) ?? false;
+            }
+        }
+    }
+
+    private static bool IsFolderPlayed(MediaItem item, MediaFile folder) //TODO this can be optimised, but not too complex so whatever
+    {
+        if (item.History is null) return false;
+        var folderFiles = item.Files.GetFilesForDirectory(folder.Path);
+
+        foreach (var file in folderFiles)
+        {
+            if (file.Type == FileType.Folder)
+            {
+                // If one nested folder is not played, the parent folder is not played.
+                if (!IsFolderPlayed(item, file))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                // If one file is not played, the folder is not played.
+                if (!item.History.Any(h => h.Filename == file.Path))
+                {
+                    return false;
+                }
+            }
+        }
+        // If we get here, it means all nested folders and files are played.
+        return true;
+    }
+
+    public static List<FolderLoadedNavigation> BuildNavigationPath(this MediaItem item, string topFolder)
+    {
+        var navigation = new List<FolderLoadedNavigation>();
+        var rootDrive = Path.GetPathRoot(topFolder);
+        var currentFolder = topFolder;
+        while(currentFolder != item.FolderDirectory && currentFolder != rootDrive)
+        {
+            navigation.Add(new FolderLoadedNavigation()
+            {
+                Title = Path.GetFileName(currentFolder),
+                Path = currentFolder
+            });
+            currentFolder = Path.GetDirectoryName(currentFolder)!;
+        }
+        navigation.Reverse();
+        return navigation;
+    }
+    public static List<MediaFile> GetFilesForDirectory(this IList<MediaFile> files, string rootDirectory)
+    {
+        var foldersSet = new HashSet<string>();
+
+        var resultFiles = new List<MediaFile>();
+        foreach (var file in files)
+        {
+            var parent = Path.GetDirectoryName(file.Path);
+            var grandParent = Path.GetDirectoryName(parent);
+            if (parent == rootDirectory)
+            {
+                resultFiles.Add(file);
+            }
+            else if (grandParent == rootDirectory && !string.IsNullOrWhiteSpace(parent))
+            {
+                foldersSet.Add(parent);
+            }
+        }
+
+        var folders = foldersSet.ToList().OrderBy(i => i);
+        foreach (var folder in folders)
+        {
+            resultFiles.Add(new MediaFile
+            {
+                Path = folder,
+                Title = folder.Substring(folder.LastIndexOf("\\") + 1), //Windows dependant
+                Type = FileType.Folder
+            });
+        }
+
+        var result = resultFiles.OrderByDescending(x => x.Type).ToList();
+        foreach(var file in result) //TODO its ugly but works
+        {
+            file.ParseTitle();
+        }
+        return result;
+    }
+
     //Immediate sibling
     private static MediaFile FindNextMediaFileSibling(string currentFolder, IList<MediaFile> files, string lastItemPath)
     {
-        var currentFiles = MediaItemHelper.GetFilesForDirectory(currentFolder, files)
+        var currentFiles = files.GetFilesForDirectory(currentFolder)
            .Where(i => i.Type == FileType.File)
            .OrderBy(i => i.Title)
            .ToList();
@@ -66,7 +163,7 @@ public static class MediaItemExtensions
 
     private static MediaFile FindNextMediaFileInNewDirectory(string currentFolder, IList<MediaFile> files, IList<string> history)
     {
-        var currentFiles = MediaItemHelper.GetFilesForDirectory(currentFolder, files)
+        var currentFiles = files.GetFilesForDirectory(currentFolder)
            .Where(i => i.Type == FileType.File)
            .OrderBy(i => i.Title)
            .ToList();
@@ -83,7 +180,7 @@ public static class MediaItemExtensions
     private static MediaFile FindInParent(string directory, IList<MediaFile> files, IList<string> history)
     {
         var parentDir = Directory.GetParent(directory).FullName;
-        var allParentFiles = MediaItemHelper.GetFilesForDirectory(parentDir, files);
+        var allParentFiles = files.GetFilesForDirectory(parentDir);
         var result = FindNextMediaFileInNewDirectory(parentDir, files, history);
         if (result is not null)
         {
@@ -114,7 +211,7 @@ public static class MediaItemExtensions
 
     private static MediaFile FindNextMediaFileInSubdirectories(string directory, IList<MediaFile> files, IList<string> history)
     {
-        var allFiles = MediaItemHelper.GetFilesForDirectory(directory, files);
+        var allFiles = files.GetFilesForDirectory(directory);
 
         if (history is not null)
         {
@@ -133,7 +230,7 @@ public static class MediaItemExtensions
             .ToList();
         foreach (var subdirectory in subdirectories)
         {
-            List<MediaFile> filesInSubdirectory = MediaItemHelper.GetFilesForDirectory(subdirectory.Path, files)
+            List<MediaFile> filesInSubdirectory = files.GetFilesForDirectory(subdirectory.Path)
                 .Where(f => f.Type == FileType.File)
                 .OrderBy(f => f.Title)
                 .ToList();

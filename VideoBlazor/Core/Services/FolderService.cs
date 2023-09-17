@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 using VideoBlazor.Core.Model;
-using VideoBlazor.Pages;
 using VideoBlazor.Persistence;
 using VideoBlazor.Platforms.Windows;
 
@@ -25,7 +19,7 @@ namespace VideoBlazor.Core.Services
 
         public async Task SaveFolders(IList<Folder> folders)
         {
-            await _jsonRepository.SaveJson(folders, _jsonName);
+            await _jsonRepository.SaveJsonAsync(folders, _jsonName);
         }
 
         public async Task<IList<Folder>> LoadSavedFolders()
@@ -36,7 +30,7 @@ namespace VideoBlazor.Core.Services
             } catch(FileNotFoundException)
             {
                 var emptyList = new List<Folder>();
-                await _jsonRepository.SaveJson(emptyList, _jsonName);
+                await _jsonRepository.SaveJsonAsync(emptyList, _jsonName);
                 return emptyList;
             }
         }
@@ -45,7 +39,7 @@ namespace VideoBlazor.Core.Services
         {
             var folders = await LoadSavedFolders();
             folders.Remove(folders.FirstOrDefault(x => x.Path == path));
-            await _jsonRepository.SaveJson(folders, _jsonName);
+            await _jsonRepository.SaveJsonAsync(folders, _jsonName);
         }
 
         public async Task<string> OpenFolderPicker()

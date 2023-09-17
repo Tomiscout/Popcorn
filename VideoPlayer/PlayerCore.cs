@@ -7,7 +7,6 @@ using VideoPlayer.Domain.Extensions;
 using VideoBlazor.Domain.Models;
 using System.IO;
 using System.Collections.Generic;
-using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 using VideoPlayer.Pipes;
 using VideoPlayer.Shared.PipeEvents.Server;
@@ -17,6 +16,8 @@ using System.Linq;
 using LibVLCSharp.Shared.Structures;
 using VideoPlayer.Utils;
 using System.Threading.Tasks;
+using VideoPlayer.Extensions;
+using Serilog;
 
 namespace VideoPlayer;
 internal static class PlayerCore
@@ -29,6 +30,7 @@ internal static class PlayerCore
     public static Func<bool> PlayerInitialized { get; set; }
     public static Func<bool, bool> ChangeFullscreen { get; set; }
 
+    private static List<MediaFile> _inputFilePaths { get; set; }
     private static MediaItem _currentMediaItem = null;
     private static MediaFile _currentMediaFile = null;
     private static bool _isLoadingTrack = false;
@@ -38,39 +40,80 @@ internal static class PlayerCore
         Core.Initialize();
 
         _libVLC = new LibVLC();
-        _libVLC.Log += (object sender, LogEventArgs e) => Debug.WriteLine($"[LibVLC] {e.FormattedLog}");
+        _libVLC.Log += (object sender, LogEventArgs e) => Log.Debug($"[LibVLC] {e.FormattedLog}");
         _mediaPlayer = new MediaPlayer(_libVLC);
         _mediaPlayer.TimeChanged += RecalculateSeekValue;
         _mediaPlayer.LengthChanged += SendLengthEvent;
         _mediaPlayer.EndReached += PlaybackEndReached;
         _mediaPlayer.Playing += PlayingStarted;
+        Log.Information("Player core initialized");
+    }
+    
+    public static void LoadFilesFromInput(List<string> paths)
+    {
+        _inputFilePaths = paths.Select(p => new MediaFile
+        {
+            Path = p,
+            FormatTags = new List<string>() { Path.GetExtension(p) }
+        }).ToList();
+        foreach(var file in _inputFilePaths)
+        {
+            file.ParseTitle();
+        }
+        var media = _inputFilePaths.FirstOrDefault();
+        LoadMedia(media);
     }
 
-    //TODO dublicate code
     public static void LoadMedia(MediaFile file)
     {
         _isLoadingTrack = true;
         if (!File.Exists(file.Path))
         {
-            //TODO popover file not found
+            Log.Error($"File not found. {file.Path}");
             return;
         }
         _currentMediaFile = file;
+        _currentMediaFile.Played = true;
         var media = new Media(_libVLC, file.Path);
+        
         _mediaPlayer.Play(media);
 
+        if(_currentMediaItem is not null)
+        {
+            //Update history
+            PipeManager.SendTrackPlayedEvent(new TrackPlayedEvent
+            {
+                ItemId = _currentMediaItem.Id,
+                HistoryItem = new PlaybackHistory
+                {
+                    Filename = file.Path,
+                    Title = file.Title,
+                    PlaybackTime = DateTime.Now
+                }
+            }).ConfigureAwait(false);
+        }
         //Activate(); For some reason it crashes
     }
-    public static void LoadMedia(string path)
+    public static bool LoadMedia(string path)
     {
-        _isLoadingTrack = false;
-        var media = new MediaFile //TODO this could be prettier
+        var mediaFile = _currentMediaItem?.Files.FirstOrDefault(f => f.Path == path) ?? _inputFilePaths?.FirstOrDefault(f => f.Path == path);
+        if(mediaFile is null)
         {
-            Path = path,
-            FormatTags = new List<string>() { Path.GetExtension(path) }
-        };
-        media.ParseTitle();
-        LoadMedia(media);
+            if(_inputFilePaths is null)
+            {
+                _inputFilePaths = new List<MediaFile>();
+                Log.Warning($"Recieved LoadMedia for unloaded file: {path}");
+            }
+            mediaFile = new MediaFile
+            {
+                Path = path,
+                FormatTags = new List<string>() { Path.GetExtension(path) }
+            };
+            mediaFile.ParseTitle();
+        }
+
+        LoadMedia(mediaFile);
+        return true;
     }
 
     private static void PlayingStarted(object sender, EventArgs e)
@@ -82,6 +125,7 @@ internal static class PlayerCore
             Title = _currentMediaFile.Title,
             ShortTitle = _currentMediaFile.GetDisplayTitle(),
         });
+        OpenFolder(Path.GetDirectoryName(_currentMediaFile.Path));
         AutoSelectAudioAndSubtitles();
         SendAudioAndSubtitles();
 
@@ -147,28 +191,10 @@ internal static class PlayerCore
         PostEvent("playback_ended", null);
     }
 
-    public static void SetMediaInfo(MediaItem item)
-    {
-        _currentMediaItem = item;
-        //TODO set media info
-    }
-
     private static bool PlayNextTitle()
     {
         var nextItem = _currentMediaItem?.GetNextMediaFile();
         if (nextItem is null) return false;
-
-        //Update history
-        PipeManager.SendTrackPlayedEvent(new TrackPlayedEvent
-        {
-            ItemId = _currentMediaItem.Id,
-            HistoryItem = new PlaybackHistory
-            {
-                Filename = nextItem.Path,
-                Title = nextItem.Title,
-                PlaybackTime = DateTime.Now
-            }
-        }).ConfigureAwait(false);
 
         LoadMedia(nextItem);
 
@@ -222,7 +248,7 @@ internal static class PlayerCore
         }
         catch (Exception e)
         {
-            Debug.WriteLine("Failed to playback skip", e);
+            Log.Error(e, "Failed to playback skip");
             return false;
         }
         return true;
@@ -237,7 +263,7 @@ internal static class PlayerCore
         }
         catch (Exception e)
         {
-            Debug.WriteLine("Failed to set volume", e);
+            Log.Error(e, "Failed to set volume");
             return false;
         }
         return true;
@@ -256,16 +282,16 @@ internal static class PlayerCore
             var play = ((JsonElement)data).GetBoolean();
             if (play)
             {
-                _mediaPlayer.Play();
+                ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.Play());
             }
             else
             {
-                _mediaPlayer.Pause();
+                ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.Pause());
             }
         }
         catch (Exception e)
         {
-            Debug.WriteLine("Failed media player play/pause", e);
+            Log.Error(e, "Failed media player play/pause");
             return false;
         }
         return true;
@@ -275,12 +301,12 @@ internal static class PlayerCore
     {
         try
         {
-            var time = (long)Math.Round(double.Parse(((JsonElement)data).GetString()));
+            var time = (long)Math.Round(double.Parse(((JsonElement)data).GetString())); //TODO refactor to use EventExtensions
             ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.Time = time);
         }
         catch (Exception e)
         {
-            Debug.WriteLine("Failed to set playback time", e);
+            Log.Error(e, "Failed to set playback time");
             return false;
         }
         return true;
@@ -298,12 +324,38 @@ internal static class PlayerCore
         return _mediaPlayer.SetSpu(trackId);
     }
 
+    private static bool OpenFolder(string path)
+    {
+        if(_currentMediaItem is null)
+        {
+            PostEvent("folder_loaded", new FolderLoadedEvent()
+            {
+                Files = _inputFilePaths.GetFilesForDirectory(path)
+            });
+            return true;
+        }
+
+        SendCurrentMediaFolderLoaded(path);
+        return true;
+    }
+
+    private static void SendCurrentMediaFolderLoaded(string path)
+    {
+        var @event = new FolderLoadedEvent
+        {
+            Navigation = _currentMediaItem.BuildNavigationPath(path),
+            Files = _currentMediaItem.Files.GetFilesForDirectory(path),
+        };
+        _currentMediaItem.RecalculatePlayedFiles(@event.Files);
+        PostEvent("folder_loaded", @event);
+    }
+
     public static void WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
         var message = e.WebMessageAsJson;
         var webEvent = JsonSerializer.Deserialize<WebEvent>(message);
 
-        Debug.WriteLine(webEvent.Name);
+        Log.Information(webEvent.Name);
         var success = webEvent.Name switch
         {
             "play_status_changed" => PlayPause(webEvent.Data),
@@ -317,9 +369,36 @@ internal static class PlayerCore
             "subtitle_track_selected" => SubtitleTrackSelected(webEvent.Data),
             "subtitle_file_select" => SubtitleFileAdd(),
             "subtitle_delay_set" => SubtitleDelaySet(webEvent.Data),
+            "file_open" => LoadMedia(webEvent.Data.GetJsonString()),
+            "folder_open" => OpenFolder(webEvent.Data.GetJsonString()),
+            "folder_open_root" => OpenFolder(_currentMediaItem?.FolderDirectory ?? Path.GetDirectoryName(_currentMediaFile.Path)),
             _ => throw new NotImplementedException()
         };
     }
+
+    #region Events from main program
+
+    public static void SetMediaInfo(MediaItem item)
+    {
+        _currentMediaItem = item;
+        _currentMediaItem.RecalculatePlayedFiles(_currentMediaItem.Files);
+        //TODO set media info
+    }
+
+    public static void UpdateItemHistory(IList<PlaybackHistory> history) //From main client
+    {
+        _currentMediaItem.History = history;
+        var lastPlayed = _currentMediaItem.History.LastOrDefault();
+        _currentMediaItem.RecalculatePlayedFiles(_currentMediaItem.Files.Where(f => f.Path == lastPlayed.Filename).ToList());
+    }
+
+    internal static void SavePlayerHistory(TrackPlayedEvent e) //Backup save when main client has exited
+    {
+        Log.Information("Main app is missing, saving progress from player");
+        SendCurrentMediaFolderLoaded(e.HistoryItem.Filename);
+        //TODO save info. Need to reference persistence and pass item folder.
+    }
+    #endregion
 
     #region Mappings
     private static VlcTrack MapToVlcTrack(TrackDescription track, bool isSelected) {

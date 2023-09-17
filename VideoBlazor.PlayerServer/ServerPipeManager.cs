@@ -3,9 +3,11 @@ using PipeMethodCalls.NetJson;
 using Polly;
 using Polly.Retry;
 using Polly.Timeout;
+using Serilog;
 using System.Diagnostics;
 using VideoBlazor.Domain.Interfaces;
 using VideoBlazor.Domain.Models;
+using VideoBlazor.Domain.Services;
 using VideoPlayer.Shared;
 using VideoPlayer.Shared.PipeEvents.Client;
 
@@ -16,27 +18,33 @@ namespace VideoBlazor.PlayerServer
         private static readonly string _pipeNameFile = @"C:\Projects\VideoBlazor\pipeName.txt";
         private static PipeServerWithCallback<IPipeClient, VideoPlayer.Shared.IPipeServer> _pipeServer;
 
-        public static async Task StartServer(MediaItem initialItem, IMediaItemRepository mediaItemRepository)
+        public static async Task StartServer(MediaItem initialItem, IMediaItemRepository mediaItemRepository, MediaItemRefreshService mediaItemRefreshService)
         {
-            var pipeName = GeneratePipeName();
-            await File.WriteAllTextAsync(_pipeNameFile, pipeName);
+            try
+            {
+                var pipeName = GeneratePipeName();
+                await File.WriteAllTextAsync(_pipeNameFile, pipeName);
 
-            _pipeServer = new PipeServerWithCallback<IPipeClient, VideoPlayer.Shared.IPipeServer>(
-                new NetJsonPipeSerializer(), pipeName, () => new PipeServer(initialItem, mediaItemRepository));
+                _pipeServer = new PipeServerWithCallback<IPipeClient, VideoPlayer.Shared.IPipeServer>(
+                    new NetJsonPipeSerializer(), pipeName, () => new PipeServer(initialItem, mediaItemRepository, mediaItemRefreshService));
 
-            // We wait for a connection (this could be a long time).
-            await EnsureConnection();
-            // If execution continues, that means we have a connection.
-            Debug.WriteLine("Pipeline connected.");
-            // Delete the pipename file, since we don't need it anymore
-            File.Delete(_pipeNameFile);
+                // We wait for a connection (this could be a long time).
+                await EnsureConnection();
+                // If execution continues, that means we have a connection.
+                Log.Logger.Information("[Server PipeManager] Pipeline connected.");
+                // Delete the pipename file, since we don't need it anymore
+                File.Delete(_pipeNameFile);
 
-            // Wait until somebody closes the pipe.
-            await _pipeServer.WaitForRemotePipeCloseAsync();
-            // Clean up
-            _pipeServer.Dispose();
-            Debug.WriteLine("Pipeline disconnected.");
-            
+                // Wait until somebody closes the pipe.
+                await _pipeServer.WaitForRemotePipeCloseAsync();
+                // Clean up
+                _pipeServer.Dispose();
+                Log.Logger.Information("[Server PipeManager] Pipeline disconnected.");
+            }
+            catch (Exception e)
+            {
+                Log.Logger.Error(e, "[Server PipeManager] Crash!");
+            }
         }
 
         private static string GeneratePipeName () => $"VideoBlazor-{Guid.NewGuid()}";
@@ -63,10 +71,10 @@ namespace VideoBlazor.PlayerServer
         public static async Task LoadMediaEvent(string path) => await _pipeServer.InvokeAsync(x => x.LoadMedia(new LoadMediaEvent() { FilePath = path }));
 
         public static async Task SendMediaInfoEvent(MediaItem item) => await _pipeServer.InvokeAsync(x => x.MediaInfo(item));
+        public static async Task UpdateMediaItemHistory(IList<PlaybackHistory> item) => await _pipeServer.InvokeAsync(x => x.UpdateMediaItemHistory(item));
         
         public static void Dispose()
         {
-            Debug.WriteLine("Destructor dispose");
             _pipeServer?.Dispose();
         }
 

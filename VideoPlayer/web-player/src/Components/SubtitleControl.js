@@ -8,8 +8,8 @@ import '../Styles/SubtitleControl.css';
 const SubtitleControl = () => {
   const subtitlePopupWidth = 500;
 
-  const [audioTracks, setAudioTracks] = useState([{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 }]);
-  const [subtitleTracks, setSubtitleTracks] = useState([{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 },{ description: 'test', language: 'LT', id: 1 }]);
+  const [audioTracks, setAudioTracks] = useState([{ description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }]);
+  const [subtitleTracks, setSubtitleTracks] = useState([{ description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }]);
   const [selectedAudio, setSelectedAudio] = useState(-1);
   const [selectedSubtitle, setSelectedSubtitle] = useState(-1);
   const [showPopup, setShowPopup] = useState(false);
