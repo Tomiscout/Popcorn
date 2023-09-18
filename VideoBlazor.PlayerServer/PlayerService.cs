@@ -51,7 +51,7 @@ namespace VideoBlazor.PlayerServer
             var startInfo = new ProcessStartInfo
             {
                 FileName = path,
-                Arguments = mediaPath,
+                Arguments = $"\"{mediaPath}\"",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,  // Redirect the standard output
                 RedirectStandardError = true,  // Redirect the error output
