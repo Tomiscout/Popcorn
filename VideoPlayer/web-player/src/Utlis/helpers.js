@@ -1,5 +1,21 @@
 import { useRef, useEffect } from 'react';
 
+export const disableDefaultListeners = () => {
+  document.addEventListener('keydown', (event) => {
+    if (event.target.tagName === 'BUTTON' && (event.code === 'Space' || event.code === 'Enter')) {
+      event.preventDefault();
+    }
+  });
+  
+  document.addEventListener('selectstart', function(event) { // Disable text selection
+    event.preventDefault();
+  });
+
+  document.addEventListener('dragstart', function(event) { // Disable drag-and-drop
+    event.preventDefault();
+  });
+}
+
 export const useEventListeners = (eventName, keyCallbacks) => {
   const keyCallbacksRef = useRef(keyCallbacks);
 

@@ -38,15 +38,6 @@ input:focus {
   transition: opacity 0.5s linear;
 }
 
-.video-container .progress-controls {
-  width: 100%;
-  height: 46px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: white;
-}
-
 /*Volume slider*/
 .App {
   font-family: sans-serif;
@@ -65,13 +56,6 @@ input:focus {
   background: #E31221;
   /* display: inline-block; */
   transition: all 0.1s;
-}
-
-.video-container .progress-controls .progress-bar {
-  width: 91vw;
-  height: 1vw;
-  max-height: 7px;
-  align-items: center;
 }
 
 .watched-bar-horizontal {

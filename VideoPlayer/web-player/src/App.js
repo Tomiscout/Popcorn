@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import './App.css';
 import ControlBar from './Components/ControlBar';
 import { eventHandler, initEvents } from './events';
+import { disableDefaultListeners } from './Utlis/helpers';
 
 const App = () => {
   const videoContainerRef = useRef(null);
@@ -9,6 +10,7 @@ const App = () => {
   window?.chrome?.webview?.addEventListener('message', eventHandler);
 
   useEffect(() => {
+    disableDefaultListeners();
     initEvents();
 
     const videoContainer = videoContainerRef.current;

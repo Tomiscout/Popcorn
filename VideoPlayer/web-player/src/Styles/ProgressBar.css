@@ -11,11 +11,28 @@
 .time-seek-popup {
     display: flex;
     justify-content: center;
-    position: absolute;
-    bottom: 100px;
     padding: 4px;
     background: #4e4e4e;
     width: 60px;
+}
+
+.video-container .progress-controls {
+    width: 100%;
+    color: white;
+}
+
+.video-container .progress-controls .progress-bar {
+    width: 91vw;
+    height: 1vw;
+    max-height: 7px;
+    align-items: center;
+}
+
+.progress-slider-row {
+    height: 4vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .time-seek-line {
@@ -34,23 +51,23 @@
     min-width: 60px;
 }
 
-input[type="range"]:-webkit-slider-thumb:hover + .time-seek-line {
-  display: none;
+input[type="range"]:-webkit-slider-thumb:hover+.time-seek-line {
+    display: none;
 }
 
 input[type="range"] {
     -webkit-appearance: none;
-    height: 7px;
+    height: 1.5vh;
     background: grey;
-    border-radius: 5px;
+    border-radius: 0.71vh;
     background-image: linear-gradient(#E31221, #E31221);
     background-repeat: no-repeat;
 }
 
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    height: 20px;
-    width: 20px;
+    height: 4.3vh;
+    width: 4.3vh;
     border-radius: 50%;
     background: #E31221;
     cursor: pointer;

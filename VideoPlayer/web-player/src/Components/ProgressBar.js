@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { registerEventHandler, postMessage } from '../events';
 import '../Styles/ProgressBar.css'
 
@@ -25,6 +25,7 @@ const ProgressBar = () => {
     const [popupContent, setPopupContent] = useState('');
     const [popupX, setPopupX] = useState(0);
     const [lineX, setLineX] = useState(0);
+    const progressBarRef = useRef(null);
 
     const [currentTime, setCurrentTime] = useState(0);
     const [totalTime, setTotalTime] = useState(0);
@@ -45,18 +46,26 @@ const ProgressBar = () => {
         };
     };
 
-    const popupHalfWidth = 30;
+    const popupHalfWidth = 30 + 4; //width + padding
     const handleMouseMove = (e) => {
         const rect = e.target.getBoundingClientRect();
+
         if (rect.left <= 0) {
             return; //out of left bounds
         }
         const x = e.clientX - rect.left; // x position within the element.
         const hoveredTime = (x / rect.width) * totalTime;
+        const screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
 
         let newPopupX = e.clientX - popupHalfWidth;
-        if (newPopupX < 0) { //clamp
+        // Clamp to left side
+        if (newPopupX < 0) {
             newPopupX = 0;
+        }
+
+        // Clamp to right side
+        if (newPopupX + popupHalfWidth * 2 > screenWidth) {
+            newPopupX = screenWidth - popupHalfWidth * 2;
         }
 
         setPopupVisible(true);
@@ -71,32 +80,33 @@ const ProgressBar = () => {
 
     return (
         <div className="progress-controls">
-            <div className='progress-slider-container'
+            {popupVisible &&
+                <div className='time-seek-popup' style={{ marginLeft: `${popupX}px` }}>
+                    {popupContent}
+                </div>
+            }
+            <div className='progress-slider-row'
                 onMouseMove={handleMouseMove}
                 onMouseOut={handleMouseLeave}>
+                <div className='progress-slider-container' ref={progressBarRef}>
+                    <input
+                        type="range"
+                        min="0"
+                        max={totalTime}
+                        step="1000"
+                        onChange={(e) => progressClick(e.target.value)}
+                        style={getBackgroundSize()}
+                        className='progress-slider'
+                        value={currentTime}
 
-                <input
-                    type="range"
-                    min="0"
-                    max={totalTime}
-                    step="1000"
-                    onChange={(e) => progressClick(e.target.value)}
-                    style={getBackgroundSize()}
-                    className='progress-slider'
-                    value={currentTime}
-
-                />
-                {popupVisible &&
-                    <div className='time-seek-line' style={{ left: `${lineX}px` }}></div>
-                }
-                {popupVisible &&
-                    <div className='time-seek-popup' style={{ left: `${popupX}px` }}>
-                        {popupContent}
-                    </div>
-                }
-            </div>
-            <div id="time-remaining">
-                {timeFormat(totalTime - currentTime)}
+                    />
+                    {popupVisible &&
+                        <div className='time-seek-line' style={{ left: `${lineX}px` }}></div>
+                    }
+                </div>
+                <div id="time-remaining">
+                    {timeFormat(totalTime - currentTime)}
+                </div>
             </div>
         </div>
     );
