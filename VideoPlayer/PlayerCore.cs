@@ -18,6 +18,7 @@ using VideoPlayer.Utils;
 using System.Threading.Tasks;
 using VideoPlayer.Extensions;
 using Serilog;
+using VideoPlayer.Services;
 
 namespace VideoPlayer;
 internal static class PlayerCore
@@ -130,6 +131,13 @@ internal static class PlayerCore
         SendAudioAndSubtitles();
 
         _isLoadingTrack = false;
+
+        //CalculateThumbs();
+    }
+    private static void CalculateThumbs()
+    {
+        var codec = _mediaPlayer.Media.Tracks.FirstOrDefault(t => t.TrackType == TrackType.Video).Codec;
+        ThreadPool.QueueUserWorkItem(_ => ThumbnailService.LoopThumbnailGeneration(_currentMediaFile.Path, codec, _mediaPlayer.Length / 1000));
     }
 
     private static void SendAudioAndSubtitles()
@@ -153,7 +161,7 @@ internal static class PlayerCore
             var englishTracks = _mediaPlayer.AudioTrackDescription.Where(EnglishSelectPredicate).ToList();
             if(englishTracks.Any())
             {
-                _mediaPlayer.SetAudioTrack(englishTracks.First().Id);
+                ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.SetAudioTrack(englishTracks.First().Id));
             }
         }
 
@@ -162,7 +170,7 @@ internal static class PlayerCore
             var englishTracks = _mediaPlayer.SpuDescription.Where(EnglishSelectPredicate).ToList();
             if (englishTracks.Any())
             {
-                _mediaPlayer.SetSpu(englishTracks.First().Id);
+                ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.SetSpu(englishTracks.First().Id));
             }
         }
     }
