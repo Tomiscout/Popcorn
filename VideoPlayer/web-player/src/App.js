@@ -1,13 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import './App.css';
 import ControlBar from './Components/ControlBar';
-import { eventHandler, initEvents } from './events';
+import { eventHandler, bufferEventHandler, initEvents } from './events';
 import { disableDefaultListeners } from './Utlis/helpers';
 
 const App = () => {
   const videoContainerRef = useRef(null);
 
   window?.chrome?.webview?.addEventListener('message', eventHandler);
+  window?.chrome?.webview?.addEventListener('sharedbufferreceived', bufferEventHandler);
 
   useEffect(() => {
     disableDefaultListeners();

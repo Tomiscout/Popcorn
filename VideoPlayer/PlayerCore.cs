@@ -27,6 +27,7 @@ internal static class PlayerCore
     private static MediaPlayer _mediaPlayer;
 
     public static Action<string> PostWebMessage { get; set; }
+    public static Action<string, byte[]> PostStreamMessage { get; set; }
     public static Func<string> SubtitleFileSelect { get; set; }
     public static Func<bool> PlayerInitialized { get; set; }
     public static Func<bool, bool> ChangeFullscreen { get; set; }
@@ -74,6 +75,10 @@ internal static class PlayerCore
             return;
         }
         _currentMediaFile = file;
+        if(_currentMediaFile.Id == null || _currentMediaFile.Id == Guid.Empty) //TODO HACK
+        {
+            _currentMediaFile.Id = Guid.NewGuid();
+        }
         _currentMediaFile.Played = true;
         var media = new Media(_libVLC, file.Path);
         
@@ -131,13 +136,6 @@ internal static class PlayerCore
         SendAudioAndSubtitles();
 
         _isLoadingTrack = false;
-
-        //CalculateThumbs();
-    }
-    private static void CalculateThumbs()
-    {
-        var codec = _mediaPlayer.Media.Tracks.FirstOrDefault(t => t.TrackType == TrackType.Video).Codec;
-        ThreadPool.QueueUserWorkItem(_ => ThumbnailService.LoopThumbnailGeneration(_currentMediaFile.Path, codec, _mediaPlayer.Length / 1000));
     }
 
     private static void SendAudioAndSubtitles()
@@ -358,6 +356,48 @@ internal static class PlayerCore
         PostEvent("folder_loaded", @event);
     }
 
+    #region Thumbnail handling
+
+    private static CancellationTokenSource _ffmpegCts;
+    public static bool OnThumbnailRequest(long time)
+    {
+        _ffmpegCts?.Cancel();
+        _ffmpegCts = new CancellationTokenSource();
+
+        Task.Run(async () => {
+            try
+            {
+                var bytes = await GenerateThumbnailAsync(time, _ffmpegCts.Token);
+                if(bytes is not null)
+                {
+                    PostStreamMessage($"{{\"name\":\"thumb\",\"time\":{time}}}", bytes);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Nothing
+            }
+            catch (Exception ex)
+            {
+                // Log exception if needed
+                Log.Error(ex, "Failed to generate thumbnail {time}", time);
+            }
+            finally
+            {
+                _ffmpegCts?.Dispose();
+                _ffmpegCts = null;
+            }
+        });
+        return true;
+    }
+
+    public static async Task<byte[]> GenerateThumbnailAsync(long time, CancellationToken ct)
+    {
+        var codec = _mediaPlayer.Media.Tracks.FirstOrDefault(t => t.TrackType == TrackType.Video).Codec;
+        return await ThumbnailService.GetThumbnailBytes(time, codec, _currentMediaFile.Path, _currentMediaFile.Id.ToString(), ct);
+    }
+    #endregion
+
     public static void WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
         var message = e.WebMessageAsJson;
@@ -380,6 +420,7 @@ internal static class PlayerCore
             "file_open" => LoadMedia(webEvent.Data.GetJsonString()),
             "folder_open" => OpenFolder(webEvent.Data.GetJsonString()),
             "folder_open_root" => OpenFolder(_currentMediaItem?.FolderDirectory ?? Path.GetDirectoryName(_currentMediaFile.Path)),
+            "thumb_requested" => OnThumbnailRequest(webEvent.Data.GetJsonInt64()),
             _ => throw new NotImplementedException()
         };
     }

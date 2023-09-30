@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Versioning;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using VideoPlayer.Pipes;
@@ -22,10 +23,13 @@ namespace VideoPlayer
     [SupportedOSPlatform("windows")]
     public partial class MainWindow : MetroWindow, IDisposable
     {
+        private CancellationTokenSource _ffmpegCts;
+
         public MainWindow()
         {
             PlayerCore.Initialize();
             PlayerCore.PostWebMessage = PostWebMessageToWebView;
+            PlayerCore.PostStreamMessage = PostStreamToWebView;
             PlayerCore.ChangeFullscreen = ChangeFullscreen;
             PlayerCore.PlayerInitialized = PlayerInitialized;
             PlayerCore.SubtitleFileSelect = ShowSubtitleFileDialog;
@@ -41,12 +45,12 @@ namespace VideoPlayer
             VideoView.MediaPlayer = PlayerCore.GetMediaPlayer();
         }
 
+        private static string AssemblyFolder = Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName;
+        private static string WebPath = $"{AssemblyFolder}\\web-player\\build\\"; //react bundle
+
         private async Task InitializeWebView2()
         {
             WebView.CoreWebView2InitializationCompleted += WebViewInitialized;
-
-            var asemblyFolder = Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName;
-            var webPath = $"{asemblyFolder}\\web-player\\build\\"; //React bundle copied by post-build script
 
             try
             {
@@ -62,8 +66,8 @@ namespace VideoPlayer
                 } else
                 {
                     Log.Information("Using bundled web-player");
-                    WebView.CoreWebView2.SetVirtualHostNameToFolderMapping( "app.local", webPath, CoreWebView2HostResourceAccessKind.Allow );
-                    WebView.Source = new Uri($"file:///{webPath.Replace(@"\", "/")}index.html");
+                    WebView.CoreWebView2.SetVirtualHostNameToFolderMapping( "app.local", WebPath, CoreWebView2HostResourceAccessKind.Allow );
+                    WebView.Source = new Uri($"file:///{WebPath.Replace(@"\", "/")}index.html");
                 }
                 WebView.Focus();
             }
@@ -93,6 +97,26 @@ namespace VideoPlayer
         private void PostWebMessageToWebView(string json)
         {
             WebView?.Dispatcher?.Invoke(() => WebView?.CoreWebView2?.PostWebMessageAsJson(json));
+        }
+
+        private void PostStreamToWebView(string message, byte[] bytes)
+        {
+            if(bytes == null)
+            {
+                Log.Warning("Thumb bytes are null");
+                return;
+            }
+            WebView?.Dispatcher?.Invoke(() => {
+                using (CoreWebView2SharedBuffer buffer = WebView.CoreWebView2.Environment.CreateSharedBuffer((ulong) bytes.Length))
+                {
+                    using (Stream stream = buffer.OpenStream())
+                    {
+                        stream.Write(bytes, 0, bytes.Length);
+                    }
+                    // Notify JS side to read the buffer
+                    WebView.CoreWebView2.PostSharedBufferToScript(buffer, CoreWebView2SharedBufferAccess.ReadOnly, message);
+                }
+            });
         }
 
         private bool ChangeFullscreen(bool fullscreen)

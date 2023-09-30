@@ -1,5 +1,6 @@
 /* eslint-disable no-use-before-define */
 const handlers = {};
+const sharedBufferHandlers = {};
 
 export function postMessage(name, data = null) {
   console.log('Posting event:',name, data);
@@ -16,15 +17,36 @@ export function registerEventHandler(name, handler) {
   handlers[name].push(handler);
 }
 
-export function eventHandler(event) {
-  const currentHandlers = handlers[event.data.name];
-  if (!currentHandlers) {
-    console.log('No handler found for event:', event.data.name);
+export function registerSharedBufferHandler(name, handler) {
+  if (!sharedBufferHandlers[name]) {
+    sharedBufferHandlers[name] = [handler];
     return;
   }
 
-  for (let i = 0; i < currentHandlers.length; i++) {
-    currentHandlers[i](event.data.data);
+  sharedBufferHandlers[name].push(handler);
+}
+
+export function eventHandler(event) {
+  const eventData = event.data;
+  const currentHandlers = handlers[eventData.name];
+
+  if (currentHandlers) {
+    for (let i = 0; i < currentHandlers.length; i++) {
+      currentHandlers[i](eventData.data);
+    }
+    return;
+  }
+}
+
+export function bufferEventHandler(event) {
+  const currentArrayBufferHandlers = sharedBufferHandlers[event.additionalData.name]; // Assuming this array exists
+  if (currentArrayBufferHandlers) {
+    const arrayBuffer = event.getBuffer();
+    for (let i = 0; i < currentArrayBufferHandlers.length; i++) {
+      currentArrayBufferHandlers[i](arrayBuffer, event.additionalData);
+    }
+  } else {
+    console.log('No handler found for event:', event.additionalData.name);
   }
 }
 

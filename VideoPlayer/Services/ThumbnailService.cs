@@ -4,21 +4,60 @@ using Serilog.Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace VideoPlayer.Services;
 public class ThumbnailService
 {
-    private const string OutputFolder = @"C:\Users\brazi\Desktop\thumb";
-    public static void GenerateThumbnail(long timeInSeconds, string codec, string inputFilePath, string outputFolder, string id)
+    public static readonly string ExecutableDirectory = AppDomain.CurrentDomain.BaseDirectory;
+    public static readonly string OutputFolder = Path.Combine(ExecutableDirectory, "thumb");
+    private const string ThumbSize = "160x90";
+
+    public static void Initialize() {
+        if(!Directory.Exists(OutputFolder))
+        {
+            Directory.CreateDirectory(OutputFolder); 
+        }
+    }
+
+    public static async Task<byte[]> GetThumbnailBytes(long timeInSeconds, long codecInt, string inputFilePath, string id, CancellationToken ct)
+    {
+        var codec = ParseCodec(codecInt);
+        if (codec is VideoCodec.Unknown)
+        {
+            Log.Error("Unknown video codec: {codecInt}", codecInt);
+            return null;
+        }
+        var cudaCodec = GetCudaCodec(codec);
+        if (cudaCodec is null)
+        {
+            Log.Error("Failed to get cuda codec: {codec}", codec);
+            return null;
+        }
+
+        var thumbPath = await GenerateThumbnail(timeInSeconds, cudaCodec, inputFilePath, OutputFolder, id, ct);
+        if(File.Exists(thumbPath))
+        {
+            return File.ReadAllBytes(thumbPath);
+        }
+        return null;
+    }
+    public static async Task<string> GenerateThumbnail(long timeInSeconds, string codec, string inputFilePath, string outputFolder, string id, CancellationToken cancellationToken)
     {
         string formattedTime = FormatTime(timeInSeconds);
-        var outputFilePath = $"{outputFolder}\\thumb-{id}-{timeInSeconds}.jpg";
+        var outputFilePath = $"{outputFolder}\\{id}-{timeInSeconds}.jpg";
+
+        if (File.Exists(outputFilePath))
+        {
+            return outputFilePath;
+        }
 
         ProcessStartInfo startInfo = new ProcessStartInfo
         {
             FileName = "ffmpeg", //TODO ensure ffmpeg and use path
-            Arguments = $"-hwaccel cuvid -hwaccel_output_format cuda -c:v {codec} -ss {formattedTime} -resize 80x45 -an -i {inputFilePath} -vf \"thumbnail_cuda=2,hwdownload,format=nv12\" -vframes 1 {outputFilePath}",
+            Arguments = $"-hwaccel cuvid -hwaccel_output_format cuda -c:v {codec} -ss {formattedTime} -resize {ThumbSize} -an -i {inputFilePath} -vf \"thumbnail_cuda=2,hwdownload,format=nv12\" -vframes 1 {outputFilePath}",
             RedirectStandardOutput = true,
             UseShellExecute = false,
             CreateNoWindow = true
@@ -27,50 +66,13 @@ public class ThumbnailService
         using (Process process = new Process { StartInfo = startInfo })
         {
             process.Start();
+            cancellationToken.Register(() => {
+                if (process.HasExited) return;
+                process.Kill();
+            });
             process.WaitForExit();
         }
-    }
-
-    public static async Task LoopThumbnailGeneration(string inputFilePath, long codecInt, long totalSeconds)
-    {
-        var codec = ParseCodec(codecInt);
-        if(codec is VideoCodec.Unknown)
-        {
-            Log.Error("Unknown video codec: {codecInt}", codecInt);
-            return;
-        }
-        var cudaCodec = GetCudaCodec(codec);
-        if (cudaCodec is null)
-        {
-            Log.Error("Failed to get cuda codec: {codec}", codec);
-            return;
-        }
-
-        Stopwatch stopwatch = new Stopwatch();
-        stopwatch.Start();
-
-        List<Task> taskList = new List<Task>();
-        const int batchSize = 500; // Number of tasks in each batch
-
-        for (long i = 0; i < totalSeconds; i += 10)
-        {
-            long currentTime = i;
-            taskList.Add(Task.Run(() => GenerateThumbnail(currentTime, cudaCodec, inputFilePath, OutputFolder, "korra")));
-
-            if (taskList.Count >= batchSize)
-            {
-                await Task.WhenAll(taskList);
-                taskList.Clear();
-            }
-        }
-
-        if (taskList.Count > 0)
-        {
-            await Task.WhenAll(taskList);
-        }
-
-        stopwatch.Stop();
-        Debug.WriteLine($"Elapsed time: {stopwatch.Elapsed}");
+        return outputFilePath;
     }
 
     private static VideoCodec ParseCodec(long codec)

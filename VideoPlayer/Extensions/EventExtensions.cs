@@ -7,4 +7,14 @@ internal static class EventExtensions
     {
         return ((JsonElement)obj).GetString();
     }
+
+    public static int GetJsonInt32(this object obj)
+    {
+        return ((JsonElement)obj).GetInt32();
+    }
+
+    public static long GetJsonInt64(this object obj)
+    {
+        return ((JsonElement)obj).GetInt64();
+    }
 }

@@ -3,6 +3,7 @@ using System.Windows;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using VideoPlayer.Pipes;
+using VideoPlayer.Services;
 
 namespace VideoPlayer
 {
@@ -27,7 +28,7 @@ namespace VideoPlayer
                 .WriteTo.Debug()
                 .WriteTo.File("logs\\VideoPlayer.txt", rollingInterval: RollingInterval.Day)
                 .CreateLogger();
-
+            ThumbnailService.Initialize();
             base.OnStartup(e);
         }
 

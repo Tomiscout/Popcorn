@@ -11,9 +11,23 @@
 .time-seek-popup {
     display: flex;
     justify-content: center;
+    flex-direction: column;
     padding: 4px;
     background: #4e4e4e;
-    width: 60px;
+    width: 160px;
+    align-items: center;
+}
+
+.popup-image {
+    height: 92px;
+    width: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.popup-image img {
+    width: 160px;
 }
 
 .video-container .progress-controls {
