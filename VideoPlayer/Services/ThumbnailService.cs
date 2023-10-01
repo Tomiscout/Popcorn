@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 namespace VideoPlayer.Services;
 public class ThumbnailService
 {
-    public static readonly string ExecutableDirectory = AppDomain.CurrentDomain.BaseDirectory;
-    public static readonly string OutputFolder = Path.Combine(ExecutableDirectory, "thumb");
-    private const string ThumbSize = "160x90";
+
+    private static readonly string ExecutableDirectory = AppDomain.CurrentDomain.BaseDirectory;
+    private static readonly string OutputFolder = Path.Combine(ExecutableDirectory, "thumb");
 
     public static void Initialize() {
         if(!Directory.Exists(OutputFolder))
@@ -24,31 +24,17 @@ public class ThumbnailService
 
     public static async Task<byte[]> GetThumbnailBytes(long timeInSeconds, long codecInt, string inputFilePath, string id, CancellationToken ct)
     {
-        var codec = ParseCodec(codecInt);
-        if (codec is VideoCodec.Unknown)
-        {
-            Log.Error("Unknown video codec: {codecInt}", codecInt);
-            return null;
-        }
-        var cudaCodec = GetCudaCodec(codec);
-        if (cudaCodec is null)
-        {
-            Log.Error("Failed to get cuda codec: {codec}", codec);
-            return null;
-        }
+        var (command, outputFilePath) = VideoDecoders.BuildDecoderCommand(timeInSeconds, codecInt, inputFilePath, OutputFolder, id);
 
-        var thumbPath = await GenerateThumbnail(timeInSeconds, cudaCodec, inputFilePath, OutputFolder, id, ct);
+        var thumbPath = await GenerateThumbnail(command, outputFilePath, ct);
         if(File.Exists(thumbPath))
         {
             return File.ReadAllBytes(thumbPath);
         }
         return null;
     }
-    public static async Task<string> GenerateThumbnail(long timeInSeconds, string codec, string inputFilePath, string outputFolder, string id, CancellationToken cancellationToken)
+    public static async Task<string> GenerateThumbnail(string command, string outputFilePath, CancellationToken cancellationToken)
     {
-        string formattedTime = FormatTime(timeInSeconds);
-        var outputFilePath = $"{outputFolder}\\{id}-{timeInSeconds}.jpg";
-
         if (File.Exists(outputFilePath))
         {
             return outputFilePath;
@@ -57,7 +43,7 @@ public class ThumbnailService
         ProcessStartInfo startInfo = new ProcessStartInfo
         {
             FileName = "ffmpeg", //TODO ensure ffmpeg and use path
-            Arguments = $"-hwaccel cuvid -hwaccel_output_format cuda -c:v {codec} -ss {formattedTime} -resize {ThumbSize} -an -i {inputFilePath} -vf \"thumbnail_cuda=2,hwdownload,format=nv12\" -vframes 1 {outputFilePath}",
+            Arguments = command,
             RedirectStandardOutput = true,
             UseShellExecute = false,
             CreateNoWindow = true
@@ -66,52 +52,13 @@ public class ThumbnailService
         using (Process process = new Process { StartInfo = startInfo })
         {
             process.Start();
-            cancellationToken.Register(() => {
+            cancellationToken.Register(() =>
+            {
                 if (process.HasExited) return;
                 process.Kill();
             });
             process.WaitForExit();
         }
         return outputFilePath;
-    }
-
-    private static VideoCodec ParseCodec(long codec)
-    {
-        var decoded = $"{(char)(codec & 0xFF)}{(char)((codec >> 8) & 0xFF)}{(char)((codec >> 16) & 0xFF)}{(char)((codec >> 24) & 0xFF)}".ToLower();
-        return decoded switch
-        {
-            "h264" or "avc1" => VideoCodec.H264,
-            "mp4v" => VideoCodec.MPEG4,
-            "wmv2" => VideoCodec.WMV2,
-            "wmv1" => VideoCodec.WMV1,
-            "wvc1" => VideoCodec.WVC1,
-            "vp80" => VideoCodec.VP8,
-            "vp90" => VideoCodec.VP9,
-            "flv1" => VideoCodec.FLV1,
-            "fmp4" => VideoCodec.FMP4,
-            "hevc" => VideoCodec.HEVC,
-            _ => VideoCodec.Unknown
-        };
-    }
-
-    public static string GetCudaCodec(VideoCodec codec) => codec switch
-    {
-        VideoCodec.H264 => "h264_cuvid",
-        VideoCodec.HEVC => "hevc_cuvid",
-        VideoCodec.MPEG4 => "mpeg4_cuvid",
-        VideoCodec.WMV1 => null,  // CUVID doesn't support WMV1
-        VideoCodec.WMV2 => null,  // CUVID doesn't support WMV2
-        VideoCodec.WVC1 => "vc1_cuvid",
-        VideoCodec.VP8 => "vp8_cuvid",
-        VideoCodec.VP9 => "vp9_cuvid",
-        VideoCodec.FLV1 => null,  // CUVID doesn't support FLV1
-        VideoCodec.FMP4 => null,  // CUVID doesn't support FMP4
-        _ => null
-    };
-
-    public static string FormatTime(long milliseconds)
-    {
-        TimeSpan timeSpan = TimeSpan.FromSeconds(milliseconds);
-        return timeSpan.ToString(@"hh\:mm\:ss");
     }
 }
