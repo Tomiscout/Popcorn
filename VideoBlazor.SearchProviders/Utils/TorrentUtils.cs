@@ -2,13 +2,14 @@
 using System.Net;
 using VideoBlazor.Shared;
 using VideoBlazor.Shared.Models;
+using VideoBlazor.Shared.Utils;
 using VideoBlazor.Torrents;
 
 namespace VideoBlazor.SearchProviders.Utils
 {
     public class TorrentUtils
     {
-        private static readonly string _imageFolder = Path.Join(FileSystem.Current.AppDataDirectory, "torrents\\");
+        private static readonly string _imageFolder = Path.Join(DirUtils.DataFolder, "torrents\\");
         public static string GetTorrentsFolder()
         {
             return _imageFolder;

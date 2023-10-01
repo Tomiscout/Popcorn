@@ -1,0 +1,10 @@
+﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="VideoBlazor.Installer" Manufacturer="Tomiscout" Version="1.0.0.0" UpgradeCode="bc3b27b0-b8eb-4e64-a26f-364050d1b6ba">
+    <MajorUpgrade DowngradeErrorMessage="!(loc.DowngradeError)" />
+
+    <Feature Id="Main">
+      <ComponentGroupRef Id="ExampleComponents" />
+    </Feature>
+  </Package>
+</Wix>
+

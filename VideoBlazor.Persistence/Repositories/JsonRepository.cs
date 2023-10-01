@@ -1,12 +1,12 @@
 ﻿using System.Collections.Concurrent;
 using System.Text.Json;
+using VideoBlazor.Shared.Utils;
 
 namespace VideoBlazor.Persistence
 {
     public class JsonRepository //AI generated the locks, let's see how it works out :D
     {
         private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new ConcurrentDictionary<string, SemaphoreSlim>();
-        private readonly string _rootFolder = FileSystem.Current.AppDataDirectory;
 
         public JsonRepository()
         {
@@ -15,7 +15,7 @@ namespace VideoBlazor.Persistence
 
         public string GetDataFolder()
         {
-            return _rootFolder;
+            return DirUtils.DataFolder;
         }
 
         public async Task<T> LoadJsonAsync<T>(string fileName)

@@ -21,6 +21,7 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\VideoBlazor.Domain\VideoBlazor.Domain.csproj" />
 	  <ProjectReference Include="..\VideoBlazor.Torrents\VideoBlazor.Torrents.csproj" />
+	  <ProjectReference Include="..\VideoPlayer.Shared\VideoPlayer.Shared.csproj" />
 	</ItemGroup>
 
 </Project>

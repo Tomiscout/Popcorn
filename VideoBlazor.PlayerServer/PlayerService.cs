@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Reflection;
 using VideoBlazor.Domain.Interfaces;
 using VideoBlazor.Domain.Models;
 using VideoBlazor.Domain.Services;
@@ -17,9 +18,6 @@ namespace VideoBlazor.PlayerServer
             _mediaItemRepository = mediaItemRepository;
             _mediaItemRefreshService = mediaItemRefreshService;
         }
-
-        //TODO change this after figuring out how to build everything
-        private const string _playerExePath = @"C:\Projects\VideoBlazor\VideoPlayer\bin\Debug\net7.0-windows\VideoPlayer.exe";
 
         public async Task OpenFile(string filePath, MediaItem item)
         {
@@ -85,7 +83,35 @@ namespace VideoBlazor.PlayerServer
 
         private string GetPlayerExePath()
         {
-            return Path.Combine(FileSystem.Current.AppDataDirectory, _playerExePath);
+            var binLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var installedExe = Path.Join(binLocation, "VideoPlayer\\VideoPlayer.exe");
+            if(File.Exists(installedExe))
+            {
+                return installedExe;
+            }
+
+            //Find path for development environment
+            while (Path.GetFileName(binLocation) != "VideoBlazor" && binLocation != Path.GetPathRoot(binLocation))
+            {
+                binLocation = Path.GetDirectoryName(binLocation);
+
+                if (string.IsNullOrEmpty(binLocation))
+                {
+                    throw new Exception("VideoBlazor folder not found");
+                }
+            }
+            if(binLocation == null)
+            {
+                throw new Exception("VideoBlazor folder not found");
+            }
+            binLocation = Path.GetDirectoryName(binLocation);
+
+
+            if(Debugger.IsAttached)
+            {
+                return Path.Join(binLocation, @"\VideoPlayer\bin\Debug\net7.0-windows\VideoPlayer.exe");
+            }
+            return Path.Join(binLocation, @"\VideoPlayer\bin\Release\net7.0-windows\VideoPlayer.exe");
         }
     }
 }

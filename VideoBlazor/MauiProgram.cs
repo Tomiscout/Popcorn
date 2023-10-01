@@ -3,16 +3,22 @@ using MudBlazor.Services;
 using VideoBlazor.SearchProviders.MovieDb;
 using VideoBlazor.SearchProviders.Utils;
 using Serilog;
+using VideoBlazor.Shared.Utils;
 
 namespace VideoBlazor;
 
 public static class MauiProgram
 {
     static MauiProgram() {
+        if(!Directory.Exists(DirUtils.DataFolder))
+        {
+            Directory.CreateDirectory(DirUtils.DataFolder);
+        }
+
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
             .WriteTo.Debug()
-            .WriteTo.File("logs\\VideoBlazor.txt", rollingInterval: RollingInterval.Day)
+            .WriteTo.File(Path.Combine(DirUtils.DataFolder, "logs\\VideoBlazor.txt"), rollingInterval: RollingInterval.Day)
             .CreateLogger();
     }
 

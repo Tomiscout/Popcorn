@@ -1,15 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using VideoBlazor.Shared.Utils;
 
 namespace VideoBlazor.Persistence
 {
     public class ImageRepository
     {
         private Dictionary<string, string> _imageCache = new Dictionary<string, string>();
-        private readonly string _imageFolder = Path.Join(FileSystem.Current.AppDataDirectory, "images/");
+        private readonly string _imageFolder = Path.Join(DirUtils.DataFolder, "images/");
 
         public ImageRepository()
         {
