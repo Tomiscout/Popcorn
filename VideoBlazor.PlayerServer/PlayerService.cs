@@ -84,7 +84,7 @@ namespace VideoBlazor.PlayerServer
         private string GetPlayerExePath()
         {
             var binLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            var installedExe = Path.Join(binLocation, "VideoPlayer\\VideoPlayer.exe");
+            var installedExe = Path.Join(binLocation, @"\Player\VideoPlayer.exe");
             if(File.Exists(installedExe))
             {
                 return installedExe;

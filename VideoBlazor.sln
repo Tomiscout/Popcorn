@@ -18,7 +18,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoPlayer.Shared", "Video
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.PlayerServer", "VideoBlazor.PlayerServer\VideoBlazor.PlayerServer.csproj", "{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}"
 EndProject
-Project("{B7DD6F7E-DEF8-4E67-B5B7-07EF123DB6F0}") = "VideoBlazor.Installer", "VideoBlazor.Installer\VideoBlazor.Installer.wixproj", "{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoBlazor.Installer", "VideoBlazor.Installer\VideoBlazor.Installer.csproj", "{F8627ECD-402F-41EB-9252-627067047BDA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -162,22 +162,22 @@ Global
 		{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}.Release|x64.Build.0 = Release|Any CPU
 		{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}.Release|x86.ActiveCfg = Release|Any CPU
 		{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}.Release|x86.Build.0 = Release|Any CPU
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Debug|Any CPU.ActiveCfg = Debug|x64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Debug|Any CPU.Build.0 = Debug|x64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Debug|ARM64.ActiveCfg = Debug|ARM64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Debug|ARM64.Build.0 = Debug|ARM64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Debug|x64.ActiveCfg = Debug|x64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Debug|x64.Build.0 = Debug|x64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Debug|x86.ActiveCfg = Debug|x86
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Debug|x86.Build.0 = Debug|x86
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Release|Any CPU.ActiveCfg = Release|x64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Release|Any CPU.Build.0 = Release|x64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Release|ARM64.ActiveCfg = Release|ARM64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Release|ARM64.Build.0 = Release|ARM64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Release|x64.ActiveCfg = Release|x64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Release|x64.Build.0 = Release|x64
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Release|x86.ActiveCfg = Release|x86
-		{0FDF1BA8-B216-4FA0-AA34-3CB1E62E0A73}.Release|x86.Build.0 = Release|x86
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|x64.Build.0 = Debug|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|x86.Build.0 = Debug|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|ARM64.Build.0 = Release|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|x64.ActiveCfg = Release|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|x64.Build.0 = Release|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|x86.ActiveCfg = Release|Any CPU
+		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

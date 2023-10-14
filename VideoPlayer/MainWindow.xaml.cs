@@ -43,22 +43,24 @@ namespace VideoPlayer
             await InitializeWebView2();
 
             VideoView.MediaPlayer = PlayerCore.GetMediaPlayer();
+            Log.Information("MetroWindow initialized");
         }
 
         private static string AssemblyFolder = Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName;
-        private static string WebPath = $"{AssemblyFolder}\\web-player\\build\\"; //react bundle
+        private static string WebPath = $"{AssemblyFolder}\\web-player\\"; //react bundle
 
         private async Task InitializeWebView2()
         {
             WebView.CoreWebView2InitializationCompleted += WebViewInitialized;
 
+            Log.Information("Player web bundle path: {path}", WebPath);
             try
             {
                 var op = new CoreWebView2EnvironmentOptions("--disable-web-security");
                 var env = await CoreWebView2Environment.CreateAsync(options: op);
                 await WebView.EnsureCoreWebView2Async(env);
 
-                bool useLocalWeb = Environment.GetEnvironmentVariable("UseLocal")?.ToLower() == "true";
+                bool useLocalWeb = Environment.GetEnvironmentVariable("UseLocalWeb")?.ToLower() == "true";
                 if (useLocalWeb)
                 {
                     Log.Information("Using devloper web-player from localhost");

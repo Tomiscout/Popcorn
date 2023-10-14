@@ -4,3 +4,7 @@
 .vs/
 
 */**/node_modules/
+
+/VideoBlazor.Installer/lib
+/VideoBlazor.Installer/Releases
+/VideoBlazor.Installer/*.nupkg

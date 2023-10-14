@@ -5,7 +5,13 @@
       <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
-
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>full</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>None</DebugType>
+  </PropertyGroup>
+  
     <ItemGroup>
       <PackageReference Include="Microsoft.AspNetCore.Components" Version="7.0.1" />
     </ItemGroup>

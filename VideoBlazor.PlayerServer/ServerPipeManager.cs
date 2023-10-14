@@ -4,10 +4,10 @@ using Polly;
 using Polly.Retry;
 using Polly.Timeout;
 using Serilog;
-using System.Diagnostics;
 using VideoBlazor.Domain.Interfaces;
 using VideoBlazor.Domain.Models;
 using VideoBlazor.Domain.Services;
+using VideoBlazor.Shared.Utils;
 using VideoPlayer.Shared;
 using VideoPlayer.Shared.PipeEvents.Client;
 
@@ -15,7 +15,7 @@ namespace VideoBlazor.PlayerServer
 {
     public static class ServerPipeManager
     {
-        private static readonly string _pipeNameFile = @"C:\Projects\VideoBlazor\pipeName.txt";
+        private static readonly string _pipeNameFile = DirUtils.DataFolder + "pipeName.txt";
         private static PipeServerWithCallback<IPipeClient, VideoPlayer.Shared.IPipeServer> _pipeServer;
 
         public static async Task StartServer(MediaItem initialItem, IMediaItemRepository mediaItemRepository, MediaItemRefreshService mediaItemRefreshService)

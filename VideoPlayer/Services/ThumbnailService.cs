@@ -7,13 +7,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using VideoBlazor.Shared.Utils;
 
 namespace VideoPlayer.Services;
 public class ThumbnailService
 {
 
-    private static readonly string ExecutableDirectory = AppDomain.CurrentDomain.BaseDirectory;
-    private static readonly string OutputFolder = Path.Combine(ExecutableDirectory, "thumb");
+    private static readonly string OutputFolder = Path.Combine(DirUtils.DataFolder, "thumb");
 
     public static void Initialize() {
         if(!Directory.Exists(OutputFolder))

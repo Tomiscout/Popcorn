@@ -7,17 +7,16 @@ using VideoPlayer.Shared;
 using VideoPlayer;
 using VideoPlayer.Shared.PipeEvents.Server;
 using Serilog;
+using VideoBlazor.Shared.Utils;
 
 namespace VideoPlayer.Pipes
 {
     public static class PipeManager
     {
-        //private static readonly string PipeFileName = "pipeName.txt";
-        private static readonly string _pipeFileName = @"C:\Projects\VideoBlazor\pipeName.txt";
+        private static readonly string _pipeFileName = DirUtils.DataFolder + "pipeName.txt";
         
         private static PipeClientWithCallback<Shared.IPipeServer, IPipeClient> pipeClient;
 
-        
         public static async Task Initialize(MainWindow window)
         {
             await ConnectToAppPipe(window);

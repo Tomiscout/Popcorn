@@ -29,8 +29,15 @@
         <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
         <GenerateTestArtifacts>True</GenerateTestArtifacts>
         <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+        <NeutralLanguage>en-US</NeutralLanguage>
 		<WindowsPackageType>None</WindowsPackageType>
 		<StartupObject>VideoBlazor.WinUI.Program</StartupObject>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+      <DebugType>full</DebugType>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+      <DebugType>None</DebugType>
     </PropertyGroup>
 
     <ItemGroup>
@@ -105,5 +112,14 @@
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Content>
     </ItemGroup>
+
+    <!-- Delete all folders except Pages, Shared, wwwroot -->
+    <Target Name="DeleteUnwantedFolders" AfterTargets="AfterBuild">
+      <Exec Command="for /f %%i in ('dir /b /a:d $(OutputPath) ^| findstr /v /i &quot;Pages Shared wwwroot&quot;') do rd /s /q $(OutputPath)%%i" />
+    </Target>
+  
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent" DependsOnTargets="DeleteUnwantedFolders">
+      <Exec Command="if &quot;$(ConfigurationName)&quot;==&quot;Release&quot; (&#xD;&#xA;xcopy /y /r /e &quot;$(TargetDir)&quot; &quot;$(SolutionDir)VideoBlazor.Installer\lib\net45\&quot;&#xD;&#xA;)" />
+    </Target>
 
 </Project>

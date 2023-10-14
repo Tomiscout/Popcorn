@@ -1,7 +1,10 @@
 ﻿using System;
+using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Extensions.Configuration;
 using Serilog;
+using VideoBlazor.Shared.Utils;
 using VideoPlayer.Pipes;
 using VideoPlayer.Services;
 
@@ -26,8 +29,25 @@ namespace VideoPlayer
             Log.Logger = new LoggerConfiguration()
                 .WriteTo.Console()
                 .WriteTo.Debug()
-                .WriteTo.File("logs\\VideoPlayer.txt", rollingInterval: RollingInterval.Day)
+                .WriteTo.File(Path.Combine(DirUtils.DataFolder, "logs\\VideoPlayer.txt"), rollingInterval: RollingInterval.Day)
                 .CreateLogger();
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                var exception = e.ExceptionObject as Exception;
+                Log.Fatal(exception, "An unhandled exception occurred.");
+                Log.CloseAndFlush();
+            };
+            TaskScheduler.UnobservedTaskException += (s, e) =>
+            {
+                Log.Error(e.Exception, "An unobserved task exception occurred.");
+                e.SetObserved(); // This prevents the exception from terminating the application.
+            };
+            this.DispatcherUnhandledException += (s, e) =>
+            {
+                Log.Error(e.Exception, "An unhandled exception occurred within the WPF dispatcher.");
+                e.Handled = true; // This prevents the exception from terminating the application.
+            };
+
             ThumbnailService.Initialize();
             base.OnStartup(e);
         }
