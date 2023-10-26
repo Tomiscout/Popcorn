@@ -18,7 +18,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoPlayer.Shared", "Video
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.PlayerServer", "VideoBlazor.PlayerServer\VideoBlazor.PlayerServer.csproj", "{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoBlazor.Installer", "VideoBlazor.Installer\VideoBlazor.Installer.csproj", "{F8627ECD-402F-41EB-9252-627067047BDA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.Installer", "VideoBlazor.Installer\VideoBlazor.Installer.csproj", "{F8627ECD-402F-41EB-9252-627067047BDA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

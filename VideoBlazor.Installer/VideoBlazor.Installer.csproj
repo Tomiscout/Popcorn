@@ -7,6 +7,7 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RunPostBuildEvent>Always</RunPostBuildEvent>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,5 +17,16 @@
   <ItemGroup>
     <Folder Include="lib\net45\" />
   </ItemGroup>
+  
+  <Target Name="AfterBuild" Condition=" '$(Configuration)' == 'Release'">
+    </Target>
+  
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent"  Condition=" '$(Configuration)' == 'Release'">
+    <GetAssemblyIdentity AssemblyFiles="$(TargetPath)">
+      <Output TaskParameter="Assemblies" ItemName="myAssemblyInfo" />
+    </GetAssemblyIdentity>
+    <Exec Command="nuget pack VideoBlazor.nuspec -Version %(myAssemblyInfo.Version) -Properties Configuration=Release" />
+    <Exec Command="squirrel --releasify VideoBlazor.$([System.Version]::Parse(%(myAssemblyInfo.Version)).ToString(3)).nupkg --no-msi" />
+  </Target>
 
 </Project>

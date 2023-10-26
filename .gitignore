@@ -8,3 +8,7 @@
 /VideoBlazor.Installer/lib
 /VideoBlazor.Installer/Releases
 /VideoBlazor.Installer/*.nupkg
+
+/Bundle
+!/Bundle/AppManifest.xml
+/Installer/**/*.*

@@ -4,6 +4,7 @@ using VideoBlazor.SearchProviders.MovieDb;
 using VideoBlazor.SearchProviders.Utils;
 using Serilog;
 using VideoBlazor.Shared.Utils;
+using Serilog.Events;
 
 namespace VideoBlazor;
 
@@ -20,9 +21,10 @@ public static class MauiProgram
             .WriteTo.Debug()
             .WriteTo.File(Path.Combine(DirUtils.DataFolder, "logs\\VideoBlazor.txt"), rollingInterval: RollingInterval.Day)
             .CreateLogger();
+        Serilog.Debugging.SelfLog.Enable(m => Console.Error.WriteLine(m));
     }
 
-	public static MauiApp CreateMauiApp()
+    public static MauiApp CreateMauiApp()
 	{
         var builder = MauiApp.CreateBuilder();
 		builder
@@ -40,15 +42,29 @@ public static class MauiProgram
         builder.Services.AddTransient<Platforms.Windows.IFolderPicker, Platforms.Windows.FolderPicker>();
 #endif
 
-#if DEBUG
+//#if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
-#endif
+//#endif
 
-		ServiceRegister.RegisterServices(builder.Services);
+        builder.Logging.AddSerilog(dispose: true);
+
+        ServiceRegister.RegisterServices(builder.Services);
 
 		TorrentUtils.EnsureTorrentsFolder();
         MovieDbProvider.Initialize();
 
         return builder.Build();
 	}
+
+    private static void SetupSerilog()
+    {
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Verbose()
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .WriteTo.Console()
+            .WriteTo.Debug()
+            .WriteTo.File(Path.Combine(DirUtils.DataFolder, "logs\\VideoBlazor.txt"), rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+    }
 }

@@ -87,6 +87,7 @@
       <PackageReference Include="MonoTorrent" Version="2.0.7" />
       <PackageReference Include="MudBlazor" Version="6.1.9" />
       <PackageReference Include="Serilog" Version="3.0.1" />
+      <PackageReference Include="Serilog.AspNetCore.IngestionCore" Version="1.0.0" />
       <PackageReference Include="Serilog.Extensions.Logging" Version="7.0.0" />
       <PackageReference Include="Serilog.Sinks.Console" Version="4.1.0" />
       <PackageReference Include="Serilog.Sinks.Debug" Version="2.0.0" />
@@ -119,7 +120,7 @@
     </Target>
   
     <Target Name="PostBuild" AfterTargets="PostBuildEvent" DependsOnTargets="DeleteUnwantedFolders">
-      <Exec Command="if &quot;$(ConfigurationName)&quot;==&quot;Release&quot; (&#xD;&#xA;xcopy /y /r /e &quot;$(TargetDir)&quot; &quot;$(SolutionDir)VideoBlazor.Installer\lib\net45\&quot;&#xD;&#xA;)" />
+      <Exec Command="if &quot;$(ConfigurationName)&quot;==&quot;Release&quot; (&#xD;&#xA;xcopy /y /r /e &quot;$(TargetDir)&quot; &quot;$(SolutionDir)Bundle\&quot;&#xD;&#xA;)" />
     </Target>
 
 </Project>
