@@ -58,6 +58,28 @@ namespace VideoBlazor.Persistence
             }
         }
 
+        public async Task DeleteJsonAsync(string fileName)
+        {
+            var lockObject = _locks.GetOrAdd(fileName, new SemaphoreSlim(1, 1));
+            await lockObject.WaitAsync();
+            try
+            {
+                var path = Path.Join(GetDataFolder(), fileName);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+                else
+                {
+                    throw new FileNotFoundException($"File not found: {path}");
+                }
+            }
+            finally
+            {
+                lockObject.Release();
+            }
+        }
+
         public void EnsureAppFolder()
         {
             Directory.CreateDirectory(GetDataFolder());

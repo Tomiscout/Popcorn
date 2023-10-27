@@ -7,13 +7,15 @@ public static class MediaLoader
     public static readonly string[] VideoFormats = new string[]{ ".mkv", ".mp4", ".m4v", ".mpeg", ".avi", ".wmv", ".vp6", ".vp7", ".webm", ".amc", ".psv",
         ".3gp", ".av1", ".hdmov", ".ogv", ".vc1", ".mp4v", ".mpeg4", ".mpg", ".mov", ".vid", ".h264", ".mp2v", ".m1v", ".xvid", ".divx"};
 
-    public static async Task<IList<MediaScanResult>> ScanFolder(string folder)
+    public static async Task<IList<MediaScanResult>> ScanFolder(string folder, List<string>? ignoreFolders = null)
     {
         var resultList = new List<MediaScanResult>();
         string[] rootDirectories;
 
         try
         {
+            if (!Directory.Exists(folder)) return resultList;
+
             rootDirectories = Directory.GetDirectories(folder);
         }
         catch (Exception e)
@@ -22,11 +24,12 @@ public static class MediaLoader
             //happends on rescan folder, when it doesnt exist anymore
             return resultList;
         }
-        //TODO filter out existing dirs
 
         //Dirs
         foreach (var rootDirectory in rootDirectories)
         {
+            if (ignoreFolders != null && ignoreFolders.Contains(rootDirectory)) continue;
+
             var allPaths = Directory.EnumerateFiles(rootDirectory, "*.*", SearchOption.AllDirectories).ToList();
             var scanResult = new MediaScanResult
             {

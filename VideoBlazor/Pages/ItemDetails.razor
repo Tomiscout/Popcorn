@@ -23,6 +23,7 @@
 @inject PlayerService PlayerService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JsRunTime
+@inject IDialogService _dialogService
 
 <div class="ma-3">
     <MudButton Variant="Variant.Filled" @onclick="OnBack">
@@ -351,8 +352,21 @@
 
     public async void OnDelete()
     {
-        await MediaItemRepository.DeleteMediaItem(new Guid(Id));
-        OnBack();
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", $"Do you really want to delete {item.Title}?");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+
+        var dialog = _dialogService.Show<CommonDialog>("Delete", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Cancelled)
+        {
+            await MediaItemRepository.DeleteMediaItem(Guid.Parse(Id));
+            OnBack();
+        }
     }
 
     public async Task OnPlayNext()

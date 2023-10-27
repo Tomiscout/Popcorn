@@ -8,6 +8,10 @@
 <div class="row">
     <div class="header">
         <h3 class="title">@HeaderTitle</h3>
+        @if (!string.IsNullOrEmpty(ButtonText) && OnButtonClick.HasDelegate)
+        {
+            <MudButton Style="margin-right: 8px;" Color="Color.Error" Variant="Variant.Filled" OnClick="OnButtonClick">@ButtonText</MudButton>
+        }
         <div class="progress-bar"></div>
     </div>
     <div class="container" id="slider-container">
@@ -43,6 +47,12 @@
 
     [Parameter]
     public string HeaderTitle { get; set; }
+
+    [Parameter]
+    public string ButtonText { get; set; }
+
+    [Parameter]
+    public EventCallback OnButtonClick { get; set; }
 
     public int sliderIndex = 0;
     private string SliderId = $"slider-{Guid.NewGuid().ToString("N")}";

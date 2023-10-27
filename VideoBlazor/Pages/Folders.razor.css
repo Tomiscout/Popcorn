@@ -21,3 +21,8 @@
 .file-count-label {
     flex-grow: 0;
 }
+
+.title-content {
+    display: flex;
+    justify-content: space-between;
+}

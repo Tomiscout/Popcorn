@@ -78,7 +78,7 @@ public class MediaItemRepository : IMediaItemRepository
         var currentItem = await LoadMediaItem(id);
         if (currentItem is not null)
         {
-            File.Delete(string.Format(_jsonFormat, id.ToString()));
+            await _jsonRepository.DeleteJsonAsync(string.Format(_jsonFormat, id.ToString()));
         }
     }
 
