@@ -20,6 +20,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.PlayerServer", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VideoBlazor.Installer", "VideoBlazor.Installer\VideoBlazor.Installer.csproj", "{F8627ECD-402F-41EB-9252-627067047BDA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VideoBlazor.SegmentFinder", "VideoBlazor.SegmentFinder\VideoBlazor.SegmentFinder.csproj", "{B10DA878-D231-46C2-A19F-7481DC29688D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -178,6 +180,22 @@ Global
 		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|x64.Build.0 = Release|Any CPU
 		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|x86.ActiveCfg = Release|Any CPU
 		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|x86.Build.0 = Release|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Debug|x64.Build.0 = Debug|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Debug|x86.Build.0 = Debug|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Release|ARM64.Build.0 = Release|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Release|x64.ActiveCfg = Release|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Release|x64.Build.0 = Release|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Release|x86.ActiveCfg = Release|Any CPU
+		{B10DA878-D231-46C2-A19F-7481DC29688D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

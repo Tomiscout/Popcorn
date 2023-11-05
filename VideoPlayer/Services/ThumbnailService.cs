@@ -8,6 +8,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using VideoBlazor.Shared.Utils;
+using VideoPlayer.Shared;
 
 namespace VideoPlayer.Services;
 public class ThumbnailService
@@ -33,6 +34,8 @@ public class ThumbnailService
         }
         return null;
     }
+
+    //TODO unnecesary async?
     public static async Task<string> GenerateThumbnail(string command, string outputFilePath, CancellationToken cancellationToken)
     {
         if (File.Exists(outputFilePath))
@@ -40,25 +43,7 @@ public class ThumbnailService
             return outputFilePath;
         }
 
-        ProcessStartInfo startInfo = new ProcessStartInfo
-        {
-            FileName = "ffmpeg", //TODO ensure ffmpeg and use path
-            Arguments = command,
-            RedirectStandardOutput = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        using (Process process = new Process { StartInfo = startInfo })
-        {
-            process.Start();
-            cancellationToken.Register(() =>
-            {
-                if (process.HasExited) return;
-                process.Kill();
-            });
-            process.WaitForExit();
-        }
+        FFmpegWrapper.RunCommand(command, cancellationToken);
         return outputFilePath;
     }
 }

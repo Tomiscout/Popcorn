@@ -1,6 +1,7 @@
 ﻿using Serilog;
 using System;
 using System.Diagnostics;
+using VideoPlayer.Shared;
 
 namespace VideoPlayer.Services;
 internal class VideoDecoders
@@ -35,46 +36,31 @@ internal class VideoDecoders
 
     public static void GetAvailableDecoders()
     {
-        ProcessStartInfo startInfo = new ProcessStartInfo
+        var output = FFmpegWrapper.ReturnStandardOutput("-hwaccels");
+
+        string[] lines = output.Split('\n');
+
+        for (int i = 0; i < lines.Length; i++)
         {
-            FileName = "ffmpeg",
-            Arguments = "-hwaccels",
-            RedirectStandardOutput = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+            string hwaccel = lines[i].Trim();
 
-        using (Process process = new Process { StartInfo = startInfo })
-        {
-            process.Start();
-
-            string output = process.StandardOutput.ReadToEnd();
-            string[] lines = output.Split('\n');
-
-            for (int i = 0; i < lines.Length; i++)
+            if (string.IsNullOrEmpty(hwaccel))
             {
-                string hwaccel = lines[i].Trim();
-
-                if (string.IsNullOrEmpty(hwaccel))
-                {
-                    continue;
-                }
-
-                if (hwaccel.Contains("_cuvid"))
-                {
-                    IsNvidia = true;
-                }
-                else if (hwaccel.Contains("_qsv"))
-                {
-                    IsIntel = true;
-                }
-                else if (hwaccel.Contains("_amf"))
-                {
-                    IsAmd = true;
-                }
+                continue;
             }
 
-            process.WaitForExit();
+            if (hwaccel.Contains("_cuvid"))
+            {
+                IsNvidia = true;
+            }
+            else if (hwaccel.Contains("_qsv"))
+            {
+                IsIntel = true;
+            }
+            else if (hwaccel.Contains("_amf"))
+            {
+                IsAmd = true;
+            }
         }
     }
 

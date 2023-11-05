@@ -7,6 +7,7 @@ using Serilog;
 using VideoBlazor.Shared.Utils;
 using VideoPlayer.Pipes;
 using VideoPlayer.Services;
+using VideoPlayer.Shared;
 
 namespace VideoPlayer
 {
@@ -48,6 +49,7 @@ namespace VideoPlayer
                 e.Handled = true; // This prevents the exception from terminating the application.
             };
 
+            FFmpegWrapper.ExePath = "ffmpeg"; //TODO proper linking
             ThumbnailService.Initialize();
             base.OnStartup(e);
         }

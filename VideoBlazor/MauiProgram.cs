@@ -5,6 +5,7 @@ using VideoBlazor.SearchProviders.Utils;
 using Serilog;
 using VideoBlazor.Shared.Utils;
 using Serilog.Events;
+using VideoPlayer.Shared;
 
 namespace VideoBlazor;
 
@@ -52,6 +53,8 @@ public static class MauiProgram
 
 		TorrentUtils.EnsureTorrentsFolder();
         MovieDbProvider.Initialize();
+        SegmentFinder.SegmentFinder.Initialize();
+        FFmpegWrapper.ExePath = "ffmpeg"; //TODO proper linking
 
         return builder.Build();
 	}

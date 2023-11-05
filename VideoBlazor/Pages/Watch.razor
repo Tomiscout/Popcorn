@@ -3,6 +3,7 @@
 @using VideoBlazor.Domain.Interfaces;
 @using VideoBlazor.Domain.Models
 @using SharedPages
+@using VideoBlazor.SegmentFinder;
 @inject IMediaItemRepository MediaItemRepository
 @inject IDialogService _dialogService
 
@@ -10,8 +11,9 @@
 
 @if (IsEverythingEmpty())
 {
-    <MudText>No media added yet. Add from "Folders" or search for a torrent.</MudText>
+    <MudText Style="margin: 12px;">No media added yet. Add from "Folders" or search for a torrent.</MudText>
 }
+
 @if (recentItems?.Any() ?? false)
 {
     <SelectorCarousel Items="recentItems" HeaderTitle="Continue Watching" />
@@ -84,7 +86,7 @@
     }
 
     private bool IsEverythingEmpty() => 
-    (missingItems?.Any() ?? false) ||
-    (recentItems?.Any() ?? false) ||
-    (newItems?.Any() ?? false);
+    !(missingItems?.Any() ?? false) &&
+    !(recentItems?.Any() ?? false) &&
+    !(newItems?.Any() ?? false);
 }

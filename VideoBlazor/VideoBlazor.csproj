@@ -98,6 +98,7 @@
       <ProjectReference Include="..\VideoBlazor.Persistence\VideoBlazor.Persistence.csproj" />
       <ProjectReference Include="..\VideoBlazor.PlayerServer\VideoBlazor.PlayerServer.csproj" />
       <ProjectReference Include="..\VideoBlazor.SearchProviders\VideoBlazor.SearchProviders.csproj" />
+      <ProjectReference Include="..\VideoBlazor.SegmentFinder\VideoBlazor.SegmentFinder.csproj" />
       <ProjectReference Include="..\VideoBlazor.Torrents\VideoBlazor.Torrents.csproj" />
       <ProjectReference Include="..\VideoPlayer.Shared\VideoPlayer.Shared.csproj" />
     </ItemGroup>

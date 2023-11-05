@@ -68,6 +68,13 @@
                         <i class="fa-solid fa-play"></i>
                         <span class="ml-1">Play next: @nextTrack.Title</span>
                     </MudButton>
+                    @if(item.Files.Count() > 1)
+                    {
+                        <MudButton Variant="Variant.Filled" @onclick="OpenAutoplaySetup">
+                            <i class="fa-solid fa-play"></i>
+                            <span class="ml-1">Setup Intro Skipping</span>
+                        </MudButton>
+                    }
                 }
             </div>
         </div>
@@ -300,6 +307,11 @@
         currentFiles = item.Files.GetFilesForDirectory(item.FolderDirectory);
         navigation = new List<MediaFile>();
         await RecalculateTags();
+    }
+
+    public async Task OpenAutoplaySetup()
+    {
+        
     }
 
     private async Task RecalculateTags()
