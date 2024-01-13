@@ -20,6 +20,7 @@
   </PropertyGroup>
   
 	<ItemGroup>
+	  <PackageReference Include="EnvDTE" Version="17.8.37221" />
 	  <PackageReference Include="PipeMethodCalls" Version="4.0.1" />
 	  <PackageReference Include="PipeMethodCalls.NetJson" Version="3.0.0" />
 	  <PackageReference Include="Polly" Version="7.2.4" />

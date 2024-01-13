@@ -27,6 +27,7 @@ namespace VideoBlazor.Core.Services
             {
                 files.Add(new MediaFile
                 {
+                    Id = Guid.NewGuid(),
                     Path = path,
                     Title = Path.GetFileName(path),
                     Type = FileType.File

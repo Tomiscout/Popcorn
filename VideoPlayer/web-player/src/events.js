@@ -1,20 +1,30 @@
 /* eslint-disable no-use-before-define */
-const handlers = {};
+const localHandlers = {};
+const webviewHandlers = {};
 const sharedBufferHandlers = {};
 
 export function postMessage(name, data = null) {
   console.log('Posting event:',name, data);
   window?.chrome?.webview?.postMessage({ name, data });
-  //TODO error message, that it's intendend to be used in webview
+  localEventHandler(name, data);
 }
 
 export function registerEventHandler(name, handler) {
-  if (!handlers[name]) {
-    handlers[name] = [handler];
+  if (!localHandlers[name]) {
+    localHandlers[name] = [handler];
     return;
   }
 
-  handlers[name].push(handler);
+  localHandlers[name].push(handler);
+}
+
+export function registerWebviewEventHandler(name, handler) {
+  if (!webviewHandlers[name]) {
+    webviewHandlers[name] = [handler];
+    return;
+  }
+
+  webviewHandlers[name].push(handler);
 }
 
 export function registerSharedBufferHandler(name, handler) {
@@ -28,13 +38,23 @@ export function registerSharedBufferHandler(name, handler) {
 
 export function eventHandler(event) {
   const eventData = event.data;
-  const currentHandlers = handlers[eventData.name];
+  const currentHandlers = webviewHandlers[eventData.name];
 
   if (currentHandlers) {
     for (let i = 0; i < currentHandlers.length; i++) {
       currentHandlers[i](eventData.data);
     }
     return;
+  }
+}
+
+function localEventHandler(name, data) {
+  const currentHandlers = localHandlers[name];
+
+  if (currentHandlers) {
+    for (let i = 0; i < currentHandlers.length; i++) {
+      currentHandlers[i](data);
+    }
   }
 }
 

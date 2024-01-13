@@ -2,6 +2,10 @@
   "profiles": {
     "Windows Machine": {
       "commandName": "Project",
+      "environmentVariables": {
+        "UseLocalWeb": "True",
+        "PlayerDebugger": "false"
+      },
       "nativeDebugging": false
     }
   }

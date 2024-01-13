@@ -33,6 +33,19 @@ namespace VideoBlazor.Shared.Utils
         public static (string, List<string>) SanitizeFilename(string filename, List<string> tags)
         {
             var name = filename.Trim();
+            var containsHyphen = name.Contains("-") && name.Count(c => c == '-') > 2;
+            var containsUnderscore = name.Contains("_") && name.Count(c => c == '_') > 2;
+            if (!name.Contains(" ") && (containsHyphen || containsUnderscore))
+            {
+                if(containsHyphen)
+                {
+                    name = name.Replace('-', ' ');
+                }
+                if (containsUnderscore)
+                {
+                    name = name.Replace('_', ' ');
+                }
+            }
             var removedTags = new List<string>();
             
             // Remove extension

@@ -11,8 +11,10 @@ public class MediaItem
     public string Image { get; set; }
     public string ImagePath { get; set; }
     public string FolderDirectory { get; set; }
-    public IList<MediaFile> Files { get;set; }
-    public IList<PlaybackHistory> History { get;set; }
+    public List<MediaFile> Files { get;set; }
+    public List<ItemHistory> History { get;set; }
+
+    public List<SegmentInfo> Segments { get; set; }
 
     public string GetDisplayTitle()
     {

@@ -13,5 +13,5 @@ public class TrackPlayedEvent : PipeEvent
         EventName = nameof(TrackPlayedEvent);
     }
     public Guid ItemId { get; set; }
-    public PlaybackHistory HistoryItem { get; set; }
+    public ItemHistory HistoryItem { get; set; }
 }

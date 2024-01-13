@@ -22,11 +22,6 @@ namespace VideoPlayer.Pipes
             await ConnectToAppPipe(window);
         }
 
-        public static void Test()
-        {
-            Log.Information("PipeManager test");
-        }
-
         public static async Task ConnectToAppPipe(MainWindow window)
         {
             var pipeName = await GetPipeName();

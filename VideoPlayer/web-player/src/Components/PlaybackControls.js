@@ -10,7 +10,7 @@ import VolumeControl from './VolumeControl';
 import EpisodesControl from './EpisodesControl';
 import SubtitleControl from './SubtitleControl';
 import TrackTitle from './TrackTitle';
-import { postMessage, registerEventHandler } from '../events';
+import { postMessage, registerWebviewEventHandler } from '../events';
 import { useEventListeners } from '../Utlis/helpers';
 
 
@@ -56,7 +56,7 @@ const PlaybackControls = () => {
   });
 
   useEffect(() => {
-    registerEventHandler('track_loaded', (data) => {
+    registerWebviewEventHandler('track_loaded', (data) => {
       setPlaying(true);
     });
   }, []);

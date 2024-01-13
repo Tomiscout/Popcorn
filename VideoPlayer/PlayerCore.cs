@@ -58,7 +58,15 @@ internal static class PlayerCore
             Path = p,
             FormatTags = new List<string>() { Path.GetExtension(p) }
         }).ToList();
-        foreach(var file in _inputFilePaths)
+
+        //On initial load initial pipe event will have already happened, so we can load the file from main app
+        if(_currentMediaItem != null)
+        {
+            LoadMedia(_currentMediaItem.Files.First(f => f.Path == _inputFilePaths.First().Path));
+            return;
+        }
+
+        foreach (var file in _inputFilePaths)
         {
             file.ParseTitle();
         }
@@ -71,26 +79,29 @@ internal static class PlayerCore
         _isLoadingTrack = true;
         if (!File.Exists(file.Path))
         {
+            _isLoadingTrack = false;
             Log.Error($"File not found. {file.Path}");
             return;
         }
         _currentMediaFile = file;
+        Log.Warning($"Set of current media file {file.Path}");
         if(_currentMediaFile.Id == null || _currentMediaFile.Id == Guid.Empty) //TODO HACK
         {
             _currentMediaFile.Id = Guid.NewGuid();
         }
         _currentMediaFile.Played = true;
         var media = new Media(_libVLC, file.Path);
-        
-        _mediaPlayer.Play(media);
 
-        if(_currentMediaItem is not null)
+        // When playing eventually happends - PlayingStarted event is called
+        ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.Play(media));
+
+        //Update history in main app
+        if (_currentMediaItem is not null)
         {
-            //Update history
             PipeManager.SendTrackPlayedEvent(new TrackPlayedEvent
             {
                 ItemId = _currentMediaItem.Id,
-                HistoryItem = new PlaybackHistory
+                HistoryItem = new ItemHistory
                 {
                     Filename = file.Path,
                     Title = file.Title,
@@ -135,6 +146,8 @@ internal static class PlayerCore
         AutoSelectAudioAndSubtitles();
         SendAudioAndSubtitles();
 
+        // On initial run from media player due to fast startup dummy media item is created, and will have no data for segments and other extra options
+        SendAudioSegments(); 
         _isLoadingTrack = false;
     }
 
@@ -152,8 +165,26 @@ internal static class PlayerCore
         PostEvent("audio_subtitles_loaded", @event);
     }
 
+    private static void SendAudioSegments()
+    {
+        Log.Information($"Sending segments of file: {JsonSerializer.Serialize(_currentMediaFile)}");
+        if (_currentMediaFile is null)
+        {
+            Log.Warning("Trying to send audio segments of null media file");
+            return;
+        }
+
+        var @event = new AudioSegmentsEvent()
+        {
+            Intro = _currentMediaFile.IntroTimes,
+            Outro = _currentMediaFile.OutroTimes
+        };
+        PostEvent("segments_update", @event);
+    }
+
     private static void AutoSelectAudioAndSubtitles()
     {
+        // TODO default japaneese preference for anime
         if(_mediaPlayer.AudioTrackCount > 1)
         {
             var englishTracks = _mediaPlayer.AudioTrackDescription.Where(EnglishSelectPredicate).ToList();
@@ -213,7 +244,7 @@ internal static class PlayerCore
         if (string.IsNullOrWhiteSpace(filePath)) return true;
 
         var currentCount = _mediaPlayer.SpuCount;
-        _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, $"file:///{filePath}", true);
+        ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, $"file:///{filePath}", true));
 
         //This could be avoided if 'media_subitem_added' event support was added.
         bool isSubtitleLoaded = false;
@@ -249,8 +280,10 @@ internal static class PlayerCore
         try
         {
             var time = ((JsonElement)data).GetInt64();
-            _mediaPlayer.Time += time * 1000;
-            PostEvent("current_time", _mediaPlayer.Time);
+            ThreadPool.QueueUserWorkItem(_ => {
+                _mediaPlayer.Time += time * 1000;
+                PostEvent("current_time", _mediaPlayer.Time);
+            });
         }
         catch (Exception e)
         {
@@ -307,7 +340,7 @@ internal static class PlayerCore
     {
         try
         {
-            var time = (long)Math.Round(double.Parse(((JsonElement)data).GetString())); //TODO refactor to use EventExtensions
+            var time = data.GetJsonInt64();
             ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.Time = time);
         }
         catch (Exception e)
@@ -321,13 +354,13 @@ internal static class PlayerCore
     private static bool AudioTrackSelected(object data)
     {
         var trackId = ((JsonElement)data).GetInt32();
-        return _mediaPlayer.SetAudioTrack(trackId);
+        return _mediaPlayer.SetAudioTrack(trackId); //TODO threadpool
     }
 
     private static bool SubtitleTrackSelected(object data)
     {
         var trackId = ((JsonElement)data).GetInt32();
-        return _mediaPlayer.SetSpu(trackId);
+        return _mediaPlayer.SetSpu(trackId); //TODO threadpool
     }
 
     private static bool OpenFolder(string path)
@@ -404,7 +437,7 @@ internal static class PlayerCore
         var webEvent = JsonSerializer.Deserialize<WebEvent>(message);
 
         Log.Information(webEvent.Name);
-        var success = webEvent.Name switch
+        var _ = webEvent.Name switch
         {
             "play_status_changed" => PlayPause(webEvent.Data),
             "fullscreen" => SetFullscreen(webEvent.Data),
@@ -421,7 +454,7 @@ internal static class PlayerCore
             "folder_open" => OpenFolder(webEvent.Data.GetJsonString()),
             "folder_open_root" => OpenFolder(_currentMediaItem?.FolderDirectory ?? Path.GetDirectoryName(_currentMediaFile.Path)),
             "thumb_requested" => OnThumbnailRequest(webEvent.Data.GetJsonInt64()),
-            _ => throw new NotImplementedException()
+            _ => throw new NotImplementedException($"Event from player not supported: {webEvent.Name}")
         };
     }
 
@@ -431,10 +464,16 @@ internal static class PlayerCore
     {
         _currentMediaItem = item;
         _currentMediaItem.RecalculatePlayedFiles(_currentMediaItem.Files);
-        //TODO set media info
+
+        // Update current item if it already playing
+        if(_currentMediaFile != null)
+        {
+            _currentMediaFile = _currentMediaItem.Files.First(f => f.Path == _currentMediaFile.Path);
+            SendAudioSegments();
+        }
     }
 
-    public static void UpdateItemHistory(IList<PlaybackHistory> history) //From main client
+    public static void UpdateItemHistory(List<ItemHistory> history) //From main client
     {
         _currentMediaItem.History = history;
         var lastPlayed = _currentMediaItem.History.LastOrDefault();

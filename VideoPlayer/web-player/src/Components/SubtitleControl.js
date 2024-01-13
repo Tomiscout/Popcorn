@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { postMessage, registerEventHandler } from '../events';
+import { postMessage, registerWebviewEventHandler } from '../events';
 import { ReactComponent as Subtitles } from '../assets/icons/subtitles.svg';
 import { ReactComponent as AddIcon } from '../assets/icons/plus.svg';
 import NumberStepper from './NumberStepper';
@@ -18,7 +18,7 @@ const SubtitleControl = () => {
   const subtitlePopupRef = useRef(null);
 
   useEffect(() => {
-    registerEventHandler('audio_subtitles_loaded', (data) => {
+    registerWebviewEventHandler('audio_subtitles_loaded', (data) => {
       setAudioTracks(data.audioTracks || []);
       setSubtitleTracks(data.subtitleTracks || []);
     });

@@ -29,7 +29,7 @@ internal class VideoDecoders
 
         string formattedTime = FormatTime(timeInSeconds);
         var outputFilePath = $"{outputFolder}\\{id}-{timeInSeconds}.jpg";
-        var command = $"-hwaccel cuvid -hwaccel_output_format cuda -c:v {cudaCodec} -ss {formattedTime} -resize {ThumbSize} -an -i {inputFilePath} -vf \"thumbnail_cuda=2,hwdownload,format=nv12\" -vframes 1 {outputFilePath}";
+        var command = $"-hwaccel cuvid -hwaccel_output_format cuda -c:v {cudaCodec} -ss {formattedTime} -resize {ThumbSize} -an -i \"{inputFilePath}\" -vf \"thumbnail_cuda=2,hwdownload,format=nv12\" -vframes 1 {outputFilePath}";
 
         return (command, outputFilePath);
     }

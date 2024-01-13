@@ -58,6 +58,11 @@ namespace VideoBlazor.PlayerServer
                     { "LANG", "en_US.UTF-8" }
                 }
             };
+            if(Environment.GetEnvironmentVariable("UseLocalWeb")?.ToLower() == "true") // Inject develop web player
+            {
+                startInfo.Environment.Add("UseLocalWeb", "true");
+            }
+
             var process = new Process() { StartInfo = startInfo };
             // Handle standard output
             process.OutputDataReceived += (sender, e) =>
@@ -79,6 +84,11 @@ namespace VideoBlazor.PlayerServer
             process.Start();
             process.BeginOutputReadLine();  // Start async read of standard output
             process.BeginErrorReadLine();  // Start async read of error output
+
+            if (Environment.GetEnvironmentVariable("PlayerDebugger")?.ToLower() == "true") // Inject develop web player
+            {
+                DebugUtils.AttachProcessToDebugger(process.Id);
+            }
         }
 
         private string GetPlayerExePath()

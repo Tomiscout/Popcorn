@@ -3,6 +3,7 @@ using SoundFingerprinting.Data;
 using SoundFingerprinting.InMemory;
 using SoundFingerprinting.Query;
 using SoundFingerprinting.Strides;
+using VideoBlazor.Domain.Models;
 
 namespace VideoBlazor.SegmentFinder;
 public static class PatternFinder
@@ -30,21 +31,16 @@ public static class PatternFinder
             entry.Deconstruct(out ResultEntry? audio, out _);
             return audio;
         })
-        .Where(entry => entry != null)
-        .OrderByDescending(e => e.TrackCoverageWithPermittedGapsLength)
+        .Where(entry => entry != null && entry.TrackCoverageWithPermittedGapsLength >= 2)
+        .OrderByDescending(e => e!.TrackCoverageWithPermittedGapsLength)
         .ToList();
 
         return audioResults.Select(e => new SegmentLocation()
         {
+            SegmentId = Guid.NewGuid(),
             Length = e!.TrackCoverageWithPermittedGapsLength,
             StartSeconds = e.QueryMatchStartsAt
-
         }).ToList();
-    }
-
-    public static async Task SaveHashToDatabase()
-    {
-
     }
 
     public static async Task<AVHashes> BuildHash(string path)

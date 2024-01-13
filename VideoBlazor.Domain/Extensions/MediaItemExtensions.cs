@@ -6,11 +6,12 @@ namespace VideoPlayer.Domain.Extensions;
 
 public static class MediaItemExtensions
 {
-    public static MediaFile GetNextMediaFile(this MediaItem item)
+    public static MediaFile GetNextMediaFile(this MediaItem item, IList<ItemHistory> history = null!)
     {
         MediaFile result = null;
 
-        var lastItem = item.History?.LastOrDefault();
+        history ??= item.History;
+        var lastItem = history?.LastOrDefault();
         if (lastItem is null)
         {
             result = FindNextMediaFileInNewDirectory(item.FolderDirectory, item.Files, null);
@@ -21,7 +22,7 @@ public static class MediaItemExtensions
         //If next file is sibling
         var currentFolder = Directory.GetParent(lastItem.Filename).FullName;
         result ??= FindNextMediaFileSibling(currentFolder, item.Files, lastItem.Filename);
-        result ??= FindNextMediaFileInSubdirectories(currentFolder, item.Files, item.History.Select(h => h.Filename).ToList());
+        result ??= FindNextMediaFileInSubdirectories(currentFolder, item.Files, history.Select(h => h.Filename).ToList());
         if (result is not null)
         {
             return result;
@@ -31,7 +32,7 @@ public static class MediaItemExtensions
         //When going to parent, shouldn't play already played directories
         while (currentFolder != item.FolderDirectory) //Test, may be dangerous
         {
-            result = FindInParent(currentFolder, item.Files, item.History?.Select(i => i.Filename).ToList());
+            result = FindInParent(currentFolder, item.Files, history?.Select(i => i.Filename).ToList());
             if (result is not null)
             {
                 return result;
@@ -42,6 +43,7 @@ public static class MediaItemExtensions
         return result;
     }
 
+    #region Is played
     public static void RecalculatePlayedFiles(this MediaItem item, IList<MediaFile> filesToCalculate, bool cache = true) { 
         foreach(var file in filesToCalculate)
         {
@@ -83,6 +85,7 @@ public static class MediaItemExtensions
         // If we get here, it means all nested folders and files are played.
         return true;
     }
+    #endregion
 
     public static List<FolderLoadedNavigation> BuildNavigationPath(this MediaItem item, string topFolder)
     {
@@ -125,6 +128,7 @@ public static class MediaItemExtensions
         {
             resultFiles.Add(new MediaFile
             {
+                Id = Guid.NewGuid(),
                 Path = folder,
                 Title = folder.Substring(folder.LastIndexOf("\\") + 1), //Windows dependant
                 Type = FileType.Folder

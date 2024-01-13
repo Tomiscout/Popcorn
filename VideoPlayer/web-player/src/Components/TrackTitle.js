@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { registerEventHandler } from '../events';
+import { registerWebviewEventHandler } from '../events';
 
 const TrackTitle = () => {
     const [title, setTitle] = useState('');
@@ -9,7 +9,7 @@ const TrackTitle = () => {
     const [showSeriesTitle, setShowSeriesTitle] = useState(false);
 
     useEffect(() => {
-        registerEventHandler('track_loaded', (data) => {
+        registerWebviewEventHandler('track_loaded', (data) => {
             if (data.title) {
                 setTitle(data.shortTitle || data.title)
             } else {

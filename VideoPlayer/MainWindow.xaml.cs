@@ -84,14 +84,14 @@ namespace VideoPlayer
             WebView.CoreWebView2.WebMessageReceived += PlayerCore.WebMessageReceived;
         }
 
+        // TODO could potentially optimize startup time, since it wont load file until ui is 
+        // Currently player (debug) loads in 2.4 seconds total, pipe init takes ~1 second, so can load media item earlier
         private bool PlayerInitialized()
         {
-            PipeManager.Test();
-
             var envPaths = Environment.GetCommandLineArgs().Where(Path.IsPathFullyQualified).ToList();
             if (envPaths.Any()) {
                 envPaths.RemoveAt(0); //DLL path
-                PlayerCore.LoadFilesFromInput(envPaths);
+                PlayerCore.LoadFilesFromInput(envPaths.Where(arg => !arg.StartsWith("-")).ToList());
             }
             return true;
         }

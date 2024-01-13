@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { registerEventHandler, registerSharedBufferHandler, postMessage } from '../events';
+import { registerWebviewEventHandler, registerSharedBufferHandler, postMessage } from '../events';
 import '../Styles/ProgressBar.css'
 import debounce from 'lodash.debounce';
+import Slider from '@mui/material/Slider';
+import { styled } from '@mui/system';
 
 function timeFormat(duration) {
     duration = duration / 1000;
@@ -31,24 +33,40 @@ const ProgressBar = () => {
     const [isLoading, setIsLoading] = useState(false);
 
     const [currentTime, setCurrentTime] = useState(0);
-    const [totalTime, setTotalTime] = useState(0);
+    const [totalTime, setTotalTime] = useState(10000);
+    const [timeSegments, setTimeSegments] = useState([]);
 
     useEffect(() => {
-        registerEventHandler('current_time', (data) => setCurrentTime(data));
-        registerEventHandler('duration_update', (data) => setTotalTime(data));
+        registerWebviewEventHandler('current_time', (data) => setCurrentTime(data));
+        registerWebviewEventHandler('duration_update', (data) => setTotalTime(data));
+        registerWebviewEventHandler('segments_update', (data) => setSegments(data));
 
         registerSharedBufferHandler('thumb', thumbnailCallback);
     }, []);
 
-    const progressClick = (event) => {
-        setCurrentTime(event);
-        postMessage('set_playback_time', event) //TODO throttle
-    }
+    const handleSliderChange = (event, newValue) => {
+        setCurrentTime(newValue);
+        postMessage('set_playback_time', newValue) //TODO throttle
+    };
 
-    const getBackgroundSize = () => {
-        return {
-            backgroundSize: `${(currentTime / totalTime * 100)}% 100%`,
-        };
+    const setSegments = (data) => {
+        const newSegments = [];
+        if(data.intro) {
+            newSegments.push(...data.intro);
+        }
+        if(data.outro) {
+            newSegments.push(...data.outro);
+        }
+        
+        //Convert to ms, ugly but good for now
+        const segmentsResult = newSegments.map(s => ({
+            id: s.Id,
+            start: s.StartSeconds * 1000,
+            length: s.Length * 1000
+        }));
+        
+       console.log(`Loaded time segments:`, segmentsResult);
+       setTimeSegments(segmentsResult);
     };
 
     const popupHalfWidth = 80 + 4; //width + padding
@@ -124,6 +142,20 @@ const ProgressBar = () => {
         setPopupVisible(false);
     };
 
+    const getSegmentStyle = (segment) => {
+        const startPercent = (segment.start / totalTime) * 100;
+        const widthPercent = ((segment.start + segment.length) / totalTime) * 100;
+
+        return {
+            left: `${startPercent.toFixed(2)}%`,
+            width: `${widthPercent.toFixed(2)}%`
+        };
+    };
+
+    const getFillWidth = () => {
+        return { width: `${(currentTime / totalTime) * 100}%` };
+    };
+
     return (
         <div className="progress-controls">
             {popupVisible &&
@@ -140,24 +172,45 @@ const ProgressBar = () => {
                     </div>
                 </div>
             }
-            <div className='progress-slider-row'
-                onMouseMove={handleMouseMove}
-                onMouseOut={handleMouseLeave}>
-                <div className='progress-slider-container' ref={progressBarRef}>
-                    <input
-                        type="range"
-                        min="0"
-                        max={totalTime}
-                        step="1000"
-                        onChange={(e) => progressClick(e.target.value)}
-                        style={getBackgroundSize()}
-                        className='progress-slider'
-                        value={currentTime}
+            <div className='progress-slider-row'>
+                <div className='progress-slider-container' ref={progressBarRef} onMouseMove={handleMouseMove}
+                    onMouseOut={handleMouseLeave}>
+                        {timeSegments.map((segment, index) => (
+                            <div key={index} className="time-segment" style={getSegmentStyle(segment)}></div>
+                        ))}
+                        <Slider
+                            className='progress-slider'
+                            min={0}
+                            max={totalTime}
+                            value={currentTime}
+                            onChange={handleSliderChange}
+                            step={1000}
+                            sx={{
+                                color: '#E31221', // Sets the color of the thumb and the active part of the rail
 
-                    />
+                                '& .MuiSlider-rail, & .MuiSlider-track': {
+                                    height: '8px', // Increase rail and track height
+                                    border: 'none'
+                                },
+
+                                '& .MuiSlider-thumb': {
+                                    zIndex: 10,
+                                    boxShadow: 'none', // Remove default shadow
+
+                                    '&:hover, &.Mui-focusVisible': {
+                                        boxShadow: 'none', // Remove shadow on hover and focus
+                                    },
+
+                                    '&.Mui-active': {
+                                        boxShadow: '0px 0px 0px 8px rgba(227, 18, 33, 0.16)', // Shadow when pressed or dragging
+                                    }
+                                }
+                            }}
+                        />
                     {popupVisible &&
                         <div className='time-seek-line' style={{ left: `${lineX}px` }}></div>
                     }
+
                 </div>
                 <div id="time-remaining">
                     {timeFormat(totalTime - currentTime)}

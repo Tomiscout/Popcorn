@@ -104,6 +104,14 @@
                     }
                     <span class="file-title @ItemWatchedStyle(file)">@file.GetDisplayTitle()</span>
 
+                    @if (file.IntroProcessed)
+                    {
+                        <MudChip Variant="Variant.Outlined" Color="Color.Secondary">@(file.IntroTimes.Any() ? "" : "No ")Intro</MudChip>
+                    }
+                    @if (file.OutroProcessed)
+                    {
+                        <MudChip Variant="Variant.Outlined" Color="Color.Secondary">@(file.OutroTimes.Any() ? "" : "No ")Outro</MudChip>
+                    }
                     @if (file.EpisodeTags is not null)
                     {
                         @foreach (var tag in file.EpisodeTags)
@@ -181,7 +189,7 @@
         await InitialLoad();
 
         if(item.History is null) {
-            item.History = new List<PlaybackHistory>();
+            item.History = new List<ItemHistory>();
         }
     }
 
@@ -202,8 +210,10 @@
         item = await MediaItemRepository.LoadMediaItem(Id);
     }
 
-    private async Task RefreshLoadMediaItem()
+    private async Task RefreshLoadMediaItem(Guid itemId)
     {
+        if(itemId != item.Id) return;
+
         await InvokeAsync(async () =>
         {
             await LoadMediaItem();
@@ -248,11 +258,11 @@
         return string.Empty; //TODO implement watched folders
     }
 
-    private async Task OpenFile(PlaybackHistory historyItem)
+    private async Task OpenFile(ItemHistory historyItem)
     {
         await _openFileDebouncer.Debounce(async () =>
         {
-            await MediaItemRepository.AddHistoryItem(item.Id, new PlaybackHistory
+            await MediaItemRepository.AddHistoryItem(item.Id, new ItemHistory
                 {
                     Filename = historyItem.Filename,
                     Title = historyItem.Title,
@@ -268,7 +278,7 @@
         {
             if (!_settings.UseInternalPlayer)
             {
-                await MediaItemRepository.AddHistoryItem(item.Id, new PlaybackHistory
+                await MediaItemRepository.AddHistoryItem(item.Id, new ItemHistory
                     {
                         Filename = file.Path,
                         Title = file.Title,
@@ -311,6 +321,12 @@
 
     public async Task OpenAutoplaySetup()
     {
+        var parameters = new DialogParameters();
+        parameters.Add("Item", item);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Large };
+
+        var dialog = _dialogService.Show<SegmentsSetupDialog>("Setup intro/outro", parameters, options);
         
     }
 

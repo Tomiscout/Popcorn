@@ -34,7 +34,7 @@ namespace VideoPlayer.Pipes
             PlayerCore.SetMediaInfo(mediaItem);
         }
 
-        public void UpdateMediaItemHistory(IList<PlaybackHistory> history)
+        public void UpdateMediaItemHistory(List<ItemHistory> history)
         {
             PlayerCore.UpdateItemHistory(history);
         }

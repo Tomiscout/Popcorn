@@ -6,6 +6,7 @@ using VideoBlazor.Persistence;
 using VideoBlazor.Persistence.Repositories;
 using VideoBlazor.PlayerServer;
 using VideoBlazor.SearchProviders.Utils;
+using VideoBlazor.SegmentFinder;
 using VideoBlazor.Torrents;
 
 namespace VideoBlazor.Core
@@ -24,6 +25,7 @@ namespace VideoBlazor.Core
             services.AddSingleton<PlayerService>();
             services.AddSingleton<IMediaItemRepository, MediaItemRepository>();
             services.AddSingleton<MediaItemRefreshService>();
+            services.AddSingleton<SegmentFinderService>();
             services.AddBlazoredModal();
         }
     }

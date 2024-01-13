@@ -53,21 +53,8 @@ public static class MauiProgram
 
 		TorrentUtils.EnsureTorrentsFolder();
         MovieDbProvider.Initialize();
-        SegmentFinder.SegmentFinder.Initialize();
         FFmpegWrapper.ExePath = "ffmpeg"; //TODO proper linking
 
         return builder.Build();
 	}
-
-    private static void SetupSerilog()
-    {
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Verbose()
-            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            .Enrich.FromLogContext()
-            .WriteTo.Console()
-            .WriteTo.Debug()
-            .WriteTo.File(Path.Combine(DirUtils.DataFolder, "logs\\VideoBlazor.txt"), rollingInterval: RollingInterval.Day)
-            .CreateLogger();
-    }
 }

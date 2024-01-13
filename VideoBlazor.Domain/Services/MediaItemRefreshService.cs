@@ -3,10 +3,10 @@ namespace VideoBlazor.Domain.Services;
 
 public class MediaItemRefreshService
 {
-    public event Func<Task> OnRefreshRequested;
+    public event Func<Guid, Task> OnRefreshRequested;
 
-    public void RequestRefresh()
+    public void RequestRefresh(Guid itemId)
     {
-        OnRefreshRequested?.Invoke();
+        OnRefreshRequested?.Invoke(itemId);
     }
 }

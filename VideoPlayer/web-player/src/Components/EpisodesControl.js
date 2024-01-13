@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { registerEventHandler, postMessage } from '../events';
+import { registerWebviewEventHandler, postMessage } from '../events';
 import { ReactComponent as Epsiodes } from '../assets/icons/episodes.svg';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolder, faChevronRight, faPlay } from '@fortawesome/free-solid-svg-icons'
@@ -54,7 +54,7 @@ const EpisodesControl = () => {
     }
 
     useEffect(() => {
-        registerEventHandler('folder_loaded', (data) => {
+        registerWebviewEventHandler('folder_loaded', (data) => {
             console.log('Folder loaded:', data);
             setCurrentFiles(data.files);
             setNavigation(data.navigation);

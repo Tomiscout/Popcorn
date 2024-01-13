@@ -71,7 +71,7 @@ namespace VideoBlazor.PlayerServer
         public static async Task LoadMediaEvent(string path) => await _pipeServer.InvokeAsync(x => x.LoadMedia(new LoadMediaEvent() { FilePath = path }));
 
         public static async Task SendMediaInfoEvent(MediaItem item) => await _pipeServer.InvokeAsync(x => x.MediaInfo(item));
-        public static async Task UpdateMediaItemHistory(IList<PlaybackHistory> item) => await _pipeServer.InvokeAsync(x => x.UpdateMediaItemHistory(item));
+        public static async Task UpdateMediaItemHistory(List<ItemHistory> item) => await _pipeServer.InvokeAsync(x => x.UpdateMediaItemHistory(item));
         
         public static void Dispose()
         {

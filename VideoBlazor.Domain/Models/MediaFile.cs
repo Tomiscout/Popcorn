@@ -12,6 +12,11 @@ public class MediaFile
     public string ShortTitle { get; set; } = string.Empty;
     public FileType Type { get; set; } = FileType.File;
     public bool Played { get; set; } = false;
+    public bool IntroProcessed { get; set; } = false;
+    public bool OutroProcessed { get; set; } = false;
+
+    public List<SegmentLocation> IntroTimes { get; set; }
+    public List<SegmentLocation> OutroTimes { get; set; }
 
     public List<string> EpisodeTags { get; set; }
     public List<string> FormatTags { get; set; }
@@ -46,4 +51,7 @@ public class MediaFile
         ShortTitle = parsed;
         FormatTags = tags;
     }
+
+    public string GetIntroFilename() => $"{Id}-intro";
+    public string GetOutroFilename() => $"{Id}-outro";
 }

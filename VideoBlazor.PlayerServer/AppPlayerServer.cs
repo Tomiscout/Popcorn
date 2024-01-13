@@ -34,7 +34,7 @@ namespace VideoBlazor.PlayerServer
         {
             var newHistory = await _mediaItemRepository.AddHistoryItem(e.ItemId, e.HistoryItem);
             await ServerPipeManager.UpdateMediaItemHistory(newHistory);
-            _mediaItemRefreshService.RequestRefresh();
+            _mediaItemRefreshService.RequestRefresh(e.ItemId);
         }
     }
 }
