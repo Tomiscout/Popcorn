@@ -82,7 +82,6 @@ public class SegmentFinderService
     public async Task ScanLibrary(MediaItem item)
     {
         //TODO put in separate method and loop
-        // Should resync after detections
         item = await _mediaItemRepository.LoadMediaItem(item.Id);
 
         await ScanLibraryIntro(item);
@@ -161,7 +160,7 @@ public class SegmentFinderService
 
         foreach (var file in files)
         {
-            var audioFile = AudioExtractor.ExtractAudioFile(file.Path, file.GetIntroFilename(), WorkDirectory, 0, 360);
+            var (audioFile, _) = AudioExtractor.ExtractAudioFile(file.Path, file.GetIntroFilename(), WorkDirectory, 0, 360);
             file.IntroTimes = await introSession.DetectSegments(audioFile);
             file.IntroProcessed = true;
 
@@ -172,6 +171,8 @@ public class SegmentFinderService
 
     private async Task ScanLibraryOutro(MediaItem item)
     {
+        var outroTimeSeconds = 120;
+
         var introSession = new FingerprintSession();
         await introSession.InitializeSessionAsync(item.Segments.Where(s => s.Type == SegmentType.Outro));
 
@@ -183,8 +184,15 @@ public class SegmentFinderService
 
         foreach (var file in files)
         {
-            var audioFile = AudioExtractor.ExtractAudioFile(file.Path, file.GetOutroFilename(), WorkDirectory, -120);
+            var (audioFile, extractedLength) = AudioExtractor.ExtractAudioFile(file.Path, file.GetOutroFilename(), WorkDirectory, -outroTimeSeconds);
             file.OutroTimes = await introSession.DetectSegments(audioFile);
+
+            // Convert start time to negative from the end of file
+            foreach(var outroTime in file.OutroTimes)
+            {
+                outroTime.StartSeconds = -(extractedLength - outroTime.StartSeconds);
+            }
+
             file.OutroProcessed = true;
 
             await _mediaItemRepository.SaveMediaItem(item);
@@ -203,8 +211,8 @@ public class SegmentFinderService
          TODO The very first audio file or first in new batch (when intro changes in season) might fail because of very delayed intro or no intro at all.
            - need to somehow not break detection and move on to next files.
          */
-        string audioFile1 = AudioExtractor.ExtractAudioFile(files[0].Path, files[0].GetIntroFilename(), WorkDirectory, 0, 360);
-        string audioFile2 = AudioExtractor.ExtractAudioFile(files[1].Path, files[1].GetIntroFilename(), WorkDirectory, 0, 360);
+        var (audioFile1, _) = AudioExtractor.ExtractAudioFile(files[0].Path, files[0].GetIntroFilename(), WorkDirectory, 0, 360);
+        var (audioFile2, _) = AudioExtractor.ExtractAudioFile(files[1].Path, files[1].GetIntroFilename(), WorkDirectory, 0, 360);
 
         return (await PatternFinder.FindMatchingAudio(audioFile1, audioFile2), files[1], audioFile2);
     }
@@ -220,8 +228,8 @@ public class SegmentFinderService
          TODO The very first audio file or first in new batch (when intro changes in season) might fail because of very delayed intro or no intro at all.
            - need to somehow not break detection and move on to next files.
          */
-        string audioFile1 = AudioExtractor.ExtractAudioFile(files[0].Path, files[0].GetOutroFilename(), WorkDirectory, -120);
-        string audioFile2 = AudioExtractor.ExtractAudioFile(files[1].Path, files[1].GetOutroFilename(), WorkDirectory, -120);
+        var (audioFile1, _) = AudioExtractor.ExtractAudioFile(files[0].Path, files[0].GetOutroFilename(), WorkDirectory, -120);
+        var (audioFile2, _) = AudioExtractor.ExtractAudioFile(files[1].Path, files[1].GetOutroFilename(), WorkDirectory, -120);
 
         return (await PatternFinder.FindMatchingAudio(audioFile1, audioFile2), files[1], audioFile2);
     }

@@ -24,7 +24,7 @@
 }
 @if (missingItems?.Any() ?? false)
 {
-    <SelectorCarousel Items="missingItems" HeaderTitle="No longer on disk" ButtonText="Clear all" OnButtonClick="ClearAllMissingItems" />
+    <SelectorCarousel Items="missingItems" HeaderTitle="No longer on disk" ButtonText="Remove all items" OnButtonClick="ClearAllMissingItems" />
 }
 
 <MudDivider />
@@ -65,7 +65,7 @@
     private async Task ClearAllMissingItems()
     {
         var parameters = new DialogParameters();
-        parameters.Add("ContentText", $"Do you really want to delete all unused items?");
+        parameters.Add("ContentText", $"Do you really want to delete all items, which no longer exist on disk?");
         parameters.Add("ButtonText", "Delete");
         parameters.Add("Color", Color.Error);
 

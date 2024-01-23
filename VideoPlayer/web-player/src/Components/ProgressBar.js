@@ -3,7 +3,7 @@ import { registerWebviewEventHandler, registerSharedBufferHandler, postMessage }
 import '../Styles/ProgressBar.css'
 import debounce from 'lodash.debounce';
 import Slider from '@mui/material/Slider';
-import { styled } from '@mui/system';
+import SkipButton from './SkipButton';
 
 function timeFormat(duration) {
     duration = duration / 1000;
@@ -34,39 +34,97 @@ const ProgressBar = () => {
 
     const [currentTime, setCurrentTime] = useState(0);
     const [totalTime, setTotalTime] = useState(10000);
+    const totalTimeRef = useRef(totalTime); //Needed for segments calculation and immediate access to value. could be avoided with precalculated end from backend
     const [timeSegments, setTimeSegments] = useState([]);
+    const timeSegmentsRef = useRef(timeSegments); //withou using ref - handleCurrentTime closure cant access newest segments, just default []
+    const [introButtonVisible, setIntroButtonVisible] = useState(false);
+    const [outroButtonVisible, setOutroButtonVisible] = useState(false);
+    const introButtonVisibleRef = useRef(introButtonVisible);
+    const outroButtonVisibleRef = useRef(outroButtonVisible);
+
+    const [skipRequested, setSkipRequested] = useState(false);
+    const [currentSkipTimeEnd, setCurrentSkipTimeEnd] = useState(0);
+    const currentSkipTimeEndRef = useRef(currentSkipTimeEnd);
 
     useEffect(() => {
-        registerWebviewEventHandler('current_time', (data) => setCurrentTime(data));
+        registerWebviewEventHandler('current_time', (data) => handleCurrentTime(data));
         registerWebviewEventHandler('duration_update', (data) => setTotalTime(data));
         registerWebviewEventHandler('segments_update', (data) => setSegments(data));
 
         registerSharedBufferHandler('thumb', thumbnailCallback);
     }, []);
 
+    useEffect(() => {
+        totalTimeRef.current = totalTime;
+    }, [totalTime]);
+
+    useEffect(() => {
+        timeSegmentsRef.current = timeSegments;
+    }, [timeSegments]);
+    useEffect(() => {
+        currentSkipTimeEndRef.current = currentSkipTimeEnd;
+    }, [currentSkipTimeEnd]);
+    useEffect(() => {
+        introButtonVisibleRef.current = introButtonVisible;
+        outroButtonVisibleRef.current = outroButtonVisible;
+    }, [introButtonVisible, outroButtonVisible]);
+
     const handleSliderChange = (event, newValue) => {
         setCurrentTime(newValue);
         postMessage('set_playback_time', newValue) //TODO throttle
     };
 
+    const handleCurrentTime = (newTime) => {
+        setCurrentTime(newTime);
+
+        if(introButtonVisibleRef.current || outroButtonVisibleRef.current) {
+            // Finds current segment and check if still in range
+            for(const segment of timeSegmentsRef.current) {
+                if(segment.end !== currentSkipTimeEndRef.current) continue;
+                
+                if(newTime < segment.start || newTime > segment.end) {
+                    setOutroButtonVisible(false);
+                    setIntroButtonVisible(false);
+                }
+                return;
+            }
+            return;
+        }
+
+        for(const segment of timeSegmentsRef.current) {
+            if(segment.start < 0) {
+                if(segment.start + totalTimeRef.current <= newTime && segment.end > newTime){
+                    setOutroButtonVisible(true);
+                    setCurrentSkipTimeEnd(segment.end);
+                    return;
+                }
+            } else if(segment.start <= newTime && segment.end > newTime) {
+                setIntroButtonVisible(true);
+                setCurrentSkipTimeEnd(segment.end);
+                return;
+            }
+        }
+    }
+
     const setSegments = (data) => {
         const newSegments = [];
-        if(data.intro) {
+        if (data.intro) {
             newSegments.push(...data.intro);
         }
-        if(data.outro) {
+        if (data.outro) {
             newSegments.push(...data.outro);
         }
-        
+
         //Convert to ms, ugly but good for now
         const segmentsResult = newSegments.map(s => ({
-            id: s.Id,
-            start: s.StartSeconds * 1000,
-            length: s.Length * 1000
+            id: s.SegmentId,
+            start: parseInt(s.StartSeconds * 1000),
+            length: parseInt(s.Length * 1000),
+            end: parseInt(s.StartSeconds < 0 ? totalTimeRef.current + (s.StartSeconds + s.Length) * 1000 : (s.StartSeconds + s.Length) * 1000) //precalculated for current time
         }));
-        
-       console.log(`Loaded time segments:`, segmentsResult);
-       setTimeSegments(segmentsResult);
+
+        console.log(`Loaded time segments:`, segmentsResult);
+        setTimeSegments(segmentsResult);
     };
 
     const popupHalfWidth = 80 + 4; //width + padding
@@ -94,7 +152,7 @@ const ProgressBar = () => {
         setPopupVisible(true);
         setPopupTime(timeFormat(hoveredTime));
         setPopupX(newPopupX);
-        setLineX(e.clientX);
+        setLineX(e.clientX - 10); // 10px is container margin
 
         thumbnailRequest(hoveredTime);
     };
@@ -143,8 +201,19 @@ const ProgressBar = () => {
     };
 
     const getSegmentStyle = (segment) => {
-        const startPercent = (segment.start / totalTime) * 100;
-        const widthPercent = ((segment.start + segment.length) / totalTime) * 100;
+        let startPercent, endPercent;
+
+        if (segment.start < 0) {
+            // Calculate start from end of file
+            startPercent = ((totalTime + segment.start) / totalTime) * 100;
+            endPercent = ((totalTime + segment.start + segment.length) / totalTime) * 100;
+        } else {
+            // Normal calculation for positive start
+            startPercent = (segment.start / totalTime) * 100;
+            endPercent = ((segment.start + segment.length) / totalTime) * 100;
+        }
+
+        const widthPercent = endPercent - startPercent;
 
         return {
             left: `${startPercent.toFixed(2)}%`,
@@ -152,9 +221,16 @@ const ProgressBar = () => {
         };
     };
 
-    const getFillWidth = () => {
-        return { width: `${(currentTime / totalTime) * 100}%` };
+    // Handling skipping from SkipButton
+    const handleSkip = () => {
+        setSkipRequested(true);
     };
+    useEffect(() => { // Have to force useEffect, because of 'Cannot update a component ProgressBar while rendering a different component SkipButton'
+        if (skipRequested) {
+            handleSliderChange(null, currentSkipTimeEnd);
+            setSkipRequested(false);
+        }
+    }, [skipRequested, currentSkipTimeEnd]);
 
     return (
         <div className="progress-controls">
@@ -172,41 +248,45 @@ const ProgressBar = () => {
                     </div>
                 </div>
             }
+            <div className="skip-button-container">
+                <SkipButton text={"Skip intro"} duration={10} isVisible={introButtonVisible} onSkip={handleSkip} />
+                <SkipButton text={"Skip outro"} duration={10} isVisible={outroButtonVisible} onSkip={handleSkip} />
+            </div>
             <div className='progress-slider-row'>
                 <div className='progress-slider-container' ref={progressBarRef} onMouseMove={handleMouseMove}
                     onMouseOut={handleMouseLeave}>
-                        {timeSegments.map((segment, index) => (
-                            <div key={index} className="time-segment" style={getSegmentStyle(segment)}></div>
-                        ))}
-                        <Slider
-                            className='progress-slider'
-                            min={0}
-                            max={totalTime}
-                            value={currentTime}
-                            onChange={handleSliderChange}
-                            step={1000}
-                            sx={{
-                                color: '#E31221', // Sets the color of the thumb and the active part of the rail
+                    {timeSegments.map((segment, index) => (
+                        <div key={index} className="time-segment" style={getSegmentStyle(segment)}></div>
+                    ))}
+                    <Slider
+                        className='progress-slider'
+                        min={0}
+                        max={totalTime}
+                        value={currentTime}
+                        onChange={handleSliderChange}
+                        step={1000}
+                        sx={{
+                            color: '#E31221', // Sets the color of the thumb and the active part of the rail
 
-                                '& .MuiSlider-rail, & .MuiSlider-track': {
-                                    height: '8px', // Increase rail and track height
-                                    border: 'none'
+                            '& .MuiSlider-rail, & .MuiSlider-track': {
+                                height: '8px', // Increase rail and track height
+                                border: 'none'
+                            },
+
+                            '& .MuiSlider-thumb': {
+                                zIndex: 10,
+                                boxShadow: 'none', // Remove default shadow
+
+                                '&:hover, &.Mui-focusVisible': {
+                                    boxShadow: 'none', // Remove shadow on hover and focus
                                 },
 
-                                '& .MuiSlider-thumb': {
-                                    zIndex: 10,
-                                    boxShadow: 'none', // Remove default shadow
-
-                                    '&:hover, &.Mui-focusVisible': {
-                                        boxShadow: 'none', // Remove shadow on hover and focus
-                                    },
-
-                                    '&.Mui-active': {
-                                        boxShadow: '0px 0px 0px 8px rgba(227, 18, 33, 0.16)', // Shadow when pressed or dragging
-                                    }
+                                '&.Mui-active': {
+                                    boxShadow: '0px 0px 0px 8px rgba(227, 18, 33, 0.16)', // Shadow when pressed or dragging
                                 }
-                            }}
-                        />
+                            }
+                        }}
+                    />
                     {popupVisible &&
                         <div className='time-seek-line' style={{ left: `${lineX}px` }}></div>
                     }

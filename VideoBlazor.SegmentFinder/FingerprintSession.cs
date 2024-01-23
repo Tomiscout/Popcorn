@@ -42,6 +42,7 @@ public class FingerprintSession
             .OrderByDescending(e => e!.TrackCoverageWithPermittedGapsLength)
             .Select(e => new SegmentLocation()
             {
+                SegmentId = Guid.Parse(e!.Track.Id),
                 Length = e!.TrackCoverageWithPermittedGapsLength,
                 StartSeconds = e.QueryMatchStartsAt
             })

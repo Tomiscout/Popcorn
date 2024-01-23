@@ -57,7 +57,7 @@ internal static class AudioExtractor
     }
 
 
-    public static string ExtractAudioFile(string file, string outputName, string workDir, double startSeconds, double length = double.MaxValue)
+    public static (string, double) ExtractAudioFile(string file, string outputName, string workDir, double startSeconds, double length = double.MaxValue)
     {
         var (audioTracks, duration) = GetAudioInfo(file);
 
@@ -93,7 +93,7 @@ internal static class AudioExtractor
             //TODO run output command and log it
             throw new FailedExtractAudioTrackException(file);
         }
-        return extractedAudioPath;
+        return (extractedAudioPath, length);
     }
 
 

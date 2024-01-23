@@ -1,7 +1,7 @@
 .progress-slider-container {
     display: flex;
     flex-grow: 1;
-    padding-left: 10px;
+    margin-left: 10px;
     position: relative;
 }
 
@@ -30,6 +30,7 @@
 .video-container .progress-controls {
     width: 100%;
     color: white;
+    position: relative;
 }
 
 .video-container .progress-controls .progress-bar {
@@ -44,6 +45,12 @@
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.skip-button-container {
+    position: absolute;
+    right: max(2vw, 20px);
+    bottom: 5vh;
 }
 
 #time-remaining {
@@ -117,9 +124,10 @@ input[type="range"]::-webkit-slider-thumb:active {
 
 .time-segment {
     position: absolute;
-    background-color: #18ac2cc7;
+    background-color: #bebebe;
     height: 8.5px;
     border-radius: 2px;
+    pointer-events: none;
     z-index: 2;
     top: 36%;
 }
