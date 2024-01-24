@@ -35,6 +35,7 @@ internal static class PlayerCore
     private static List<MediaFile> _inputFilePaths { get; set; }
     private static MediaItem _currentMediaItem = null;
     private static MediaFile _currentMediaFile = null;
+    private static Media _currentMediaInstance = null;
     private static bool _isLoadingTrack = false;
 
     public static void Initialize()
@@ -90,10 +91,10 @@ internal static class PlayerCore
             _currentMediaFile.Id = Guid.NewGuid();
         }
         _currentMediaFile.Played = true;
-        var media = new Media(_libVLC, file.Path);
+        _currentMediaInstance = new Media(_libVLC, file.Path);
 
         // When playing eventually happends - PlayingStarted event is called
-        ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.Play(media));
+        ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.Play(_currentMediaInstance));
 
         //Update history in main app
         if (_currentMediaItem is not null)
@@ -321,7 +322,20 @@ internal static class PlayerCore
             var play = ((JsonElement)data).GetBoolean();
             if (play)
             {
-                ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.Play());
+                if(_mediaPlayer.State == VLCState.Ended)
+                {
+                }
+                ThreadPool.QueueUserWorkItem(_ => {
+                    if (_mediaPlayer.State == VLCState.Ended) // When track ends it needs to be reloaded
+                    {
+                        var currentTime = _mediaPlayer.Time;
+                        _mediaPlayer.Play(_currentMediaInstance);
+                        _mediaPlayer.Time = currentTime;
+                    } else
+                    {
+                        _mediaPlayer.Play();
+                    }
+                });
             }
             else
             {
@@ -341,7 +355,15 @@ internal static class PlayerCore
         try
         {
             var time = data.GetJsonInt64();
-            ThreadPool.QueueUserWorkItem(_ => _mediaPlayer.Time = time);
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                if (_mediaPlayer.State == VLCState.Ended) // When track ends it needs to be reloaded
+                {
+                    _mediaPlayer.Play(_currentMediaInstance);
+                }
+                _mediaPlayer.Time = time;
+                
+            });
         }
         catch (Exception e)
         {

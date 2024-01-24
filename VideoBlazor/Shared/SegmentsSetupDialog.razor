@@ -47,9 +47,9 @@
 
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="ClearSegments">Clear segments</MudButton>
-        <MudButton OnClick="AutoDetect">AutoDetect</MudButton>
-        <MudButton OnClick="ScanLibrary">ScanLibrary</MudButton>
+        <MudButton OnClick="AutoDetect">Detect intro/outro segments</MudButton>
+        <MudButton OnClick="ScanLibrary" Disabled="@(!item.Segments.Any())" >Apply segments in library</MudButton>
+        <MudButton OnClick="ClearSegments" Disabled="@AppliedSegmentsExist()">Reset applied segments</MudButton>
     </DialogActions>
 </MudDialog>
 @code {
@@ -119,6 +119,11 @@
         {
             await _segmentFinderService.ScanLibrary(item);
         });
+    }
+
+    private bool AppliedSegmentsExist()
+    {
+        return item.Files.Any(f => f.IntroProcessed || f.OutroProcessed);
     }
 
     private async Task ClearSegments()

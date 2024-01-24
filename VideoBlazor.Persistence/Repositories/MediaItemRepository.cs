@@ -118,8 +118,9 @@ public class MediaItemRepository : IMediaItemRepository
         {
             file.IntroProcessed = false;
             file.OutroProcessed = false;
+            file.IntroTimes = null;
+            file.OutroTimes = null;
         }
-        mediaItem.Segments = new();
         await SaveMediaItem(mediaItem);
     }
 }
