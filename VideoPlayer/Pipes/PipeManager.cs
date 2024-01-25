@@ -4,10 +4,10 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using VideoPlayer.Shared;
-using VideoPlayer;
 using VideoPlayer.Shared.PipeEvents.Server;
 using Serilog;
 using VideoBlazor.Shared.Utils;
+using VideoPlayer.Core;
 
 namespace VideoPlayer.Pipes
 {

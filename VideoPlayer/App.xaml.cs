@@ -7,6 +7,7 @@ using System.Windows;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using VideoBlazor.Shared.Utils;
+using VideoPlayer.Core;
 using VideoPlayer.Pipes;
 using VideoPlayer.Services;
 using VideoPlayer.Shared;

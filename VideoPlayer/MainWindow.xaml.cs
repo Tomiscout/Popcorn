@@ -12,6 +12,7 @@ using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using VideoPlayer.Core;
 using VideoPlayer.Pipes;
 
 namespace VideoPlayer
@@ -32,7 +33,7 @@ namespace VideoPlayer
             PlayerCore.PostStreamMessage = PostStreamToWebView;
             PlayerCore.ChangeFullscreen = ChangeFullscreen;
             PlayerCore.PlayerInitialized = PlayerInitialized;
-            PlayerCore.SubtitleFileSelect = ShowSubtitleFileDialog;
+            AudioAndSubtitles.SubtitleFileSelect = ShowSubtitleFileDialog;
             InitializeComponent();
         }
         
@@ -42,7 +43,7 @@ namespace VideoPlayer
 
             await InitializeWebView2();
 
-            VideoView.MediaPlayer = PlayerCore.GetMediaPlayer();
+            VideoView.MediaPlayer = PlayerCore.MediaPlayer;
             Log.Information("MetroWindow initialized");
         }
 
@@ -96,6 +97,7 @@ namespace VideoPlayer
             return true;
         }
 
+        // TODO graceful closing. This may cause deadlocks, because of attempting to send current time, when webview is already closed.
         private void PostWebMessageToWebView(string json)
         {
             WebView?.Dispatcher?.Invoke(() => WebView?.CoreWebView2?.PostWebMessageAsJson(json));

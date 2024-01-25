@@ -4,6 +4,7 @@ using VideoBlazor.Domain.Models;
 using VideoPlayer.Shared.PipeEvents.Client;
 using System.Collections;
 using System.Collections.Generic;
+using VideoPlayer.Core;
 
 namespace VideoPlayer.Pipes
 {
@@ -31,12 +32,12 @@ namespace VideoPlayer.Pipes
 
         public void MediaInfo(MediaItem mediaItem)
         {
-            PlayerCore.SetMediaInfo(mediaItem);
+            MediaItemManager.SetMediaInfo(mediaItem);
         }
 
         public void UpdateMediaItemHistory(List<ItemHistory> history)
         {
-            PlayerCore.UpdateItemHistory(history);
+            MediaItemManager.UpdateItemHistory(history);
         }
     }
 }
