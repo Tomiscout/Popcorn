@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using VideoPlayer.Core;
 using VideoPlayer.Pipes;
+using VideoPlayer.Services;
 
 namespace VideoPlayer
 {
@@ -41,6 +42,7 @@ namespace VideoPlayer
         {
             Task.Run(async () => await PipeManager.Initialize(this)); //TODO this
 
+            GpuScanner.ScanHardware();
             await InitializeWebView2();
 
             VideoView.MediaPlayer = PlayerCore.MediaPlayer;

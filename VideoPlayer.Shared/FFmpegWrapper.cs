@@ -44,8 +44,15 @@ public static class FFmpegWrapper
             process.Start();
             cancellationToken?.Register(() =>
             {
-                if (process.HasExited) return;
-                process.Kill();
+                if (process == null || !process.StartInfo.FileName.Any()) return;
+                try
+                {
+                    if (process.HasExited) return;
+                    process.Kill();
+                }
+                catch (InvalidOperationException)
+                {
+                }
             });
 
             process.WaitForExit();

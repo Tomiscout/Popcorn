@@ -5,7 +5,8 @@ namespace VideoBlazor.Domain;
 public static class MediaLoader
 {
     public static readonly string[] VideoFormats = new string[]{ ".mkv", ".mp4", ".m4v", ".mpeg", ".avi", ".wmv", ".vp6", ".vp7", ".webm", ".amc", ".psv",
-        ".3gp", ".av1", ".hdmov", ".ogv", ".vc1", ".mp4v", ".mpeg4", ".mpg", ".mov", ".vid", ".h264", ".mp2v", ".m1v", ".xvid", ".divx"};
+        ".3gp", ".av1", ".hdmov", ".ogv", ".vc1", ".mp4v", ".mpeg4", ".mpg", ".mov", ".vid", ".h264", ".mp2v", ".m1v", ".xvid", ".divx", ".m2v", ".m2ts", ".streamdump", ".ts",
+     ".vp5", ".yuv", ".pmf", ".mxf", ".tp", ".trp", ".gxf", ".flv", ".302", ".dv", ".avs", ".y4m"};
 
     public static async Task<IList<MediaScanResult>> ScanFolder(string folder, List<string>? ignoreFolders = null)
     {
@@ -40,7 +41,7 @@ public static class MediaLoader
 
             foreach (var format in VideoFormats)
             {
-                var resultPaths = allPaths.Where(p => p.EndsWith(format));
+                var resultPaths = allPaths.Where(p => p.ToLower().EndsWith(format));
                 scanResult.Files.AddRange(resultPaths.ToList());
             }
 

@@ -15,12 +15,15 @@ using MediaPlayer = LibVLCSharp.Shared.MediaPlayer;
 using System.Linq;
 using VideoPlayer.Extensions;
 using Serilog;
+using FFMpegCore;
+using VideoPlayer.Services;
 
 namespace VideoPlayer.Core;
 internal static class PlayerCore
 {
     public static MediaFile CurrentMediaFile = null;
     public static Media CurrentMediaInstance = null;
+    public static IMediaAnalysis CurrentMediaProbe = null;
 
     public static LibVLC LibVLC;
     public static MediaPlayer MediaPlayer;
@@ -30,6 +33,7 @@ internal static class PlayerCore
     public static Func<bool> PlayerInitialized { get; set; }
     public static Func<bool, bool> ChangeFullscreen { get; set; }
     private static List<MediaFile> _inputFilePaths { get; set; }
+    private static bool _isLoadedFromArgs = false;
 
     private static bool _isLoadingTrack = false;
 
@@ -44,11 +48,14 @@ internal static class PlayerCore
         MediaPlayer.LengthChanged += SendLengthEvent;
         MediaPlayer.EndReached += PlaybackEndReached;
         MediaPlayer.Playing += PlayingStarted;
+        MediaPlayer.EnableHardwareDecoding = true;
+
         Log.Information("Player core initialized");
     }
 
     public static void LoadFilesFromInput(List<string> paths)
     {
+        _isLoadedFromArgs = true;
         _inputFilePaths = paths.Select(p => new MediaFile
         {
             Path = p,
@@ -84,6 +91,13 @@ internal static class PlayerCore
         {
             file.Id = Guid.NewGuid();
         }
+
+        CurrentMediaProbe = ProbeMetadata(file.Path);
+        if(CurrentMediaProbe is null)
+        {
+            return;
+        }
+
         file.Played = true;
         CurrentMediaFile = file;
         CurrentMediaInstance = new Media(LibVLC, file.Path);
@@ -127,6 +141,18 @@ internal static class PlayerCore
 
         LoadMedia(mediaFile);
         return true;
+    }
+
+    private static IMediaAnalysis ProbeMetadata(string path)
+    {
+        try
+        {
+            return FFProbe.Analyse(path);
+        } catch (Exception e)
+        {
+            Log.Error(e, "Couldn't parse media file: {path}", path);
+            return null;
+        }
     }
 
 
@@ -176,7 +202,7 @@ internal static class PlayerCore
         {
             PostEvent("folder_loaded", new FolderLoadedEvent()
             {
-                Files = _inputFilePaths.GetFilesForDirectory(path)
+                Files = _isLoadedFromArgs ? _inputFilePaths : _inputFilePaths.GetFilesForDirectory(path)
             });
             return true;
         }
@@ -207,7 +233,7 @@ internal static class PlayerCore
             "file_open" => LoadMedia(webEvent.Data.GetJsonString()),
             "folder_open" => OpenFolder(webEvent.Data.GetJsonString()),
             "folder_open_root" => OpenFolder(MediaItemManager.CurrentMediaItem?.FolderDirectory ?? Path.GetDirectoryName(CurrentMediaFile.Path)),
-            "thumb_requested" => ThumbnailManager.OnThumbnailRequest(webEvent.Data.GetJsonInt64()),
+            "thumb_requested" => ThumbnailService.OnThumbnailRequest(webEvent.Data.GetJsonInt64()),
             _ => throw new NotImplementedException($"Event from player not supported: {webEvent.Name}")
         };
     }

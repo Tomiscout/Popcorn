@@ -20,11 +20,12 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="LibVLCSharp.WPF" Version="3.7.0" />
+    <PackageReference Include="FFMpegCore" Version="5.1.1" />
+    <PackageReference Include="LibVLCSharp.WPF" Version="3.8.2" />
     <PackageReference Include="MahApps.Metro" Version="2.4.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.1938.49" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2210.55" />
     <PackageReference Include="NuGet.CommandLine" Version="6.7.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -50,6 +51,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Models\" />
     <Folder Include="Resources\" />
   </ItemGroup>
   <ItemGroup>
