@@ -18,9 +18,9 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/VideoBlazor/bin/Debug/net7.0-windows10.0.19041.0/win10-x64/VideoBlazor.dll",
+            "program": "${workspaceFolder}/Popcorn/bin/Debug/net7.0-windows10.0.19041.0/win10-x64/Popcorn.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/VideoBlazor",
+            "cwd": "${workspaceFolder}/Popcorn",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",
             "stopAtEntry": false

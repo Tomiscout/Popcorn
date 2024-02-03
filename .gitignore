@@ -5,9 +5,9 @@
 
 */**/node_modules/
 
-/VideoBlazor.Installer/lib
-/VideoBlazor.Installer/Releases
-/VideoBlazor.Installer/*.nupkg
+/Popcorn.Installer/lib
+/Popcorn.Installer/Releases
+/Popcorn.Installer/*.nupkg
 
 /Bundle
 !/Bundle/AppManifest.xml

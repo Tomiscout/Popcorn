@@ -1,0 +1,371 @@
+﻿@page "/media-search"
+@using System.Diagnostics
+@using DM.MovieApi.MovieDb.Movies
+@using Popcorn.Core.Enums
+@using Popcorn.Core.Model
+@using Popcorn.Core.Utils
+@using Popcorn.SearchProviders.Model
+@using Popcorn.SearchProviders
+@using Popcorn.SearchProviders.Models
+@using Popcorn.SearchProviders.MovieDb
+@using Popcorn.SearchProviders.Omdb
+@using Popcorn.SearchProviders.Utils
+@using Popcorn.Shared.Enum
+@using Popcorn.Shared.Models
+@using Popcorn.Torrents
+@inject TorrentCore _torrentCore;
+@inject NavigationManager _navManager;
+
+<div class="pa-4">
+    @if (Selected is null)
+    {
+        <div class="search-bar">
+            <MudTextField @bind-Value="@mediaSearchInput" @onkeyup="@Enter" Label="Title" Variant="Variant.Text"></MudTextField>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="SearchMediaQuery">Search</MudButton>
+        </div>
+    
+        <MudList Clickable="true">
+            <MudDivider />
+            @foreach (var item in mediaSearchResults)
+            {
+                <div class="media-list-item" @onclick="() => SelectItem(item)">
+                    @if (item.MediaType == MovieDbMediaType.Person)
+                    {
+                        if (string.IsNullOrWhiteSpace(item.ProfilePath))
+                        {
+                            <img src="/images/image-missing.svg" />
+                        }
+                        else
+                        {
+                            <img class="media-poster-img" src="@item.ProfilePath" />
+                        }
+                    }
+                    else
+                    {
+                        if (string.IsNullOrWhiteSpace(item.PosterPath))
+                        {
+                            <img src="/images/image-missing.svg" />
+                        }
+                        else
+                        {
+                            <img class="media-poster-img" src="@item.PosterPath" />
+                        }
+                    }
+                    <div class="media-info-container">
+                        <div style="display: flex; flex-direction: row;">
+                            <span class="media-title">@item.Title</span>
+                            @if (item.MediaType == MovieDbMediaType.Movie)
+                            {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Movie</MudChip>
+                            }
+                            else if (item.MediaType == MovieDbMediaType.TvShow)
+                            {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">TV show</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Person</MudChip>
+                            }
+                        </div>
+                        <span class="media-description">@item.Description</span>
+                        <div>
+                            @foreach (var genre in item.Genres)
+                            {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@genre</MudChip>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <MudDivider />
+            }
+        </MudList>
+    } else {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="Back">Back</MudButton>
+        <div>
+            <div class="selected-media-header">
+            @*<img class="backdrop-img" src="@Selected.BackdropPath">*@
+            <div class="selected-item">
+                @if (string.IsNullOrWhiteSpace(Selected.PosterPath))
+                {
+                    <img src="/images/image-missing.svg" />
+                }
+                else
+                {
+                    <img class="media-poster-img" src="@Selected.PosterPath" />
+                }
+    
+                <div class="media-info-container">
+                    <div style="display: flex; flex-direction: row;">
+                        <span class="media-title">@Selected.Title</span>
+                        @if (Selected.MediaType == MovieDbMediaType.Movie)
+                        {
+                            <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Movie</MudChip>
+                        }
+                        else if (Selected.MediaType == MovieDbMediaType.TvShow)
+                        {
+                            <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">TV show</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary">Person</MudChip>
+                        }
+                    </div>
+                    <span class="media-description">@Selected.Description</span>
+                    @*TODO Selected.Ratings.Awards*@
+                    <div class="media-footer">
+                        <div class="media-genres">
+                            @foreach (var genre in Selected.Genres)
+                            {
+                                <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary">@genre</MudChip>
+                            }
+                        </div>
+                        @if (Selected.Ratings is not null)
+                        {
+                            <div class="media-ratings">
+                                @if (Selected.Ratings.RTRating is not null)
+                                {
+                                    <div class="media-image-rating">
+                                        @if (Selected.Ratings.RTRating < 60)
+                                        {
+                                            <img class="media-rating-icon" src="/images/rt-rotten.svg">
+                                        }
+                                        else
+                                        {
+                                            <img class="media-rating-icon" src="/images/rt-fresh.svg">
+                                        }
+                                        <span>@Selected.Ratings.RTRating%</span>
+                                    </div>
+                                }
+                                @if (Selected.Ratings.ImdbRating is not null)
+                                {
+                                    <div class="media-image-rating">
+                                        <img class="media-rating-icon" src="/images/imdb.svg">
+                                        <span>@Selected.Ratings.ImdbRating</span>
+                                    </div>
+                                }
+                                @if (Selected.Ratings.Metascore is not null)
+                                {
+                                    <div class="media-rating-icon metascore @GetClassForMetascore()">
+                                        <span>@Selected.Ratings.Metascore</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+            @*TODO separate razor element*@
+            <MudList Clickable="true">
+                <MudDivider />
+                @foreach (var item in mediaTorrentResults)
+                {
+                    <div class="search-list-item">
+                        @switch (item.Source)
+                        {
+                            case SearchSourceType.PirateBay:
+                                <img class="source-img" src="/images/piratebay.svg" />
+                                break;
+                            case SearchSourceType.Rarbg:
+                                <img class="source-img" src="/images/rarbg.png" />
+                                break;
+                            case SearchSourceType.Linkomanija:
+                                <img class="source-img" src="/images/linkomanija-small.png" />
+                                break;
+                            default:
+                                <div class="source-img" />
+                                break;
+                        }
+                        <span class="search-title">@item.Title</span>
+                        @if (!string.IsNullOrWhiteSpace(item.MagnetLink) || !string.IsNullOrWhiteSpace(item.TorrentFileLink))
+                        {
+                            <span class="search-right mr-2" @onclick="() => DownloadTorrent(item)"><i class="fa fa-magnet"></i></span>
+                        }
+                        <span class="search-right seeds mr-2">@item.Seeds</span>
+                        <span class="search-right peers mr-2">@item.Peers</span>
+                    </div>
+                    <MudDivider />
+                }
+            </MudList>
+        </div>
+    }
+</div>
+
+<MudPopover Open="@_isSearching" Fixed="true" Class="pa-4 status-popover" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.BottomRight">
+    <div class="status-container">
+        @foreach (var status in searchStatuses)
+        {
+            if(status.Value is null) continue;
+            <div class="status-row">
+                @switch (status.Value.Status)
+                {
+                    case ProcessStatus.NotStarted:
+                        <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.Pending" />
+                        break;
+                    case ProcessStatus.InProgress:
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
+                        break;
+                    case ProcessStatus.Finished:
+                        <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.Check" Color="Color.Success" />
+                        break;
+                    case ProcessStatus.Failed:
+                        <MudIcon Class="ma-1" Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" />
+                        break;
+                    default:
+                        break;
+                }
+                @switch (status.Key)
+                {
+                    case SearchSourceType.PirateBay:
+                        <img class="progress-source-img" src="/images/piratebay.svg" />
+                        break;
+                    case SearchSourceType.Rarbg:
+                        <img class="progress-source-img" src="/images/rarbg.png" />
+                        break;
+                    default:
+                        break;
+                }
+                <MudText>@status.Value.Title</MudText>
+                @if (!string.IsNullOrWhiteSpace(status.Value.Message))
+                {
+                    <MudText Class="ml-1 progress-status-text">@status.Value.Message</MudText>
+                }
+            </div>
+        }
+    </div>
+</MudPopover>
+
+@code {
+    
+    //Rotten < 60% = rotten
+    public delegate void SearchCompletedHandler(SearchQueryResult result);
+
+    public string mediaSearchInput { get; set; } = "";
+    public List<SearchResult> mediaTorrentResults = new List<SearchResult>();
+    public List<MovieDbSearchResult> mediaSearchResults = new List<MovieDbSearchResult>();
+    public Dictionary<SearchSourceType, SearchQueryStatus> searchStatuses = new Dictionary<SearchSourceType, SearchQueryStatus>();
+    private bool _isSearching = false;
+    public MovieDbSearchResult Selected = null;
+
+    protected override async Task OnInitializedAsync()
+	{
+    @*searchStatuses.Add(SearchSourceType.PirateBay, new SearchQueryStatus(){
+                Title = "PirateBay",
+                Status = ProcessStatus.NotStarted,
+        });*@
+    }
+
+    public void Enter(KeyboardEventArgs e)
+    {
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+        {
+            SearchMediaQuery();
+        }
+    }
+
+    public async Task SelectItem(MovieDbSearchResult item)
+    {
+        if(item.MediaType == MovieDbMediaType.Person) {
+            return;
+        }
+        Selected = item;
+        searchStatuses.Clear();
+
+        string imdbId = null;
+        if (item.MediaType == MovieDbMediaType.Movie)
+        {
+            var movie = await MovieDbProvider.GetMovieDetails(item.Id);
+            imdbId = movie.ImdbId;
+        }
+        else
+        {
+            var tvShow = await MovieDbProvider.GetTvDetails(item.Id);
+            imdbId = await MovieDbRequests.GetTvImdbId(item.Id);
+        }
+
+        if (string.IsNullOrWhiteSpace(imdbId)) return;
+
+        var ratings = await OmdbProvider.GetRatings(imdbId);
+        if (ratings is not null)
+        {
+            Selected.Ratings = ratings;
+            StateHasChanged();
+        }
+
+        var sources = SearchProviders.GetImdbSearchProvidersSources();
+        foreach (var source in sources)
+        {
+            searchStatuses.Add(source, new SearchQueryStatus()
+                {
+                    Title = source.ToString(),
+                    Status = ProcessStatus.InProgress,
+                });
+        }
+
+        _isSearching = true;
+        mediaTorrentResults = new List<SearchResult>();
+        SearchCompletedHandler handler = (result) =>
+        {
+            if (result.Success)
+            {
+                mediaTorrentResults.AddRange(result.Results);
+                searchStatuses[result.Source].Status = ProcessStatus.Finished;
+                mediaTorrentResults = mediaTorrentResults.OrderByDescending(r => r.Seeds).ToList();
+            }
+            else
+            {
+                searchStatuses[result.Source].Status = ProcessStatus.Failed;
+                Console.WriteLine(result.Error);
+            }
+            StateHasChanged();
+        };
+
+        await SearchProviders.SearchImdbQuery(imdbId, item.Title, handler);
+    }
+
+    private void Back() {
+        Selected = null;
+    }
+
+    private string GetClassForMetascore()
+    {
+        if (Selected?.Ratings?.Metascore is null) return string.Empty;
+        
+        var score = (int)Selected.Ratings.Metascore;
+        if (score >= 80)
+        {
+            return "metascore-good";
+        }
+        if (score >= 60)
+        {
+            return "metascore-ok";
+        }
+        return "metascore-bad";
+    }
+
+    private async Task SearchMediaQuery()
+    {
+        try{
+            mediaSearchResults.Clear();
+            mediaSearchResults.AddRange(await MovieDbProvider.Search(mediaSearchInput));
+            StateHasChanged();
+        } catch(Exception e) {
+            throw;
+        }
+        
+    }
+
+    private async void DownloadTorrent(SearchResult item)
+    {
+        if (string.IsNullOrWhiteSpace(item.MagnetLink))
+        {
+            item.TorrentFilePath = await SearchProviders.DownloadTorrent(item.Source, item.TorrentFileLink);
+        }
+        await _torrentCore.StartTorrentDownload(item, false);
+        if (false) //TODO setting from config
+        {
+            _navManager.NavigateTo("/torrents");
+        }
+    }
+}

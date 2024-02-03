@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Windows Machine": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "UseLocalWeb": "false",
+        "PlayerDebugger": "false"
+      },
+      "nativeDebugging": false
+    }
+  }
+}

@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/VideoBlazor/VideoBlazor.csproj",
+                "${workspaceFolder}/Popcorn/Popcorn.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -19,7 +19,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/VideoBlazor/VideoBlazor.csproj",
+                "${workspaceFolder}/Popcorn/Popcorn.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -33,7 +33,7 @@
                 "watch",
                 "run",
                 "--project",
-                "${workspaceFolder}/VideoBlazor/VideoBlazor.csproj"
+                "${workspaceFolder}/Popcorn/Popcorn.csproj"
             ],
             "problemMatcher": "$msCompile"
         }

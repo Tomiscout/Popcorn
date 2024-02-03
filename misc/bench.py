@@ -17,7 +17,7 @@ hevc_simple = fr'{root}h265\AVATAR-TWOW_TLR-2_1920x804_HEVC_420_10bit_DTS-HD_MA_
 h264 = fr'{root}h264\h264 mov.mov'
 
 input = f'"{hlg}"'
-outputDir = r"C:\\Users\\brazi\\AppData\\Roaming\\VideoBlazor\\thumb\\"
+outputDir = r"C:\\Users\\brazi\\AppData\\Roaming\\Popcorn\\thumb\\"
 
 size= "160x90"
 

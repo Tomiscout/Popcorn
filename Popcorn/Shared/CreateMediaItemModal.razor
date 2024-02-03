@@ -1,0 +1,78 @@
+﻿@using Popcorn.Core.Model
+@using Popcorn.Core.Services;
+@using Popcorn.Core;
+@using Popcorn.Core.Enums;
+@using Popcorn.Persistence;
+@using Popcorn.Platforms.Windows
+@using Popcorn.Domain.Models;
+@using MudBlazor
+
+@inject MediaItemService MediaItemService
+@inject IFolderPicker _folderPicker
+@inject ImageRepository _imageRepository
+
+@page "/createMediaItem"
+
+<MudDialog Style="width: 600px;">
+    <DialogContent>
+        <MudForm Model="@createItem">
+            <MudTextField @bind-Value="createItem.Title" Label="Media title" Variant="Variant.Text" />
+
+            <MudItem Style="display: flex; flex-direction:row;width:100%;">
+                @if (string.IsNullOrWhiteSpace(createItem.Image))
+                {
+                    <MudImage Src="/images/default-media.png" Style="padding: 8px;width:300px; height:300px;" />
+                }
+                else
+                {
+                    <MudImage Src="@createItem.Image" Style="padding: 8px;width:300px; height:300px;" />
+                }
+                <div style="
+                        display: flex;
+                        flex-grow: 1;
+                        padding: 8px;
+                        align-items: flex-end;
+                        justify-content: flex-end;">
+                    <MudButton Style="margin:0 8px;" Color="Color.Secondary" Variant="Variant.Filled" OnClick="PickImageFromFile">Select image</MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" OnClick="@(async () => await HandleValidSubmit())">Submit</MudButton>
+                </div>
+            </MudItem>
+        </MudForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public MediaScanResult? inputData { get; set; }
+
+    public MediaItem createItem { get; set; } = new MediaItem();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (inputData is not null)
+        {
+            createItem.Title = inputData.Title;
+            createItem.FolderDirectory = inputData.FolderPath;
+            createItem.Files = new List<MediaFile>();
+        }
+    }
+
+    public async Task HandleValidSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(createItem.Title)) return; //TODO proper form validation using mud form stuff
+
+        await MediaItemService.CreateMediaItemFromScan(createItem, inputData);
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    public async Task PickImageFromFile()
+    {
+        var filePath = await _folderPicker.PickImageFile();
+        if (filePath is not null)
+        {
+            createItem.ImagePath = filePath;
+            createItem.Image = await _imageRepository.LoadImage(filePath, false);
+        }
+    }
+}
