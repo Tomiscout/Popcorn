@@ -19,6 +19,9 @@ namespace VideoPlayer
     /// </summary>
     public partial class App : Application
     {
+        private static bool _isShuttingDown = false;
+        private static object _shutdownLock = new object();
+
         public static IConfiguration Config { get; private set; }
 
         public App()
@@ -46,10 +49,10 @@ namespace VideoPlayer
                 Log.Error(e.Exception, "An unobserved task exception occurred.");
                 e.SetObserved(); // This prevents the exception from terminating the application.
             };
-            this.DispatcherUnhandledException += (s, e) =>
+            DispatcherUnhandledException += (s, e) =>
             {
                 Log.Error(e.Exception, "An unhandled exception occurred within the WPF dispatcher.");
-                e.Handled = true; // This prevents the exception from terminating the application.
+                GracefulShutdown();
             };
 
             FFmpegWrapper.ExePath = "ffmpeg"; //TODO proper linking
@@ -59,10 +62,21 @@ namespace VideoPlayer
 
         protected override void OnExit(ExitEventArgs e)
         {
+            GracefulShutdown();
+            base.OnExit(e);
+        }
+
+        public static void GracefulShutdown()
+        {
+            lock (_shutdownLock) // This could be executed from multiple locations, but ran only once
+            {
+                if (_isShuttingDown) return;
+                _isShuttingDown = true;
+            }
+
             PipeManager.Dispose();
             PlayerCore.Dispose();
             Log.CloseAndFlush();
-            base.OnExit(e);
         }
     }
 }

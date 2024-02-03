@@ -49,10 +49,12 @@ public static class FFmpegWrapper
                 {
                     if (process.HasExited) return;
                     process.Kill();
+                    process.WaitForExit(100);
                 }
                 catch (InvalidOperationException)
                 {
                 }
+
             });
 
             process.WaitForExit();

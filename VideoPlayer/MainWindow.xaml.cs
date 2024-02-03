@@ -23,10 +23,8 @@ namespace VideoPlayer
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     [SupportedOSPlatform("windows")]
-    public partial class MainWindow : MetroWindow, IDisposable
+    public partial class MainWindow : MetroWindow
     {
-        private CancellationTokenSource _ffmpegCts;
-
         public MainWindow()
         {
             PlayerCore.Initialize();
@@ -173,9 +171,9 @@ namespace VideoPlayer
             return result;
         }
 
-        public void Dispose()
+        protected override void OnClosed(EventArgs e)
         {
-            PlayerCore.Dispose();
+            App.GracefulShutdown();
         }
     }
 }

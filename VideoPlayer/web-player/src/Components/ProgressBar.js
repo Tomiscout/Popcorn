@@ -129,7 +129,7 @@ const ProgressBar = () => {
 
     const popupHalfWidth = 80 + 4; //width + padding
     const handleMouseMove = (e) => {
-        const rect = e.target.getBoundingClientRect();
+        const rect = progressBarRef.current.getBoundingClientRect();
 
         if (rect.left <= 0) {
             return; //out of left bounds

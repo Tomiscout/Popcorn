@@ -21,17 +21,21 @@ public class ThumbnailService
         }
     }
 
-    private static CancellationTokenSource _ffmpegCts;
+    public static CancellationTokenSource FfmpegCts;
     public static bool OnThumbnailRequest(long time)
     {
-        _ffmpegCts?.Cancel();
-        _ffmpegCts = new CancellationTokenSource();
+        FfmpegCts?.Cancel();
+        FfmpegCts = new CancellationTokenSource();
 
         Task.Run(() =>
         {
             try
             {
-                var bytes = GetThumbnailBytes(PlayerCore.CurrentMediaFile.Path, PlayerCore.CurrentMediaProbe, PlayerCore.CurrentMediaFile.Id.ToString(), time, _ffmpegCts.Token);
+                if(FfmpegCts is null)
+                {
+                    FfmpegCts = new CancellationTokenSource(); //Race condition dirty fix
+                }
+                var bytes = GetThumbnailBytes(PlayerCore.CurrentMediaFile.Path, PlayerCore.CurrentMediaProbe, PlayerCore.CurrentMediaFile.Id.ToString(), time, FfmpegCts.Token);
                 if (bytes is not null)
                 {
                     PlayerCore.PostStreamMessage($"{{\"name\":\"thumb\",\"time\":{time}}}", bytes);
@@ -48,8 +52,8 @@ public class ThumbnailService
             }
             finally
             {
-                _ffmpegCts?.Dispose();
-                _ffmpegCts = null;
+                FfmpegCts?.Dispose();
+                FfmpegCts = null;
             }
         });
         return true;

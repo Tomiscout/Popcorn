@@ -251,18 +251,31 @@ internal static class PlayerCore
     #region Utility
     public static void Dispose()
     {
-        // Unsubscribe from events
-        MediaPlayer.TimeChanged -= RecalculateSeekValue;
-        MediaPlayer.LengthChanged -= SendLengthEvent;
-        MediaPlayer.EndReached -= PlaybackEndReached;
+        if(ThumbnailService.FfmpegCts?.IsCancellationRequested == false)
+        {
+            // Not tested :)
+            ThumbnailService.FfmpegCts?.Cancel();
+            Thread.Sleep(200);
+        }
+        ThumbnailService.FfmpegCts?.Dispose();
 
-        // Dispose of unmanaged resources
-        MediaPlayer.Dispose();
-        LibVLC.Dispose();
+        ThreadPool.QueueUserWorkItem(_ => {
+            if (MediaPlayer != null)
+            {
+                MediaPlayer?.Stop();
+                MediaPlayer.TimeChanged -= RecalculateSeekValue;
+                MediaPlayer.LengthChanged -= SendLengthEvent;
+                MediaPlayer.EndReached -= PlaybackEndReached;
+                MediaPlayer?.Dispose();
+                MediaPlayer = null;
+            }
 
-        // Set large fields to null
-        MediaPlayer = null;
-        LibVLC = null;
+            if (LibVLC != null)
+            {
+                LibVLC?.Dispose();
+                LibVLC = null;
+            }
+        });
     }
 
     public static void PostEvent(string eventName, object data)
