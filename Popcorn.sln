@@ -20,7 +20,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.PlayerServer", "Pop
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.Installer", "Popcorn.Installer\Popcorn.Installer.csproj", "{F8627ECD-402F-41EB-9252-627067047BDA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Popcorn.SegmentFinder", "Popcorn.SegmentFinder\Popcorn.SegmentFinder.csproj", "{B10DA878-D231-46C2-A19F-7481DC29688D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.SegmentFinder", "Popcorn.SegmentFinder\Popcorn.SegmentFinder.csproj", "{B10DA878-D231-46C2-A19F-7481DC29688D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -15,6 +15,7 @@ namespace Popcorn.PlayerServer
 
         public PlayerService(ILogger<PlayerService> logger, IMediaItemRepository mediaItemRepository, MediaItemRefreshService mediaItemRefreshService)
         {
+            _logger = logger;
             _mediaItemRepository = mediaItemRepository;
             _mediaItemRefreshService = mediaItemRefreshService;
         }
@@ -116,12 +117,12 @@ namespace Popcorn.PlayerServer
             }
             binLocation = Path.GetDirectoryName(binLocation);
 
-
+            // TODO this
             if(Debugger.IsAttached)
             {
-                return Path.Join(binLocation, @"\PopcornPlayer\bin\Debug\net7.0-windows\PopcornPlayer.exe");
+                return Path.Join(binLocation, @"\PopcornPlayer\bin\Debug\net8.0-windows\PopcornPlayer.exe");
             }
-            return Path.Join(binLocation, @"\PopcornPlayer\bin\Release\net7.0-windows\PopcornPlayer.exe");
+            return Path.Join(binLocation, @"\PopcornPlayer\bin\Release\net8.0-windows\PopcornPlayer.exe");
         }
     }
 }

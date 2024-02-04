@@ -1,14 +1,14 @@
-﻿@using Popcorn.Core.Model
+﻿@using CommunityToolkit.Maui.Storage
+@using Popcorn.Core.Model
 @using Popcorn.Core.Services;
 @using Popcorn.Core;
 @using Popcorn.Core.Enums;
 @using Popcorn.Persistence;
-@using Popcorn.Platforms.Windows
 @using Popcorn.Domain.Models;
 @using MudBlazor
 
 @inject MediaItemService MediaItemService
-@inject IFolderPicker _folderPicker
+@inject FolderService _folderService
 @inject ImageRepository _imageRepository
 
 @page "/createMediaItem"
@@ -68,7 +68,7 @@
 
     public async Task PickImageFromFile()
     {
-        var filePath = await _folderPicker.PickImageFile();
+        var filePath = await _folderService.PickImageFile();
         if (filePath is not null)
         {
             createItem.ImagePath = filePath;

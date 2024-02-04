@@ -1,7 +1,9 @@
 ﻿using System.Diagnostics;
+using System.Threading;
+using CommunityToolkit.Maui.Storage;
 using Popcorn.Core.Model;
 using Popcorn.Persistence;
-using Popcorn.Platforms.Windows;
+using Serilog;
 
 namespace Popcorn.Core.Services
 {
@@ -44,7 +46,31 @@ namespace Popcorn.Core.Services
 
         public async Task<string> OpenFolderPicker()
         {
-            return await _folderPicker.PickFolder();
+#pragma warning disable CA1416 // Validate platform compatibility
+            var result = await _folderPicker.PickAsync(CancellationToken.None);
+#pragma warning restore CA1416 // Validate platform compatibility
+            return result.IsSuccessful ? result.Folder.Path : null;
+        }
+
+        public async Task<string> PickImageFile()
+        {
+            PickOptions options = new()
+            {
+                PickerTitle = "Please select an image file",
+                FileTypes = FilePickerFileType.Images,
+            };
+
+            try
+            {
+                var result = await FilePicker.Default.PickAsync(options);
+                return result?.FullPath;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to pick a file");
+            }
+
+            return null;
         }
 
         public void OpenFolderInExplorer(string path)

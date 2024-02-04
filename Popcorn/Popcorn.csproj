@@ -1,9 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
     <PropertyGroup>
-        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net7.0-windows10.0.19041.0</TargetFrameworks>
-        <!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
-        <!-- <TargetFrameworks>$(TargetFrameworks);net7.0-tizen</TargetFrameworks> -->
+        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net8.0-windows10.0.19041.0</TargetFrameworks>
         <OutputType>Exe</OutputType>
         <RootNamespace>Popcorn</RootNamespace>
         <UseMaui>true</UseMaui>
@@ -30,8 +28,9 @@
         <GenerateTestArtifacts>True</GenerateTestArtifacts>
         <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
         <NeutralLanguage>en-US</NeutralLanguage>
-		<WindowsPackageType>None</WindowsPackageType>
-		<StartupObject>Popcorn.WinUI.Program</StartupObject>
+        <WindowsPackageType>None</WindowsPackageType>
+        <PackageIcon>appicon.png</PackageIcon>
+        <Title>Popcorn</Title>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
       <DebugType>full</DebugType>
@@ -84,6 +83,7 @@
 
     <ItemGroup>
       <PackageReference Include="Blazored.Modal" Version="7.1.0" />
+      <PackageReference Include="CommunityToolkit.Maui" Version="7.0.1" />
       <PackageReference Include="MonoTorrent" Version="2.0.7" />
       <PackageReference Include="MudBlazor" Version="6.1.9" />
       <PackageReference Include="Serilog" Version="3.0.1" />
@@ -113,6 +113,13 @@
       <Content Update="wwwroot\js\filenameParser.js">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="Resources\AppIcon\appicon.png">
+        <Pack>True</Pack>
+        <PackagePath>\</PackagePath>
+      </None>
     </ItemGroup>
 
     <!-- Delete all folders except Pages, Shared, wwwroot -->

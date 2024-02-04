@@ -128,21 +128,22 @@ namespace PopcornPlayer
             {
                 if (fullscreen)
                 {
-                    UseNoneWindowStyle = true;
+                    ShowTitleBar = false;
                     IgnoreTaskbarOnMaximize = true;
                     ShowMinButton = false;
                     ShowMaxRestoreButton = false;
                     ShowCloseButton = false;
+                    WindowStyle = WindowStyle.None;
                     WindowState = WindowState.Maximized;
                 }
                 else
                 {
-                    UseNoneWindowStyle = false;
                     ShowTitleBar = true;
                     IgnoreTaskbarOnMaximize = false;
                     ShowMinButton = true;
                     ShowMaxRestoreButton = true;
                     ShowCloseButton = true;
+                    WindowStyle = WindowStyle.SingleBorderWindow;
                     WindowState = WindowState.Normal;
                 }
             }

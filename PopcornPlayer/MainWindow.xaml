@@ -9,7 +9,7 @@
                  Loaded="MetroWindow_Loaded"
         mc:Ignorable="d"
         Title="Popcorn player" Height="650" Width="1000"
-        Background="Transparent" AllowsTransparency="True">
+        Background="Transparent">
     <mah:MetroWindow.Resources>
     </mah:MetroWindow.Resources>
     <Grid>

@@ -8,7 +8,7 @@
   <Identity Name="maui-package-name-placeholder" Publisher="CN=Tomas" Version="0.1.0.0" />
 
   <Properties>
-    <DisplayName>$placeholder$</DisplayName>
+    <DisplayName>Popcorn</DisplayName>
     <PublisherDisplayName>User Name</PublisherDisplayName>
     <Logo>$placeholder$.png</Logo>
   </Properties>
@@ -25,7 +25,7 @@
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="$placeholder$"
+        DisplayName="Popcorn"
         Description="$placeholder$"
         Square150x150Logo="$placeholder$.png"
         Square44x44Logo="$placeholder$.png"

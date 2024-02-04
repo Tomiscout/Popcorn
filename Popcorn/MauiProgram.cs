@@ -6,6 +6,8 @@ using Serilog;
 using Popcorn.Shared.Utils;
 using Serilog.Events;
 using PopcornPlayer.Shared;
+using CommunityToolkit.Maui;
+using CommunityToolkit.Maui.Storage;
 
 namespace Popcorn;
 
@@ -30,6 +32,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
+            .UseMauiCommunityToolkit()
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -39,11 +42,10 @@ public static class MauiProgram
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddMudServices();
 
-#if WINDOWS
-        builder.Services.AddTransient<Platforms.Windows.IFolderPicker, Platforms.Windows.FolderPicker>();
-#endif
+        // Register the FolderPicker as a singleton
+        builder.Services.AddSingleton<IFolderPicker>(FolderPicker.Default);
 
-//#if DEBUG
+        //#if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 //#endif
 
