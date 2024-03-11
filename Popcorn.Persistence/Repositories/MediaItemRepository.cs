@@ -11,11 +11,9 @@ public class MediaItemRepository : IMediaItemRepository
     private readonly ImageRepository _imageRepository;
     private readonly DapperContext _dbContext;
 
-    public MediaItemRepository(JsonRepository jsonRepository, ImageRepository imageRepository, DapperContext dbContext)
+    public MediaItemRepository(ImageRepository imageRepository, DapperContext dbContext)
     {
-        _jsonRepository = jsonRepository;
         _imageRepository = imageRepository;
-
         _dbContext = dbContext;
     }
 
