@@ -15,6 +15,7 @@ public partial class App : Application
     private void Window_Destroying(object sender, EventArgs e)
     {
         ServerPipeManager.GracefullDispose();
+        FileServer.FileServer.Dispose();
     }
 
     protected override Window CreateWindow(IActivationState activationState)

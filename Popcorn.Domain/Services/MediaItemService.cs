@@ -16,8 +16,8 @@ namespace Popcorn.Core.Services
 
         public async Task CreateMediaItemFromScan(MediaItem item, MediaScanResult scanResult)
         {
-            item.Files = GetFilesFromScanResult(scanResult);
-            await _mediaItemRepository.AddMediaItem(item);
+            await _mediaItemRepository.CreateMediaItem(item);
+            await _mediaItemRepository.UpsertMediaFiles(item.Id, GetFilesFromScanResult(scanResult));
         }
 
         public List<MediaFile> GetFilesFromScanResult(MediaScanResult scanResult)
@@ -40,8 +40,9 @@ namespace Popcorn.Core.Services
         {
             var scanResult = await MediaLoader.ScanFolder(item.FolderDirectory);
             
-            item.Files = scanResult.SelectMany(GetFilesFromScanResult).ToList();
-            await _mediaItemRepository.SaveMediaItem(item);
+            var files = scanResult.SelectMany(GetFilesFromScanResult).ToList();
+            await _mediaItemRepository.UpsertMediaFiles(item.Id, files);
+            item.Files = files;
 
             return item;
         }

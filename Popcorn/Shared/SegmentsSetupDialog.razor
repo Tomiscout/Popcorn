@@ -23,9 +23,15 @@
                 <MudTd DataLabel="Type">@context.Type.ToString()</MudTd>
                 <MudTd DataLabel="Length">@context.Length.ToString("#.0") seconds</MudTd>
                 <MudTd DataLabel="Track">
-                    @if (AudioData.ContainsKey(context.Id))
+                    @if (fileServerPort != null)
                     {
-                        <audio controls>
+                        <audio controls controlsList="nodownload noplaybackrate">
+                            <source src="@($"http://localhost:{fileServerPort}/{context.FilePath}")" type="audio/wav" />
+                            Your browser does not support the audio element.
+                        </audio>
+                    } else if (AudioData.ContainsKey(context.Id)) // Backup method, costs a lot of memory
+                    {
+                        <audio controls controlsList="nodownload noplaybackrate">
                             <source src="@($"data:audio/wav;base64,{AudioData[context.Id]}")" type="audio/wav" />
                             Your browser does not support the audio element.
                         </audio>
@@ -34,10 +40,6 @@
                     {
                         <MudProgressCircular Color="Color.Default" Indeterminate="true" />
                     }
-                    @{/*else
-                    {
-                        <MudButton Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.PlayArrow" IconColor="Color.Secondary" Size="Size.Small" OnClick="() => LoadAudio(context.Id)">Play</MudButton>
-                    }*/}
                 </MudTd>
                 <MudTd DataLabel="Remove">
                     <MudButton StartIcon="@Icons.Material.Filled.RemoveCircle" OnClick="() => RemoveSegment(context.Id)"></MudButton>
@@ -49,13 +51,14 @@
     <DialogActions>
         <MudButton OnClick="AutoDetect">Detect intro/outro segments</MudButton>
         <MudButton OnClick="ScanLibrary" Disabled="@(!item.Segments.Any())" >Apply segments in library</MudButton>
-        <MudButton OnClick="ClearSegments" Disabled="@AppliedSegmentsExist()">Reset applied segments</MudButton>
+        <MudButton OnClick="ClearSegments">Reset applied segments</MudButton>
     </DialogActions>
 </MudDialog>
 @code {
     [CascadingParameter] MudDialogInstance MudDialog { get; set; }
 
     [Parameter] public MediaItem item { get; set; }
+    [Parameter] public int? fileServerPort { get; set; }
 
     private Dictionary<Guid, string> AudioData = new();
 
@@ -83,7 +86,10 @@
     protected override async Task OnInitializedAsync()
     {
         RefreshService.OnRefreshRequested += RefreshLoadMediaItem;
-        LoadAudio();
+        if(fileServerPort == null)
+        {
+            LoadAudioBase64();
+        }
     }
 
     public void Dispose()
@@ -97,10 +103,13 @@
 
         await InvokeAsync(async () =>
         {
-            item = await _mediaItemRepository.LoadMediaItem(itemId);
+            item = await _mediaItemRepository.GetMediaItemWithSegments(itemId);
             StateHasChanged();
 
-            LoadAudio();
+            if (fileServerPort == null)
+            {
+                LoadAudioBase64();
+            }
         });
     }
 
@@ -108,37 +117,31 @@
     {
         Task.Run(async () =>
         {
-            await _segmentFinderService.AutoDetect(item);
+            await _segmentFinderService.AutoDetect(item.Id);
         });
     }
 
     public async Task ScanLibrary()
     {
-        item = await _mediaItemRepository.LoadMediaItem(item.Id);
         Task.Run(async () =>
         {
-            await _segmentFinderService.ScanLibrary(item);
+            await _segmentFinderService.ScanLibrary(item.Id);
         });
-    }
-
-    private bool AppliedSegmentsExist()
-    {
-        return item.Files.Any(f => f.IntroProcessed || f.OutroProcessed);
     }
 
     private async Task ClearSegments()
     {
-        await _mediaItemRepository.ClearSegmentInfo(item.Id);
+        await _mediaItemRepository.DeleteAllSegments(item.Id);
         _mediaItemRefreshService.RequestRefresh(item.Id);
     }
 
     private async Task RemoveSegment(Guid segmentId)
     {
-        await _mediaItemRepository.RemoveSegmentInfo(item.Id, segmentId);
+        await _mediaItemRepository.DeleteSegmentInfo(segmentId);
         _mediaItemRefreshService.RequestRefresh(item.Id);
     }
 
-    private void LoadAudio()
+    private void LoadAudioBase64()
     {
         if (item.Segments is null) return;
 
@@ -154,6 +157,8 @@
     private void LoadAudioSegment(Guid segmentId)
     {
         var segment = item.Segments.First(i => i.Id == segmentId);
+        if (!File.Exists(segment.FilePath)) return;
+        
         AudioData[segmentId] = ConvertToBase64(segment.FilePath);
         StateHasChanged();
     }

@@ -8,6 +8,12 @@ using Serilog.Events;
 using PopcornPlayer.Shared;
 using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Storage;
+using Popcorn.Persistence;
+using FluentMigrator.Runner;
+using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+using Dapper.FluentMap;
+using Microsoft.Maui.LifecycleEvents;
 
 namespace Popcorn;
 
@@ -30,7 +36,7 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
 	{
         var builder = MauiApp.CreateBuilder();
-		builder
+        builder
 			.UseMauiApp<App>()
             .UseMauiCommunityToolkit()
 			.ConfigureFonts(fonts =>
@@ -41,6 +47,15 @@ public static class MauiProgram
         builder.Services.AddLogging(builder => builder.AddSerilog());
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddMudServices();
+
+        builder.Services
+       .AddFluentMigratorCore()
+       .ConfigureRunner(rb => rb
+           .AddSQLite()
+           .WithGlobalConnectionString(DapperContext.ConnectionString)
+           .ScanIn(typeof(DapperContext).Assembly).For.Migrations());
+        builder.Services.AddSingleton<DapperContext>();
+        DapperContext.RegisterMappings();
 
         // Register the FolderPicker as a singleton
         builder.Services.AddSingleton<IFolderPicker>(FolderPicker.Default);
@@ -57,6 +72,11 @@ public static class MauiProgram
         MovieDbProvider.Initialize();
         FFmpegWrapper.ExePath = "ffmpeg"; //TODO proper linking
 
-        return builder.Build();
+        var app = builder.Build();
+
+        var runner = app.Services.GetRequiredService<IMigrationRunner>();
+        runner.MigrateUp();
+
+        return app;
 	}
 }

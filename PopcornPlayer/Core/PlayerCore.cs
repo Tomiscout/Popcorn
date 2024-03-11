@@ -113,7 +113,9 @@ internal static class PlayerCore
                 ItemId = MediaItemManager.CurrentMediaItem.Id,
                 HistoryItem = new ItemHistory
                 {
+                    ItemId = MediaItemManager.CurrentMediaItem.Id,
                     Filename = file.Path,
+                    FileId = file.Id.Value,
                     Title = file.Title,
                     PlaybackTime = DateTime.Now
                 }

@@ -40,8 +40,8 @@ public static class AudioAndSubtitles
 
         var @event = new AudioSegmentsEvent()
         {
-            Intro = PlayerCore.CurrentMediaFile.IntroTimes,
-            Outro = PlayerCore.CurrentMediaFile.OutroTimes
+            Intro = PlayerCore.CurrentMediaFile.SegmentLocations.Where(s => s.StartSeconds >= 0).ToList(),
+            Outro = PlayerCore.CurrentMediaFile.SegmentLocations.Where(s => s.StartSeconds < 0).ToList(),
         };
         PlayerCore.PostEvent("segments_update", @event);
     }

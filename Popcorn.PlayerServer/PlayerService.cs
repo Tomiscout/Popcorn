@@ -117,12 +117,11 @@ namespace Popcorn.PlayerServer
             }
             binLocation = Path.GetDirectoryName(binLocation);
 
-            // TODO this
             if(Debugger.IsAttached)
             {
-                return Path.Join(binLocation, @"\PopcornPlayer\bin\Debug\net8.0-windows\PopcornPlayer.exe");
+                return Path.Join(binLocation, @"\PopcornPlayer\bin\Debug\net8.0-windows7.0\PopcornPlayer.exe");
             }
-            return Path.Join(binLocation, @"\PopcornPlayer\bin\Release\net8.0-windows\PopcornPlayer.exe");
+            return Path.Join(binLocation, @"\PopcornPlayer\bin\Release\net8.0-windows7.0\PopcornPlayer.exe");
         }
     }
 }

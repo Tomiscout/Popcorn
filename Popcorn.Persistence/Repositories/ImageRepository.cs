@@ -18,18 +18,17 @@ namespace Popcorn.Persistence
         }
        
 
-        public void SaveImage(string imagePath, string newFilename)
+        public string SaveImage(string imagePath, string newFilename)
         {
             //Save image
             var extension = Path.GetExtension(imagePath);
             var newFilePath = Path.Join(_imageFolder, newFilename + extension);
             File.Copy(imagePath, newFilePath);
 
-            //Update cache
-            LoadImage(newFilePath);
+            return newFilePath;
         }
 
-        public async Task<string> LoadImage(string fileName, bool saveCache = true)
+        public async Task<string?> LoadImage(string fileName, bool saveCache = true)
         {
             var appPath = Path.Join(_imageFolder, fileName);
             if (!File.Exists(fileName) && File.Exists(appPath))

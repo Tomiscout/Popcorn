@@ -13,7 +13,7 @@ namespace Popcorn.SegmentFinder;
 
 public class SegmentFinderService
 {
-    private string WorkDirectory = string.Empty;
+    public static readonly string WorkDirectory = Path.Combine(DirUtils.DataFolder, "segmentFinder\\");
 
     private ConcurrentQueue<Task> taskQueue = new ConcurrentQueue<Task>();
     private SemaphoreSlim semaphore;
@@ -29,7 +29,6 @@ public class SegmentFinderService
         _mediaItemRepository = mediaItemRepository;
         _logger = logger;
 
-        WorkDirectory = Path.Combine(DirUtils.DataFolder, "segmentFinder\\");
         Directory.CreateDirectory(WorkDirectory);
         semaphore = new SemaphoreSlim(maxConcurrentTasks);
     }
@@ -69,8 +68,11 @@ public class SegmentFinderService
          False positives - currently need to filter out silence, now there's only minimum segment length.
          */
 
-    public async Task AutoDetect(MediaItem item)
+    public async Task AutoDetect(Guid itemId)
     {
+        var item = await _mediaItemRepository.GetMediaItemFull(itemId);
+        if (item == null) return;
+
         //TODO should be executed if no segments exist
         await AutoDetectIntro(item);
         await AutoDetectOutro(item);
@@ -79,10 +81,11 @@ public class SegmentFinderService
         //TODO cleanup files
     }
 
-    public async Task ScanLibrary(MediaItem item)
+    public async Task ScanLibrary(Guid itemId)
     {
         //TODO put in separate method and loop
-        item = await _mediaItemRepository.LoadMediaItem(item.Id);
+        var item = await _mediaItemRepository.GetMediaItemFull(itemId);
+        if (item == null) return;
 
         await ScanLibraryIntro(item);
 
@@ -161,20 +164,23 @@ public class SegmentFinderService
         foreach (var file in files)
         {
             var (audioFile, _) = AudioExtractor.ExtractAudioFile(file.Path, file.GetIntroFilename(), WorkDirectory, 0, 360);
-            file.IntroTimes = await introSession.DetectSegments(audioFile);
-            file.IntroProcessed = true;
+            var introTimes = await introSession.DetectSegments(file.Id!.Value, audioFile);
 
-            await _mediaItemRepository.SaveMediaItem(item);
-            _logger.LogInformation($"Saved intro segments in file {file.Id}");
+            foreach (var introTime in introTimes)
+            {
+                await _mediaItemRepository.AddSegmentLocation(introTime);
+            }
+            await _mediaItemRepository.UpdateMediaFileIntroProcessed(file.Id.Value, true);
         }
+        introSession?.Dispose();
     }
 
     private async Task ScanLibraryOutro(MediaItem item)
     {
         var outroTimeSeconds = 120;
 
-        var introSession = new FingerprintSession();
-        await introSession.InitializeSessionAsync(item.Segments.Where(s => s.Type == SegmentType.Outro));
+        var outroSession = new FingerprintSession();
+        await outroSession.InitializeSessionAsync(item.Segments.Where(s => s.Type == SegmentType.Outro));
 
         var files = LoadFilesForProcessing(item, SegmentType.Outro);
         if (files is null)
@@ -185,19 +191,21 @@ public class SegmentFinderService
         foreach (var file in files)
         {
             var (audioFile, extractedLength) = AudioExtractor.ExtractAudioFile(file.Path, file.GetOutroFilename(), WorkDirectory, -outroTimeSeconds);
-            file.OutroTimes = await introSession.DetectSegments(audioFile);
+            var outroTimes = await outroSession.DetectSegments(file.Id!.Value, audioFile);
 
             // Convert start time to negative from the end of file
-            foreach(var outroTime in file.OutroTimes)
+            foreach (var outroTime in outroTimes)
             {
                 outroTime.StartSeconds = -(extractedLength - outroTime.StartSeconds);
             }
 
-            file.OutroProcessed = true;
-
-            await _mediaItemRepository.SaveMediaItem(item);
-            _logger.LogInformation($"Saved outro segments in file {file.Id}");
+            foreach (var introTime in outroTimes)
+            {
+                await _mediaItemRepository.AddSegmentLocation(introTime);
+            }
+            await _mediaItemRepository.UpdateMediaFileOutroProcessed(file.Id.Value, true);
         }
+        outroSession?.Dispose();
     }
 
     /// <summary>
@@ -236,27 +244,25 @@ public class SegmentFinderService
 
     private async Task ProcessSegments(List<SegmentLocation> segments, MediaFile file, string audioPath, MediaItem item, SegmentType segmentType)
     {
-        List<SegmentInfo> newSegments = new();
-
         foreach (var segment in segments)
         {
             var segmentId = Guid.NewGuid();
-            var outputPath = Path.Combine(WorkDirectory, $"{file.Id}-{segmentId}.wav");
+            var filename = $"{file.Id}-{segmentId}.wav";
+            var outputPath = Path.Combine(WorkDirectory, filename);
 
             // Split the segment from the original audio files
             AudioExtractor.SplitWavFile(audioPath, segment.StartSeconds, segment.Length, outputPath);
 
             // Create SegmentInfo instances for each segment
-            newSegments.Add(new SegmentInfo
+            await _mediaItemRepository.AddSegmentInfo(item.Id, new SegmentInfo
             {
                 Id = segmentId,
-                FilePath = outputPath,
+                FilePath = filename,
                 Length = segment.Length,
                 Type = segmentType
             });
         }
 
-        await _mediaItemRepository.AddSegmentInfo(item.Id, newSegments);
         _mediaItemRefreshService.RequestRefresh(item.Id);
     }
 
@@ -282,7 +288,8 @@ public class SegmentFinderService
         var segmentHistory = new List<ItemHistory>();
         var fileList = new List<MediaFile>();
         var filteredFiles = item.Files
-            .Where(f => f.Type == FileType.File && segmentType == SegmentType.Intro ? !f.IntroTimes.Any() : !f.OutroTimes.Any())
+            .Where(f => f.Type == FileType.File
+                && segmentType == SegmentType.Intro ? !f.SegmentLocations.Any(s => s.StartSeconds >= 0) : !f.SegmentLocations.Any(s => s.StartSeconds < 0))
             .ToList();
         //TODO when torrents are available - filter out the unfinished files. Now it assumes all files are processable.
         //TODO files are not sorted with getnext algorithm, ok for now

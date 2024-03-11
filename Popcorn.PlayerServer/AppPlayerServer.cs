@@ -32,7 +32,8 @@ namespace Popcorn.PlayerServer
 
         public async Task TrackPlayed(TrackPlayedEvent e)
         {
-            var newHistory = await _mediaItemRepository.AddHistoryItem(e.ItemId, e.HistoryItem);
+            await _mediaItemRepository.AddHistoryItem(e.ItemId, e.HistoryItem);
+            var newHistory = await _mediaItemRepository.GetHistoryItems(e.ItemId);
             await ServerPipeManager.UpdateMediaItemHistory(newHistory);
             _mediaItemRefreshService.RequestRefresh(e.ItemId);
         }

@@ -18,13 +18,14 @@ public class FingerprintSession
     {
         foreach (var segment in segments)
         {
-            var hash = await PatternFinder.BuildHash(segment.FilePath);
-            var track = new TrackInfo(segment.Id.ToString(), segment.FilePath, Path.GetFileName(segment.FilePath));
+            var segmentPath = Path.Combine(SegmentFinderService.WorkDirectory, segment.FilePath);
+            var hash = await PatternFinder.BuildHash(segmentPath);
+            var track = new TrackInfo(segment.Id.ToString(), segmentPath, segment.FilePath);
             modelService.Insert(track, hash);
         }
     }
 
-    public async Task<List<SegmentLocation>> DetectSegments(string audioPath)
+    public async Task<List<SegmentLocation>> DetectSegments(Guid fileId, string audioPath)
     {
         var queryResult = await QueryCommandBuilder.Instance
                                  .BuildQueryCommand()
@@ -43,9 +44,15 @@ public class FingerprintSession
             .Select(e => new SegmentLocation()
             {
                 SegmentId = Guid.Parse(e!.Track.Id),
+                FileId = fileId,
                 Length = e!.TrackCoverageWithPermittedGapsLength,
                 StartSeconds = e.QueryMatchStartsAt
             })
             .ToList();
+    }
+
+    public void Dispose()
+    {
+        modelService = null;
     }
 }

@@ -6,7 +6,8 @@ namespace Popcorn.Domain.Models;
 
 public class MediaFile
 {
-    public Guid? Id { get; set; }
+    public Guid? Id { get; set; } = Guid.NewGuid();
+    public Guid ItemId { get; set; }
     public string Path { get; set; }  //TODO this should be renamed to FilePath, but file migration would be needed. Or just keep it whatever
     public string Title { get; set; }
     public string ShortTitle { get; set; } = string.Empty;
@@ -15,8 +16,7 @@ public class MediaFile
     public bool IntroProcessed { get; set; } = false;
     public bool OutroProcessed { get; set; } = false;
 
-    public List<SegmentLocation> IntroTimes { get; set; }
-    public List<SegmentLocation> OutroTimes { get; set; }
+    public List<SegmentLocation> SegmentLocations { get; set; } = new ();
 
     public List<string> EpisodeTags { get; set; }
     public List<string> FormatTags { get; set; }

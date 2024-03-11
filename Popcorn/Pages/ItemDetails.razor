@@ -54,7 +54,7 @@
     <div id="item-info-box">
         @if (string.IsNullOrWhiteSpace(item.Image))
         {
-			<img id="item-image" src="/images/default-media.png" />
+			<img id="item-image" src="/images/default-media.jpg" />
 		} else {
             <img id="item-image" src="@item.Image" />
 		}
@@ -65,6 +65,7 @@
                 @if(nextTrack is not null)
                 {
                     <MudButton Variant="Variant.Filled" @onclick="OnPlayNext">
+
                         <i class="fa-solid fa-play"></i>
                         <span class="ml-1">Play next: @nextTrack.Title</span>
                     </MudButton>
@@ -106,11 +107,11 @@
 
                     @if (file.IntroProcessed)
                     {
-                        <MudChip Variant="Variant.Outlined" Color="Color.Secondary">@(file.IntroTimes.Any() ? "" : "No ")Intro</MudChip>
+                        <MudChip Variant="Variant.Outlined" Color="Color.Secondary">@(file.SegmentLocations.Any(s => s.StartSeconds >= 0) ? "" : "No ")Intro</MudChip>
                     }
                     @if (file.OutroProcessed)
                     {
-                        <MudChip Variant="Variant.Outlined" Color="Color.Secondary">@(file.OutroTimes.Any() ? "" : "No ")Outro</MudChip>
+                        <MudChip Variant="Variant.Outlined" Color="Color.Secondary">@(file.SegmentLocations.Any(s => s.StartSeconds >= 0) ? "" : "No ")Outro</MudChip>
                     }
                     @if (file.EpisodeTags is not null)
                     {
@@ -146,11 +147,12 @@
             <span>No history</span>
         } else {
                 <MudDivider />
-            for(var i = item.History.Count() - 1; i >= 0; i--) {
+                for (var i = playbackHistory.Count() - 1; i >= 0; i--)
+                {
                 <div class="card history-list-item">
-				    <span class="history-list-title">@item.History[i].Title</span>
-                        <span class="history-list-date">@item.History[i].PlaybackTime.ToShortDateString() @item.History[i].PlaybackTime.ToShortTimeString()</span>
-                        <button class="history-list-button" @onclick="() => OpenFile(item.History[i])">
+                        <span class="history-list-title">@playbackHistory[i].Title</span>
+                        <span class="history-list-date">@playbackHistory[i].PlaybackTime.ToShortDateString() @playbackHistory[i].PlaybackTime.ToShortTimeString()</span>
+                        <button class="history-list-button" @onclick="() => OpenFile(playbackHistory[i])">
 					    <i class="fa-solid fa-play"></i>
 				    </button>
 			    </div>
@@ -176,6 +178,7 @@
     public MediaItem item;
     public List<MediaFile> currentFiles = new List<MediaFile>();
     public List<MediaFile> navigation = new List<MediaFile>();
+    public List<ItemHistory> playbackHistory = new();
     public MediaFile nextTrack = null;
 
     private SettingsModel _settings;
@@ -207,7 +210,8 @@
 
     private async Task LoadMediaItem()
     {
-        item = await MediaItemRepository.LoadMediaItem(Id);
+        item = await MediaItemRepository.GetMediaItemFull(Guid.Parse(Id));
+        playbackHistory = await MediaItemRepository.GetHistoryItems(item.Id);
     }
 
     private async Task RefreshLoadMediaItem(Guid itemId)
@@ -248,11 +252,11 @@
 
     public string ItemWatchedStyle(MediaFile file)
     {
-        if (item.History is null) return string.Empty;
+        if (playbackHistory is null) return string.Empty;
 
         if(file.Type == FileType.File)
         {
-            return item.History.Any(h => h.Filename == file.Path) ? "already-watched-title" : string.Empty;
+            return playbackHistory.Any(h => h.FileId == file.Id) ? "already-watched-title" : string.Empty;
         }
 
         return string.Empty; //TODO implement watched folders
@@ -263,11 +267,12 @@
         await _openFileDebouncer.Debounce(async () =>
         {
             await MediaItemRepository.AddHistoryItem(item.Id, new ItemHistory
-                {
-                    Filename = historyItem.Filename,
-                    Title = historyItem.Title,
-                    PlaybackTime = DateTime.Now
-                });
+            {
+                Filename = historyItem.Filename,
+                FileId = historyItem.FileId,
+                Title = historyItem.Title,
+                PlaybackTime = DateTime.Now
+            });
             await LaunchFile(historyItem.Filename);
             await LoadMediaItem();
         });
@@ -281,6 +286,7 @@
                 await MediaItemRepository.AddHistoryItem(item.Id, new ItemHistory
                     {
                         Filename = file.Path,
+                        FileId = file.Id.Value,
                         Title = file.Title,
                         PlaybackTime = DateTime.Now
                     });
@@ -321,13 +327,17 @@
 
     public async Task OpenAutoplaySetup()
     {
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Large };
+
         var parameters = new DialogParameters();
         parameters.Add("Item", item);
 
-        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.Large };
+        var port = FileServer.FileServer.EnsureServerRunning();
+        parameters.Add("fileServerPort", port);
 
         var dialog = _dialogService.Show<SegmentsSetupDialog>("Setup intro/outro", parameters, options);
-        
+        await dialog.Result;
+        FileServer.FileServer.Dispose(); //TODO dispose on program exit/crash
     }
 
     private async Task RecalculateTags()
@@ -408,9 +418,12 @@
 
     public async void OnCleanHistory()
     {
-        await MediaItemRepository.CleanHistory(item);
+        await MediaItemRepository.DeleteHistoryAll(item.Id);
+        playbackHistory = await MediaItemRepository.GetHistoryItems(item.Id);
+        item.History = playbackHistory;
         item.RecalculatePlayedFiles(item.Files, false);
         RefreshNextTrack();
+        StateHasChanged();
     }
 
     public void OpenFolderExplorer()

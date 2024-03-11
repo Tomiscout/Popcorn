@@ -16,18 +16,17 @@
 
 @if (recentItems?.Any() ?? false)
 {
-    <SelectorCarousel Items="recentItems" HeaderTitle="Continue Watching" />
+    <ItemsGrid Items="recentItems" HeaderTitle="Continue Watching" />
 }
 @if (newItems?.Any() ?? false)
 {
-    <SelectorCarousel Items="newItems" HeaderTitle="Not yet watched" />
+    <ItemsGrid Items="newItems" HeaderTitle="Not yet watched" />
 }
 @if (missingItems?.Any() ?? false)
 {
-    <SelectorCarousel Items="missingItems" HeaderTitle="No longer on disk" ButtonText="Remove all items" OnButtonClick="ClearAllMissingItems" />
+    <ItemsGrid Items="missingItems" HeaderTitle="No longer on disk" ButtonText="Remove all items" OnButtonClick="ClearAllMissingItems" />
 }
 
-<MudDivider />
 
 @code {
     public IList<MediaItem> recentItems;
@@ -41,7 +40,7 @@
 
     private async Task LoadItems()
     {
-        var allItems = (await MediaItemRepository.LoadMediaItems())?.ToList();
+        var allItems = await MediaItemRepository.GetMediaItemsWithHistory();
 
         missingItems = allItems?
         .Where(item => !Directory.Exists(item.FolderDirectory))

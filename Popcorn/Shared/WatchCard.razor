@@ -1,0 +1,120 @@
+﻿@using Popcorn.Domain.Models
+@using Popcorn.Persistence
+@inject NavigationManager NavigationManager
+@inject ImageRepository _imageRepository
+
+<div class="watch-card">
+    @if(showOptions)
+    {
+        <div class="options-panel">
+            <span>hello</span>
+            <!-- Options content goes here -->
+        </div>
+    }
+    <div class="image-container" @onclick="() => OnItemClick(Item)">
+        @if (string.IsNullOrWhiteSpace(ItemImageData))
+        {
+            <img class="rounded-image" src="/images/default-media.jpg" />
+            <span class="display-title">@Item.GetDisplayTitle()</span>
+        }
+        else
+        {
+            <img src="@ItemImageData" class="rounded-image" alt="@Item.Title" />
+        }
+    </div>
+</div>
+
+<style>
+    .watch-card {
+        position: relative;
+        width: 150px; /* Adjust as necessary */
+        margin-bottom: 20px; /* Space for the panel */
+        transition: transform 0.3s ease, z-index 0s ease, box-shadow 0.3s ease;
+        z-index: 1; /* Ensures the card is above the normal content flow but below the hovered state */
+        box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); /* Subtle shadow for non-hovered state, optional */
+        border-radius: 15px; /* Rounded corners for the container */
+    }
+
+        .watch-card:hover {
+            transform: scale(1.15); /* Grows the card slightly */
+            z-index: 2; /* Ensures the hovered card is above other cards */
+            /* More pronounced shadow similar to Material Design's elevation */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25), 0 7px 14px rgba(0,0,0,0.22);
+        }
+
+
+    .image-container {
+        position: relative;
+        width: 100%; /* The width you want for the card */
+        height: calc(150px * 16 / 9); /* Height is calculated based on a 9:16 aspect ratio */
+        overflow: hidden; /* Ensures the image does not flow outside the container */
+        border-radius: 15px; /* Rounded corners for the container */
+        display: flex; /* Enables flexbox layout */
+        justify-content: center; /* Center horizontally */
+        align-items: center; /* Center vertically */
+    }
+
+    .rounded-image {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 100%; /* Width is 100% of the container */
+        height: 100%; /* Height is 100% of the container */
+        object-fit: cover; /* Cover the area of the container */
+        object-position: center; /* Center the image */
+        transform: translate(-50%, -50%); /* Center the image inside the container */
+    }
+
+    .options-panel {
+        background: #2d292e;
+        color: #ffffff;
+        position: absolute;
+        width: 100%;
+        bottom: 0;
+        transform: translateY(-15px);
+        transition: transform 0.3s ease, opacity 0.3s ease;
+        padding: 20px 5px 5px;
+        box-sizing: border-box;
+        opacity: 0;
+    }
+
+    .watch-card:hover .options-panel {
+        transform: translateY(calc(100% - 15px)); /* Move up to cover the image, adjusting for border-radius */
+        opacity: 1; /* Ensure it stays fully visible on hover */
+    }
+
+    .display-title {
+        position: absolute; /* Position over the image */
+        color: white; /* Title color */
+        text-align: center; /* Center text */
+        max-width: 90%; /* Prevents text from going out of bounds */
+        padding: 0 5%; /* Optional: Add some padding */
+        word-wrap: break-word; /* Ensures the text breaks to prevent overflow */
+        font-size: 1em; /* Adjust as necessary */
+    }
+
+
+</style>
+
+
+@code {
+    [Parameter]
+    public MediaItem Item { get; set; }
+
+    public string ItemImageData { get; set; } = string.Empty;
+
+    public bool showOptions { get; set; } = false;
+
+    public void OnItemClick(MediaItem item)
+    {
+        NavigationManager.NavigateTo($"/itemDetails/{item.Id}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Item.ImagePath))
+        {
+            ItemImageData = await _imageRepository.LoadImage(Item.ImagePath);
+        }
+    }
+}

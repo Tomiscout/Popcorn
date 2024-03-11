@@ -19,13 +19,13 @@
             <MudTextField @bind-Value="createItem.Title" Label="Media title" Variant="Variant.Text" />
 
             <MudItem Style="display: flex; flex-direction:row;width:100%;">
-                @if (string.IsNullOrWhiteSpace(createItem.Image))
+                @if (string.IsNullOrWhiteSpace(createItem.ImagePath))
                 {
                     <MudImage Src="/images/default-media.png" Style="padding: 8px;width:300px; height:300px;" />
                 }
                 else
                 {
-                    <MudImage Src="@createItem.Image" Style="padding: 8px;width:300px; height:300px;" />
+                    <MudImage Src="@ImageData" Style="padding: 8px;width:300px; height:300px;" />
                 }
                 <div style="
                         display: flex;
@@ -47,6 +47,8 @@
     [Parameter] public MediaScanResult? inputData { get; set; }
 
     public MediaItem createItem { get; set; } = new MediaItem();
+
+    public string ImageData { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -72,7 +74,7 @@
         if (filePath is not null)
         {
             createItem.ImagePath = filePath;
-            createItem.Image = await _imageRepository.LoadImage(filePath, false);
+            ImageData = await _imageRepository.LoadImage(filePath, false);
         }
     }
 }

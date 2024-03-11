@@ -134,7 +134,7 @@
 
     public async Task ScanFolders() {
         groupedScanResults = new Dictionary<string, IList<MediaScanResult>>();
-        var currentFolders = (await MediaItemRepository.LoadMediaItems()).Select(c => c.FolderDirectory).ToList();
+        var currentFolders = await MediaItemRepository.GetMediaItemFolders();
 
         foreach(var folder in folders) {
             groupedScanResults.Add(folder.Path, await MediaLoader.ScanFolder(folder.Path, currentFolders));
