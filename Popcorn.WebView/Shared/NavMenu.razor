@@ -1,0 +1,21 @@
+﻿@namespace Popcorn.WebView.Shared
+
+    <MudNavMenu Class="mud-width-full">
+        <MudNavLink Href="/watch" Icon="@Icons.Material.Filled.OndemandVideo">Watch</MudNavLink>
+        <MudNavLink Href="/media-search" Icon="@Icons.Material.Filled.Search">Media</MudNavLink>
+        <MudNavLink Href="/torrent-search" Icon="@Icons.Material.Filled.Search">Torrent</MudNavLink>
+        <MudNavLink Href="/torrents" Icon="@Icons.Material.Filled.Download">Downloads</MudNavLink>
+        <MudNavLink Href="/folders" Icon="@Icons.Material.Filled.Folder">Folders</MudNavLink>
+        <MudNavLink Href="/settings" Icon="@Icons.Material.Filled.Settings">Settings</MudNavLink>
+    </MudNavMenu>
+
+@code {
+	private bool collapseNavMenu = true;
+
+	private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+	private void ToggleNavMenu()
+	{
+		collapseNavMenu = !collapseNavMenu;
+	}
+}

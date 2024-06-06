@@ -1,0 +1,59 @@
+﻿@using Popcorn.Domain.Models;
+@using Popcorn.Torrents;
+@inherits LayoutComponentBase
+@inject NavigationManager NavManager
+@inject IDialogService _dialogService;
+@namespace Popcorn.WebView.Shared
+
+<MudThemeProvider IsDarkMode="true" Theme="MyCustomTheme" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="page">
+	<MudPaper Style="width: 150px; height: 100%; position: fixed;" Class="py-3" Width="150px" Elevation="0">
+    	<NavMenu/>
+    </MudPaper>
+    	
+	<main>
+		@Body
+	</main>
+</div>
+
+@code{
+	MudTheme MyCustomTheme = new MudTheme()
+	{
+		Palette = new Palette()
+		{
+			Primary = "#c14055",
+			Secondary = "#40C1AC",
+			AppbarBackground = Colors.Red.Default,
+		},
+		PaletteDark = new PaletteDark()
+		{
+			Primary = "#c14055",
+			Secondary = "#40C1AC",
+		},
+
+		LayoutProperties = new LayoutProperties()
+		{
+			DrawerWidthLeft = "260px",
+			DrawerWidthRight = "300px"
+		}
+	};
+
+	protected override void OnInitialized()
+	{
+		TorrentCore.TorrentAddEvent += OpenAddTorrentDialog;
+
+		NavManager.NavigateTo("/watch");
+	}
+
+	public void OpenAddTorrentDialog(object sender, TorrentAddModel model)
+	{
+		var parameters = new DialogParameters();
+		parameters.Add("inputData", model);
+
+		var options = new DialogOptions { CloseOnEscapeKey = true };
+		_dialogService.Show<TorrentAddModal>("Add torrent", parameters, options);
+	}
+}

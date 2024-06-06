@@ -1,0 +1,38 @@
+﻿using Blazored.Modal;
+using Microsoft.Extensions.DependencyInjection;
+using MudBlazor.Services;
+using Popcorn.Core.Services;
+using Popcorn.Domain.Interfaces;
+using Popcorn.Domain.Services;
+using Popcorn.Persistence;
+using Popcorn.Persistence.Repositories;
+using Popcorn.PlayerServer;
+using Popcorn.SearchProviders.Utils;
+using Popcorn.SegmentFinder;
+using Popcorn.Torrents;
+
+namespace Popcorn.Core;
+
+public static class ServiceRegister
+{
+    public static void AddPopcornServices(this IServiceCollection services)
+    {
+        services.AddMudServices();
+
+        services.AddSingleton<FolderService>();
+        services.AddSingleton<MediaItemService>();
+        services.AddSingleton<TorrentCore>();
+        services.AddSingleton<TorrentUtils>();
+        services.AddSingleton<ImageRepository>();
+        services.AddSingleton<SettingsRepository>();
+        services.AddSingleton<JsonRepository>();
+        services.AddSingleton<PlayerService>();
+        services.AddSingleton<IMediaItemRepository, MediaItemRepository>();
+        services.AddSingleton<MediaItemRefreshService>();
+        services.AddSingleton<SegmentFinderService>();
+        services.AddBlazoredModal();
+
+        services.AddSingleton<DapperContext>();
+        DapperContext.RegisterMappings();
+    }
+}

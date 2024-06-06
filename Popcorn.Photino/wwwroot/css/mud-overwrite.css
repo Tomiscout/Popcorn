@@ -1,0 +1,15 @@
+
+.mud-table-container {
+    overflow: inherit !important;
+}
+
+
+.mud-table {
+    width: max-content;
+}
+
+@media screen and (min-width: 1445px) {
+    .mud-table {
+        width: auto;
+    }
+}

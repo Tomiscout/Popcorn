@@ -1,0 +1,199 @@
+@using MonoTorrent.Client;
+@using Popcorn.Core.Model
+@using Popcorn.Core.Services;
+@using Popcorn.Core;
+@using Popcorn.Core.Enums;
+@using Popcorn.Core.Utils;
+@using Popcorn.Domain.Interfaces
+@using Popcorn.Shared.Extensions;
+@using Popcorn.Shared.Utils;
+@using Popcorn.Torrent.Model;
+@using Popcorn.Torrents;
+@using Popcorn.Domain.Models;
+@using static Popcorn.Core.Utils.FileTree;
+
+@inject TorrentCore _torrentCore;
+@inject INativeFolderService _nativeFolderService
+
+@namespace Popcorn.WebView.Shared
+@page "/addTorrent"
+
+
+<MudDialog>
+    <DialogContent>
+        <div style="min-width: 550px; height:100%; display:flex; flex-direction: column;">
+            <div style="width:100%;">
+                <div style="padding: 2px;">
+                    @if (fetchingMetadata)
+                    {
+                        <span>Fetching metadata...</span>
+                        <MudProgressCircular Color="Color.Primary" Size="Size.Small" Indeterminate="true" />
+                    }
+                    else if (torrentManager == null)
+                    {
+                        <span>Failed to get metadata</span>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column">
+                            <MudText><b>Size:</b> @GetTorrentSizeText()</MudText>
+
+                            @if (!string.IsNullOrWhiteSpace(torrentManager?.Torrent?.Publisher))
+                            {
+                                <MudText><b>Publisher:</b> @torrentManager.Torrent.Publisher</MudText>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(torrentManager?.Torrent?.Comment))
+                            {
+                                <MudText><b>Comment:</b> @torrentManager.Torrent.Comment</MudText>
+                            }
+                        </div>
+                    }
+                </div>
+                <MudCard>
+                    <MudCardContent>
+                        <EditForm Model="@inputData" OnValidSubmit="Download">
+                            <MudTextField Label="Title" Disabled="@fetchingMetadata" ReadOnly="true"
+                                          @bind-Value="inputData.Title" For="@(() => inputData.Title)" />
+                            <div style="display: flex;flex-direction: row;align-items: center;">
+                                <div style="flex-grow:1">
+                                    <MudTextField Label="Download directory" Class="mt-3"
+                                                  @bind-Value="inputData.DownloadDirectory" For="@(() => inputData.DownloadDirectory)" />
+                                </div>
+                                
+                                <span class="search-right ml-2" @onclick="() => SelectDownloadFolder()"><i class="fa fa-2x fa-folder"></i></span>
+                            </div>
+                                          
+                        </EditForm>
+                    </MudCardContent>
+                </MudCard>
+            </div>
+            <div style="margin-top: 4px;width:100%;">
+                <MudCard>
+                    <MudCardContent>
+                        <div>
+                            <MudButton>Select All</MudButton>
+                            <MudButton>Select None</MudButton>
+                        </div>
+                        <div style="overflow: scroll; height: 250px;">
+                            <MudTreeView Items="@TreeItems" Dense="true">
+                            <ItemTemplate>
+                                <MudTreeViewItem @bind-Expanded="@context.IsExpanded" Items="@context.TreeItems">
+                                    <Content>
+                                        <MudTreeViewItemToggleButton @bind-Expanded="@context.IsExpanded" Visible="@context.HasChild" />
+                                        <MudCheckBox T="bool?" Color="Color.Secondary" Checked="@(context.HasPartialChildSelection() ? null : context.IsChecked)" CheckedChanged="@((e) => CheckedChanged(context))"></MudCheckBox>
+                                        <MudIcon Icon="@context.Icon" Class="ml-0 mr-2" Color="@Color.Default" />
+                                        <MudText>@context.Text</MudText>
+                                    </Content>
+                                </MudTreeViewItem>
+                            </ItemTemplate>
+                        </MudTreeView>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </div>
+        </div>
+        
+        
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton OnClick="Download" ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ml-auto">Download</MudButton>
+    </DialogActions>
+</MudDialog>
+
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public TorrentAddModel? inputData { get; set; }
+    HashSet<FileTreeNode> SelectedFiles { get; set; }
+    private HashSet<FileTreeNode> TreeItems { get; set; } = new HashSet<FileTreeNode>();
+
+    TorrentManager? torrentManager = null;
+    bool success;
+    bool fetchingMetadata = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        TorrentCore.MetadataFetchedEvent += HandleMetadataReceived;
+
+        fetchingMetadata = true;
+        StateHasChanged();
+    }
+
+    void HandleMetadataReceived(object sender, Guid id)
+    {
+        if (inputData.Id != id) return;
+        
+        torrentManager = _torrentCore.GetManager(id);
+        inputData.Title = torrentManager.Torrent.Name;
+        TreeItems = BuildFileTree(torrentManager.Files);
+        fetchingMetadata = false;
+
+        //Application.Current?.MainPage?.Dispatcher.Dispatch(() => StateHasChanged()); TODO update page?
+    }
+
+    string GetTorrentSizeText()
+    {
+        var torrentSize = StringUtils.FormatBytes(torrentManager.Torrent.Size);
+        var remainingSpace = GetTotalFreeSpace(inputData.DownloadDirectory.Substring(0, 1));
+        if(remainingSpace != -1)
+        {
+            torrentSize += $" (Free space on disk: {StringUtils.FormatBytes(remainingSpace)})";
+        }
+        return torrentSize;
+    }
+
+    async Task SelectDownloadFolder()
+    {
+        var result = await _nativeFolderService.OpenFolderPicker();
+        if (result == null) return;
+
+        inputData.DownloadDirectory = result;
+    }
+
+    async Task Cancel()
+    {
+        await _torrentCore.CancelTorrentAdd(inputData.Id);
+        MudDialog.Cancel();
+    }
+
+    public async Task Download()
+    {
+        success = true;
+        await _torrentCore.SubmitTorrentAdd(inputData);
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    private long GetTotalFreeSpace(string driveLetter)
+    {
+        foreach (DriveInfo drive in DriveInfo.GetDrives())
+        {
+            if (drive.IsReady && drive.Name.StartsWith(driveLetter))
+            {
+                return drive.TotalFreeSpace;
+            }
+        }
+        return -1;
+    }
+
+    protected void CheckedChanged(FileTreeNode item)
+    {
+        item.IsChecked = !item.IsChecked;
+        // checked status on any child items should mirrror this parent item
+        if (item.HasChild)
+        {
+            foreach (FileTreeNode child in item.TreeItems)
+            {
+                child.IsChecked = item.IsChecked;
+            }
+        }
+        // if there's a parent and all children are checked/unchecked, parent should match
+        if (item.Parent != null)
+        {
+            item.Parent.IsChecked = !item.Parent.TreeItems.Any(i => !i.IsChecked);
+        }
+    }
+
+    
+}

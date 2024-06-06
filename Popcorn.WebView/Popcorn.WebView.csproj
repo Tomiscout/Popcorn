@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MudBlazor" Version="6.1.9" />
+    <PackageReference Include="Blazored.Modal" Version="7.1.0" />
+    <PackageReference Include="EmbedIO" Version="3.5.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Popcorn.Persistence\Popcorn.Persistence.csproj" />
+    <ProjectReference Include="..\Popcorn.PlayerServer\Popcorn.PlayerServer.csproj" />
+    <ProjectReference Include="..\Popcorn.SearchProviders\Popcorn.SearchProviders.csproj" />
+    <ProjectReference Include="..\Popcorn.SegmentFinder\Popcorn.SegmentFinder.csproj" />
+    <ProjectReference Include="..\Popcorn.Torrents\Popcorn.Torrents.csproj" />
+    <ProjectReference Include="..\PopcornPlayer.Shared\PopcornPlayer.Shared.csproj" />
+    <ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
+  </ItemGroup>
+</Project>

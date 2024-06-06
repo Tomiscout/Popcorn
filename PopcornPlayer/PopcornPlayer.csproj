@@ -10,6 +10,7 @@
     <Title>Popcorn Player</Title>
     <PackageIcon>popcorn.ico</PackageIcon>
     <ApplicationIcon>popcorn.ico</ApplicationIcon>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <WarningLevel>7</WarningLevel>
