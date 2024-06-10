@@ -28,7 +28,7 @@ public static class MauiProgram
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
             .WriteTo.Debug()
-            .WriteTo.File(Path.Combine(DirUtils.DataFolder, "logs\\Popcorn.txt"), rollingInterval: RollingInterval.Day)
+            .WriteTo.File(Path.Combine(DirUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}Popcorn.txt"), rollingInterval: RollingInterval.Day)
             .CreateLogger();
         Serilog.Debugging.SelfLog.Enable(m => Console.Error.WriteLine(m));
     }

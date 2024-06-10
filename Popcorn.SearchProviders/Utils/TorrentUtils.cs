@@ -9,7 +9,7 @@ namespace Popcorn.SearchProviders.Utils
 {
     public class TorrentUtils
     {
-        private static readonly string _imageFolder = Path.Join(DirUtils.DataFolder, "torrents\\");
+        private static readonly string _imageFolder = Path.Join(DirUtils.DataFolder, "torrents" + Path.DirectorySeparatorChar);
         public static string GetTorrentsFolder()
         {
             return _imageFolder;

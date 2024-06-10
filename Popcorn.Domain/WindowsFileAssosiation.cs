@@ -8,53 +8,36 @@ namespace Popcorn.Shared
     /// Usage: string executablePath = FileAssociation.GetExecFileAssociatedToExtension(pathExtension, "open");
     /// Usage: string command FileAssociation.GetExecCommandAssociatedToExtension(pathExtension, "open");
     /// </summary>
-    public static class FileAssociation
+    public class WindowsFileAssosiation : INativeFileAssosiation
     {
         /// <summary>
         /// 
         /// </summary>
         /// <param name="ext"></param>
-        /// <param name="verb"></param>
         /// <returns>Return null if not found</returns>
-        public static string GetExecCommandAssociatedToExtension(string ext, string verb = null)
+        public string? GetExecCommandForExtention(string ext, string args)
         {
-            if (ext[0] != '.')
-            {
-                ext = "." + ext;
-            }
+            var exePath = GetExePath(ext);
+            if(exePath == null) return null;
 
-            string executablePath = FileExtentionInfo(AssocStr.Command, ext, verb);
-
-            // Ensure to not return the default OpenWith.exe associated executable in Windows 8 or higher
-            if (!string.IsNullOrEmpty(executablePath) && File.Exists(executablePath) &&
-                !executablePath.ToLower().EndsWith(".dll"))
-            {
-                if (executablePath.ToLower().EndsWith("openwith.exe"))
-                {
-                    return null; // 'OpenWith.exe' is th windows 8 or higher default for unknown extensions. I don't want to have it as associted file
-                }
-                return executablePath;
+            if(exePath.ToLower().EndsWith("vlc.exe")) {
+                exePath += " --fullscreen --one-instance";
             }
-            return executablePath;
+            return exePath;
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="ext"></param>
-        /// <param name="verb"></param>
-        /// <returns>Return null if not found</returns>
-        public static string GetExecFileAssociatedToExtension(string ext, string verb = null)
-        {
+        private string? GetExePath(string ext) {
+            string? verb = null;
+
             if (ext[0] != '.')
             {
                 ext = "." + ext;
             }
 
-            string executablePath = FileExtentionInfo(AssocStr.Executable, ext, verb); // Will only work for 'open' verb
+            string executablePath = FileExtentionInfo(AssocStr.Executable, ext, verb!); // Will only work for 'open' verb
             if (string.IsNullOrEmpty(executablePath))
             {
-                executablePath = FileExtentionInfo(AssocStr.Command, ext, verb); // required to find command of any other verb than 'open'
+                executablePath = FileExtentionInfo(AssocStr.Command, ext, verb!); // required to find command of any other verb than 'open'
 
                 // Extract only the path
                 if (!string.IsNullOrEmpty(executablePath) && executablePath.Length > 1)

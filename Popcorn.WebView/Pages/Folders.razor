@@ -95,20 +95,20 @@
     private Dictionary<string, IList<MediaScanResult>> groupedScanResults;
 
     public RenderFragment CreateTitleContent(string title, int count) => builder =>
-       {
-           builder.OpenElement(0, "div");
-           builder.AddAttribute(1, "style", "display: flex; justify-content: space-between;");
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "style", "display: flex; justify-content: space-between;");
 
-           builder.OpenElement(2, "span");
-           builder.AddContent(3, title);
-           builder.CloseElement();
+        builder.OpenElement(2, "span");
+        builder.AddContent(3, title);
+        builder.CloseElement();
 
-           builder.OpenElement(4, "span");
-           builder.AddContent(5, $"Count: {count}");
-           builder.CloseElement();
+        builder.OpenElement(4, "span");
+        builder.AddContent(5, $"Count: {count}");
+        builder.CloseElement();
 
-           builder.CloseElement();
-       };
+        builder.CloseElement();
+    };
 
 
 
@@ -121,7 +121,7 @@
 
     public async Task AddNewFolder() {
         var result = await _nativeFolderService.OpenFolderPicker();
-        if (result == null) return;
+        if (string.IsNullOrWhiteSpace(result)) return;
 
         folders.Add(new Folder {
 			Path = result

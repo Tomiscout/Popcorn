@@ -1,4 +1,4 @@
-namespace Popcorn.Torrent.Model;
+namespace Popcorn.Domain.Models.Torrent;
 
 public class TorrentViewModel
 {

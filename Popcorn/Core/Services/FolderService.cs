@@ -7,7 +7,7 @@ using Serilog;
 
 namespace Popcorn.Core.Services
 {
-    public class FolderService
+    public class FolderService //TODO INativeFolderService
     {
         private static readonly string _jsonName = "folders.json";
         private readonly IFolderPicker _folderPicker;

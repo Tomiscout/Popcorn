@@ -3,15 +3,16 @@ using System.Reflection;
 using MonoTorrent;
 using MonoTorrent.Client;
 using MonoTorrent.Client.PiecePicking;
+using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
+using Popcorn.Domain.Models.Torrent;
 using Popcorn.Shared;
 using Popcorn.Shared.Models;
 using Popcorn.Shared.Utils;
-using Popcorn.Torrent.Model;
 
 namespace Popcorn.Torrents;
     
-public class TorrentCore
+public class TorrentCore : ITorrentCore
 {
     private static readonly bool _builtInTorrentClient = true; //TODO get this from settings
     private string _defaultDownloadFolder = @"C:\Users\brazi\Downloads\test";
@@ -22,8 +23,14 @@ public class TorrentCore
 	public static event EventHandler<TorrentAddModel> TorrentAddEvent;
 	public static event EventHandler<Guid> MetadataFetchedEvent;
 
-	public TorrentCore()
+    private readonly INativeFileAssosiation _fileAssosiation;
+    private readonly INativeProcessRunner _processRunner;
+
+	public TorrentCore(INativeFileAssosiation fileAssosiation, INativeProcessRunner processRunner)
     {
+        _fileAssosiation = fileAssosiation;
+        _processRunner = processRunner;
+
         _engine = new ClientEngine(new EngineSettings()
         {
 
@@ -256,13 +263,15 @@ public class TorrentCore
         };
     }
 
-    public static void OpenMagnetLinkSystem(string magnetLink)
+    public void OpenMagnetLinkSystem(string magnetLink)
     {
-        var command = FileAssociation.GetExecFileAssociatedToExtension(".torrent");
-        Process.Start(command, $"\"{magnetLink}\"");
+        var command = _fileAssosiation.GetExecCommandForExtention(".torrent", $" \"{magnetLink}\"");
+        if(string.IsNullOrWhiteSpace(command)) return;
+        
+        _processRunner.ExecuteCommandDetached(command);
     }
         
-    public static void OpenTorrentFileSystem(string path)
+    public void OpenTorrentFileSystem(string path)
     {
         Process.Start(path);
     }

@@ -130,7 +130,7 @@ public static class MediaItemExtensions
             {
                 Id = Guid.NewGuid(),
                 Path = folder,
-                Title = folder.Substring(folder.LastIndexOf("\\") + 1), //Windows dependant
+                Title = folder.Substring(folder.LastIndexOf(Path.DirectorySeparatorChar) + 1),
                 Type = FileType.Folder
             });
         }

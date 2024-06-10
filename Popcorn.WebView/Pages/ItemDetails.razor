@@ -7,6 +7,7 @@
 @using Popcorn.Core.Enums;
 @using Popcorn.Core.Utils
 @using Popcorn.Core;
+@using Popcorn.Domain
 @using Popcorn.Domain.Enum;
 @using Popcorn.Domain.Interfaces;
 @using Popcorn.Domain.Services;
@@ -27,6 +28,7 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JsRunTime
 @inject IDialogService _dialogService
+@inject IFileService _fileService
 
 <div class="ma-3">
     <MudButton Variant="Variant.Filled" @onclick="OnBack">
@@ -312,7 +314,7 @@
             await PlayerService.OpenFile(path, item);
         } else
         {
-            FileService.LaunchMediaFileDefault(path);
+            _fileService.LaunchMediaFileDefault(path);
         }
     }
 

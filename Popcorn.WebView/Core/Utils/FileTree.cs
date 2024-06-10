@@ -12,13 +12,13 @@ namespace Popcorn.Core.Utils
 {
     public static class FileTree
     {
-        public static HashSet<FileTreeNode> BuildFileTree(IList<ITorrentFileInfo> torrentFiles, string rootNodeName = "", char separator = '\\')
+        public static HashSet<FileTreeNode> BuildFileTree(IList<ITorrentFileInfo> torrentFiles, string rootNodeName = "")
         {
             var rootNode = new FileTreeNode(rootNodeName);
             foreach (var torrentFile in torrentFiles.Where(x => !string.IsNullOrEmpty(x.Path.Trim())))
             {
                 var currentNode = rootNode;
-                var pathItems = torrentFile.Path.Split(separator);
+                var pathItems = torrentFile.Path.Split(Path.DirectorySeparatorChar);
                 foreach (var (item, index) in pathItems.WithIndex())
                 {
                     var tmp = currentNode.TreeItems.Where(x => x.Text.Equals(item));

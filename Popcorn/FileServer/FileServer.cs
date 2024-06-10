@@ -11,7 +11,7 @@ public static class FileServer
 
     private const int MinPort = 20210;
     private const int MaxPort = 20213;
-    private static string ContentRoot = Path.Combine(DirUtils.DataFolder, "segmentFinder\\");
+    private static string ContentRoot = Path.Combine(DirUtils.DataFolder, "segmentFinder" + Path.DirectorySeparatorChar);
 
     private static (WebServer, int) StartServer(int port = MinPort)
     {

@@ -1,12 +1,13 @@
 
 @page "/settings"
+@using Popcorn.Domain
 @using Popcorn.Domain.Interfaces
 @using Popcorn.Domain.Models;
 @using Popcorn.Persistence;
 @using Popcorn.PlayerServer
 @using Popcorn.Core.Services
 @using Popcorn.Shared.Utils;
-@inject INativeFolderService _nativeFolderService
+@inject IFileService _fileService
 @inject SettingsRepository SettingsRepository
 
 <h1>Settings</h1>
@@ -35,7 +36,7 @@
 
     public void OpenRootFolder()
     {
-        _nativeFolderService.OpenRootFolderExplorer();
+        _fileService.OpenRootFolderExplorer();
     }
 
     public async Task SaveSettings()

@@ -1,5 +1,6 @@
 ﻿using EmbedIO;
 using EmbedIO.Files;
+using Popcorn.SegmentFinder;
 using Popcorn.Shared.Utils;
 using Serilog;
 
@@ -11,7 +12,6 @@ public static class FileServer
 
     private const int MinPort = 20210;
     private const int MaxPort = 20213;
-    private static string ContentRoot = Path.Combine(DirUtils.DataFolder, "segmentFinder\\");
 
     private static (WebServer, int) StartServer(int port = MinPort)
     {
@@ -27,7 +27,7 @@ public static class FileServer
             WebServer = new WebServer(o => o
                 .WithUrlPrefix($"http://localhost:{port}/")
                 .WithMode(HttpListenerMode.EmbedIO))
-            .WithStaticFolder("/", ContentRoot, true, m => m
+            .WithStaticFolder("/", SegmentFinderService.WorkDirectory, true, m => m
                 .WithContentCaching(true));
 
             WebServer.Start();

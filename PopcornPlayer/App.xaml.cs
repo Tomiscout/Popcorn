@@ -36,7 +36,7 @@ namespace PopcornPlayer
             Log.Logger = new LoggerConfiguration()
                 .WriteTo.Console()
                 .WriteTo.Debug()
-                .WriteTo.File(Path.Combine(DirUtils.DataFolder, "logs\\PopcornPlayer.txt"), rollingInterval: RollingInterval.Day)
+                .WriteTo.File(Path.Combine(DirUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}PopcornPlayer.txt"), rollingInterval: RollingInterval.Day)
                 .CreateLogger();
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {

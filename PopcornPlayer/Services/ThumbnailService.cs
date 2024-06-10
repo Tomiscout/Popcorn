@@ -64,7 +64,7 @@ public class ThumbnailService
     // Although it would be beneficial, because if some method fails to generate, fallback would be faster and multiple ffmpeg instances / file checks wouldnt be called
     public static byte[] GetThumbnailBytes(string inputFilePath, IMediaAnalysis metadata, string id, long timeInSeconds, CancellationToken ct)
     {
-        var outputFilePath = $"{OutputFolder}\\{id}-{timeInSeconds}.jpg"; // HDR generates png output, but jpg is kept for now
+        var outputFilePath = $"{OutputFolder + Path.DirectorySeparatorChar + id}-{timeInSeconds}.jpg"; // HDR generates png output, but jpg is kept for now
         var thumbFile = new FileInfo(outputFilePath);
         if (thumbFile.Exists && thumbFile.Length > 0)
         {

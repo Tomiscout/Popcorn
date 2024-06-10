@@ -47,7 +47,7 @@ namespace PopcornPlayer
         }
 
         private static string AssemblyFolder = Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName;
-        private static string WebPath = $"{AssemblyFolder}\\web-player\\"; //react bundle
+        private static string WebPath = $"{AssemblyFolder}{Path.DirectorySeparatorChar}web-player{Path.DirectorySeparatorChar}"; //react bundle
 
         private async Task InitializeWebView2()
         {
