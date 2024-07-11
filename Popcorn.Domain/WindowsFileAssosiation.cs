@@ -15,7 +15,7 @@ namespace Popcorn.Shared
         /// </summary>
         /// <param name="ext"></param>
         /// <returns>Return null if not found</returns>
-        public string? GetExecCommandForExtention(string ext, string args)
+        public string? GetExecCommandForExtention(string ext, string filePath, string args)
         {
             var exePath = GetExePath(ext);
             if(exePath == null) return null;

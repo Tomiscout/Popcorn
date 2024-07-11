@@ -3,6 +3,7 @@ using Popcorn.Core.Exceptions;
 using Popcorn.Domain;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Shared.Utils;
+using Popcorn.WebView.Core.Exceptions;
 
 namespace Popcorn.Core.Utils;
 
@@ -23,10 +24,15 @@ public class FileService : IFileService
     {
         try
         {
-            var command = _fileAssosiation.GetExecCommandForExtention(Path.GetExtension(path), $" \'{path}\'"); // linux required ', while it was " before
-            if (string.IsNullOrWhiteSpace(command)) return;
+            var command = _fileAssosiation.GetExecCommandForExtention(Path.GetExtension(path), path, $" \'{path}\'"); // linux required ', while it was " before
+            if (string.IsNullOrWhiteSpace(command))
+                throw new UnknownAssociatedProgramException(Path.GetExtension(path));
 
             _processRunner.ExecuteCommandDetached(command);
+        }
+        catch (UnknownAssociatedProgramException)
+        {
+            throw;
         }
         catch (Exception e)
         {

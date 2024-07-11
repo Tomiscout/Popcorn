@@ -17,6 +17,7 @@
 @using Popcorn.Domain.Models;
 @using Popcorn.Persistence;
 @using Popcorn.PlayerServer;
+@using Popcorn.WebView.Core.Exceptions
 @inject MediaItemRefreshService RefreshService;
 @inject NavigationManager NavigationManager
 @inject MediaItemService MediaItemService
@@ -154,15 +155,16 @@
                 <MudDivider />
                 for (var i = playbackHistory.Count() - 1; i >= 0; i--)
                 {
-                <div class="card history-list-item">
-                        <span class="history-list-title">@playbackHistory[i].Title</span>
-                        <span class="history-list-date">@playbackHistory[i].PlaybackTime.ToShortDateString() @playbackHistory[i].PlaybackTime.ToShortTimeString()</span>
-                        <button class="history-list-button" @onclick="() => OpenFile(playbackHistory[i])">
-					    <i class="fa-solid fa-play"></i>
-				    </button>
-			    </div>
-                <MudDivider />
-            }
+                    var index = i;
+                    <div class="card history-list-item">
+                            <span class="history-list-title">@playbackHistory[i].Title</span>
+                            <span class="history-list-date">@playbackHistory[i].PlaybackTime.ToShortDateString() @playbackHistory[i].PlaybackTime.ToShortTimeString()</span>
+                            <button class="history-list-button" @onclick="() => OpenFile(playbackHistory[index])">
+					        <i class="fa-solid fa-play"></i>
+				        </button>
+			        </div>
+                    <MudDivider />
+                }
             <MudButton Variant="Variant.Filled" @onclick="OnCleanHistory">
                 <i class="fa-solid fa-trash mr-1"></i>
                 <span class="ml-1">Clean history</span>
@@ -273,12 +275,11 @@
         {
             await MediaItemRepository.AddHistoryItem(item.Id, new ItemHistory
             {
-                Filename = historyItem.Filename,
                 FileId = historyItem.FileId,
                 Title = historyItem.Title,
                 PlaybackTime = DateTime.Now
             });
-            await LaunchFile(historyItem.Filename);
+            await LaunchFile(item.Files.First(f => f.Id == historyItem.FileId).Path);
             await LoadMediaItem();
         });
     }
@@ -290,7 +291,6 @@
             {
                 await MediaItemRepository.AddHistoryItem(item.Id, new ItemHistory
                     {
-                        Filename = file.Path,
                         FileId = file.Id.Value,
                         Title = file.Title,
                         PlaybackTime = DateTime.Now
@@ -314,7 +314,18 @@
             await PlayerService.OpenFile(path, item);
         } else
         {
-            _fileService.LaunchMediaFileDefault(path);
+            try
+            {
+                _fileService.LaunchMediaFileDefault(path);
+            }
+            catch (UnknownAssociatedProgramException e)
+            {
+                Snackbar.Add($"Program not found for extension: {e.Message}", Severity.Error);
+            }
+            catch (Exception e)
+            {
+                Snackbar.Add($"Unable to open file: {e.Message}", Severity.Error);
+            }
         }
     }
 

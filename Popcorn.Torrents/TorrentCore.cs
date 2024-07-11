@@ -265,7 +265,7 @@ public class TorrentCore : ITorrentCore
 
     public void OpenMagnetLinkSystem(string magnetLink)
     {
-        var command = _fileAssosiation.GetExecCommandForExtention(".torrent", $" \"{magnetLink}\"");
+        var command = _fileAssosiation.GetExecCommandForExtention(".torrent", string.Empty, $" \"{magnetLink}\"");
         if(string.IsNullOrWhiteSpace(command)) return;
         
         _processRunner.ExecuteCommandDetached(command);

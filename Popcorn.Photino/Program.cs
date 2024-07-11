@@ -31,23 +31,22 @@ class Program
         appBuilder.RootComponents.Add<HeadOutlet>("head::after");
 
         FFmpegWrapper.ExePath = "ffmpeg"; //TODO proper linking
+        DirUtils.EnsureApplicationFolder();
 
         PhotinoBlazorApp app = appBuilder.Build();
 
-        DirUtils.EnsureApplicationFolder();
         var runner = app.Services.GetRequiredService<IMigrationRunner>();
         runner.MigrateUp();
 
         // customize window
-        if (!OperatingSystem.IsLinux()) // TODO: find out why this works in Photino sample
-            app.MainWindow.SetIconFile("favicon.ico");
+        app.MainWindow.SetIconFile("favicon.ico");
         app.MainWindow.SetTitle("Popcorn");
         app.MainWindow.SetUseOsDefaultSize(false);
         app.MainWindow.SetSize(1680, 1050);
         app.MainWindow.SetUseOsDefaultLocation(false);
         app.MainWindow.SetTop(0);
         app.MainWindow.SetLeft(0);
-        //app.MainWindow.SetDevToolsEnabled(true);
+        app.MainWindow.SetDevToolsEnabled(true);
         app.MainWindow.SetLogVerbosity(1);
 
         AppDomain.CurrentDomain.UnhandledException += (sender, error) =>
@@ -63,7 +62,7 @@ class Program
 
                 app.MainWindow.ShowMessage("Error", message);
             }
-            catch
+            catch (Exception e)
             {
             }
         };

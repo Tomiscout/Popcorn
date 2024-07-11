@@ -20,9 +20,19 @@ public class LinuxFileAssociation : INativeFileAssosiation
         _processRunner = processRunner;
     }
 
-    public string? GetExecCommandForExtention(string ext, string args)
+    public string? GetExecCommandForExtention(string ext, string filePath, string args)
     {
-        var desktopFileName = _processRunner.ExecuteCommandRead($"xdg-mime query default {MimeUtils.GetMimeTypeForFileExtension(ext)}");
+        // Also its possible to get mime from here: grep 'mp4' /etc/mime.types or 'file' command
+        
+        string? desktopFileName;
+        if (string.IsNullOrEmpty(ext))
+        {
+            desktopFileName = _processRunner.ExecuteCommandRead($"xdg-mime query default {MimeUtils.GetMimeTypeForFileExtension(ext)}");
+        }
+        else
+        {
+            desktopFileName = _processRunner.ExecuteCommandRead($"xdg-mime query default $(xdg-mime query filetype '{filePath}')");
+        }
         if (desktopFileName == null) return null;
 
         var desktopPath = FindDesktopFile(desktopFileName);
@@ -54,9 +64,10 @@ public class LinuxFileAssociation : INativeFileAssosiation
         var envPaths = _processRunner.ExecuteCommandRead("printenv XDG_DATA_DIRS")?.Split(':');
         if (envPaths.IsNullOrEmpty()) return null;
 
-        foreach(var path in envPaths!) {
+        foreach (var path in envPaths!)
+        {
             var appPath = $"{path}/applications/{desktopFileName}";
-            if(File.Exists(appPath)) return appPath;
+            if (File.Exists(appPath)) return appPath;
         }
         return null;
     }
