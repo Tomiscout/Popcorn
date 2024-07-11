@@ -1,0 +1,52 @@
+#episodes-popup {
+    display: flex;
+    height: 400px;
+}
+
+.episodes-popup-container {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    width: 100%;
+}
+
+.nav-item {
+    font-size: 16px;
+    font-family: 'Roboto','Helvetica','Arial','sans-serif';
+    cursor: pointer !important;
+    color: white;
+}
+
+.played-item {
+    opacity: 0.4 !important;
+}
+
+.white {
+    color: white;
+}
+
+.navigation-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.ml {
+    margin-left: 4px;
+}
+
+.file-item span {
+    color:white;
+    margin-left: 4px;
+}
+
+.file-item {
+    margin-left: 4px;
+    margin-top: 4px;
+    opacity: 0.8;
+    transition: opacity 0.1s linear;
+}
+
+.file-item:hover {
+    opacity: 1;
+}

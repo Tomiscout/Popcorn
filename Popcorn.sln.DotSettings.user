@@ -1,0 +1,11 @@
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+	<s:String x:Key="/Default/Environment/AssemblyExplorer/XmlDocument/@EntryValue">&lt;AssemblyExplorer&gt;
+  &lt;Assembly Path="/home/tom/.nuget/packages/photino.net/3.0.14/lib/net8.0/Photino.NET.dll" /&gt;
+  &lt;Assembly Path="/home/tom/.nuget/packages/photino.blazor/3.0.11/lib/net8.0/Photino.Blazor.dll" /&gt;
+&lt;/AssemblyExplorer&gt;</s:String>
+	
+	<s:Boolean x:Key="/Default/UnloadedProject/UnloadedProjects/=a81c8d30_002Dc7b1_002D47b8_002Da361_002D69e6bffda94d_0023PopcornPlayer/@EntryIndexedValue">True</s:Boolean>
+	
+	
+	<s:Boolean x:Key="/Default/UnloadedProject/UnloadedProjects/=f8627ecd_002D402f_002D41eb_002D9252_002D627067047bda_0023Popcorn_002EInstaller/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/UnloadedProject/UnloadedProjects/=f953513c_002D0d98_002D454b_002Da34b_002D106d2107ce20_0023Popcorn/@EntryIndexedValue">True</s:Boolean></wpf:ResourceDictionary>

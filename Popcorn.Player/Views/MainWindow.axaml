@@ -1,0 +1,18 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:v="clr-namespace:Popcorn.Player.Views"
+        xmlns:vlcView="clr-namespace:Popcorn.Player.Views.VideoView"
+
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Popcorn.Player.Views.MainWindow"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="Popcorn player"
+        Opened="OnWindowOpened">
+        
+        <Grid x:Name="MainGrid">
+            <!-- Placeholder for PhotinoHost -->
+        </Grid>
+    <!-- <v:VideoPlayer /> -->
+</Window>

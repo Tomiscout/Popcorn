@@ -1,0 +1,5 @@
+<Project>
+    <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+      <ProjectReference Remove="Popcorn/Popcorn.csproj" />
+    </ItemGroup>
+  </Project>
