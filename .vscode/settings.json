@@ -1,0 +1,27 @@
+{
+    "files.associations": {
+        "ostream": "cpp",
+        "*.tcc": "cpp",
+        "gtk.h": "c",
+        "gl.h": "c",
+        "egl.h": "c",
+        "gio.h": "c",
+        "client.h": "c",
+        "render_gl.h": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "span": "c",
+        "gtkglarea.h": "c",
+        "utils.h": "c",
+        "gdkwayland.h": "c",
+        "app_data.h": "c",
+        "gtypes.h": "c",
+        "unistd.h": "c",
+        "stddef.h": "c",
+        "gdkx.h": "c",
+        "webkit.h": "c",
+        "webkitwebview.h": "c",
+        "casilda-compositor.h": "c"
+    }
+}

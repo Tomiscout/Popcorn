@@ -1,132 +1,245 @@
 using System;
+using System.Linq;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Platform;
-using Photino.NET;
-using System.Reactive.Linq;
-using System.Reactive.Subjects;
-using Avalonia.Data;
-using Avalonia.VisualTree;
+using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
+using Avalonia.Platform;
+using Avalonia.VisualTree;
+using PhotinoNET;
 
 namespace Popcorn.Player.Views;
 
 public class PhotinoHost : NativeControlHost
 {
-	private Window? _floatingContent;
+	private readonly IDisposable attacher;
+        private readonly BehaviorSubject<IPlatformHandle?> platformHandles = new(null);
 
-    private IntPtr _photinoHandle;
+        public IPlatformHandle? PlatformHandle { get; private set; }
+        public static readonly StyledProperty<object?> ContentProperty =
+            ContentControl.ContentProperty.AddOwner<PhotinoHost>();
 
-    public static readonly DirectProperty<PhotinoHost, PhotinoWindow?> PhotinoWindowProperty =
-        AvaloniaProperty.RegisterDirect<PhotinoHost, PhotinoWindow?>(
-            nameof(PhotinoWindow),
-            o => o.PhotinoWindow,
-            (o, v) => o.PhotinoWindow = v,
-            defaultBindingMode: BindingMode.TwoWay);
+        private Window? _floatingContent;
+        private IDisposable? _disposables;
+        private bool _isAttached;
+        private IDisposable? _isEffectivelyVisible;
 
-    private readonly IDisposable attacher;
-    private readonly BehaviorSubject<PhotinoWindow?> photinoWindows = new(null);
-    private readonly BehaviorSubject<IPlatformHandle?> platformHandles = new(null);
-
-    public IPlatformHandle? PlatformHandle { get; private set; }
-
-    public PhotinoHost()
-    {
-        attacher = platformHandles.WithLatestFrom(photinoWindows).Subscribe(x =>
+        public PhotinoHost()
         {
-            if (x.First is not null && x.Second is not null)
+            attacher = platformHandles.Subscribe(handle =>
             {
-                //x.Second.
-                // Custom handling to attach Photino window to platform handle
-                // x.Second.SetHandle(x.First); // This may need custom implementation
+                if (handle is not null)
+                {
+                    CreatePhotinoWithHandle(handle);
+                }
+            });
+
+            IsVisibleProperty.Changed.AddClassHandler<PhotinoHost>((s, e) => s.ShowNativeOverlay(s.IsVisible));
+        }
+
+        private void CreatePhotinoWithHandle(IPlatformHandle handle)
+        {
+            //TODO now it's dangerous, since on every handle change new window spawns. Will fix later. Need to implement changing handle on spawned window.
+            Task.Run(() =>
+            {
+                var window = new PhotinoWindow(null, handle.Handle)
+                    .SetTitle("Photino Embedded")
+                    .SetResizable(true)
+                    .SetSize(1024, 800)
+                    //.SetChromeless(true)
+                    .Load("wwwroot/index.html");
+
+                window.WaitForClose();
+            });
+        }
+
+        private void InitializeNativeOverlay()
+        {
+            if (!((Visual)this).IsAttachedToVisualTree()) return;
+
+            if (_floatingContent == null)
+            {
+                _floatingContent = new Window
+                {
+                    SystemDecorations = SystemDecorations.None,
+                    TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent },
+                    Background = Brushes.Red,  // Change color here to test
+                    SizeToContent = SizeToContent.WidthAndHeight,
+                    CanResize = false,
+                    ShowInTaskbar = false,
+                    ZIndex = Int32.MaxValue,
+                    Opacity = 1,
+                };
+
+                _disposables = new CompositeDisposable
+                {
+                    _floatingContent.Bind(Window.ContentProperty, this.GetObservable(ContentProperty)),
+                    this.GetObservable(ContentProperty).Skip(1).Subscribe(_=> UpdateOverlayPosition()),
+                    this.GetObservable(BoundsProperty).Skip(1).Subscribe(_ => UpdateOverlayPosition()),
+                    Observable.FromEventPattern(VisualRoot!, nameof(Window.PositionChanged))
+                        .Subscribe(_ => UpdateOverlayPosition())
+                };
             }
-        });
 
-        // Add necessary event handlers and initializations here
-    }
+            ShowNativeOverlay(IsEffectivelyVisible);
+        }
 
-    public PhotinoWindow? PhotinoWindow
-    {
-        get => photinoWindows.Value;
-        set => photinoWindows.OnNext(value);
-    }
+        protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
+        {
+            var handle = base.CreateNativeControlCore(parent);
+            platformHandles.OnNext(handle);
+            PlatformHandle = handle;
+            return handle;
+        }
 
-    protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
-    {
-        var parentHandle = parent.Handle;
+        protected override void DestroyNativeControlCore(IPlatformHandle control)
+        {
+            attacher.Dispose();
+            base.DestroyNativeControlCore(control);
+        }
 
-        _photinoWindow = new PhotinoWindow(null, parentHandle)
-            .SetTitle("Photino Embedded")
-            .SetResizable(true)
-            .SetSize(1024, 800)
-            .Load("wwwroot/index.html");
+        private void ShowNativeOverlay(bool show)
+        {
+            if (_floatingContent != null && _floatingContent.IsVisible != show)
+            {
+                if (VisualRoot is Window window)
+                {
+                    if (show && _isAttached)
+                        _floatingContent.Show(window);
+                    else
+                        _floatingContent.Hide();
+                }
+            }
+        }
 
-        var tcs = new TaskCompletionSource<bool>();
-        _photinoWindow.WindowCreated += (sender, e) => tcs.SetResult(true);
+        private void UpdateOverlayPosition()
+        {
+            if(_floatingContent == null) return;
 
-        // Start WaitForClose in a separate task to avoid blocking
-        Task.Run(() => _photinoWindow.WaitForClose());
+            bool forceSetWidth = false, forceSetHeight = false;
 
+            var topLeft = new Point();
 
-        
+            var child = _floatingContent.Presenter?.Child;
 
+            if(child?.IsArrangeValid == true)
+            {
+                switch(child.HorizontalAlignment)
+                {
+                    case HorizontalAlignment.Left:
+                        topLeft = topLeft.WithX(Bounds.Width - _floatingContent.Bounds.Width);
+                        break;
 
-        // Wait for the window to be created and handle to be available
-        // tcs.Task.Wait(); // Uncomment if you need to block until the window is created
+                    case HorizontalAlignment.Center:
+                        topLeft = topLeft.WithX((Bounds.Width - _floatingContent.Bounds.Width) / 2);
+                        break;
 
-        _photinoHandle = _photinoWindow.WindowHandle;
-        platformHandles.OnNext(new PlatformHandle(_photinoHandle, "Photino"));
-        return new PlatformHandle(_photinoHandle, "Photino");
-    }
+                    case HorizontalAlignment.Stretch:
+                        forceSetWidth = true;
+                        break;
+                }
 
-    private void CreateFloatingWindow() {
-        _floatingContent = new Window()
-			{
-				SystemDecorations = SystemDecorations.None,
+                switch(child.VerticalAlignment)
+                {
+                    case VerticalAlignment.Bottom:
+                        topLeft = topLeft.WithY(Bounds.Height - _floatingContent.Bounds.Height);
+                        break;
 
-				TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent },
-				Background = Brushes.Transparent,
+                    case VerticalAlignment.Center:
+                        topLeft = topLeft.WithY((Bounds.Height - _floatingContent.Bounds.Height) / 2);
+                        break;
 
-				SizeToContent = SizeToContent.WidthAndHeight,
-				CanResize = false,
+                    case VerticalAlignment.Stretch:
+                        forceSetHeight = true;
+                        break;
+                }
+            }
 
-				ShowInTaskbar = false,
+            if(forceSetWidth && forceSetHeight)
+                _floatingContent.SizeToContent = SizeToContent.Manual;
+            else if(forceSetHeight)
+                _floatingContent.SizeToContent = SizeToContent.Width;
+            else if(forceSetWidth)
+                _floatingContent.SizeToContent = SizeToContent.Height;
+            else
+                _floatingContent.SizeToContent = SizeToContent.Manual;
 
-				//Topmost=true,
-				ZIndex = Int32.MaxValue,
+            _floatingContent.Width = forceSetWidth ? Bounds.Width : double.NaN;
+            _floatingContent.Height = forceSetHeight ? Bounds.Height : double.NaN;
 
-				Opacity = 1,
+            _floatingContent.MaxWidth = Bounds.Width;
+            _floatingContent.MaxHeight = Bounds.Height;
 
-			};
-    }
+            var newPosition = this.PointToScreen(topLeft);
 
-    protected override void DestroyNativeControlCore(IPlatformHandle control)
-    {
-        _photinoWindow?.Close();
-        _photinoWindow = null;
-        _photinoHandle = IntPtr.Zero;
-        attacher.Dispose();
-        photinoWindows.OnNext(null);
-        base.DestroyNativeControlCore(control);
-    }
+            if(newPosition != _floatingContent.Position)
+            {
+                _floatingContent.Position = newPosition;
+            }
+        }
 
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnAttachedToVisualTree(e);
-        InitializeNativeOverlay();
-    }
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnAttachedToVisualTree(e);
+            _isAttached = true;
+            InitializeNativeOverlay();
 
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnDetachedFromVisualTree(e);
-        DestroyNativeControlCore(new PlatformHandle(_photinoHandle, "Photino"));
-    }
+            _isEffectivelyVisible = this.GetVisualAncestors().OfType<Control>()
+                .Select(v => v.GetObservable(IsVisibleProperty))
+                .CombineLatest(v => !v.Any(o => !o))
+                .DistinctUntilChanged()
+                .Subscribe(v => IsVisible = v);
+        }
 
-    private void InitializeNativeOverlay()
-    {
-        if (!((Visual)this).IsAttachedToVisualTree()) return;
+        protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnDetachedFromVisualTree(e);
+            _isEffectivelyVisible?.Dispose();
+            ShowNativeOverlay(false);
+            _isAttached = false;
+        }
 
-        // Add any overlay initialization logic here if necessary
-    }
+        protected override void OnDetachedFromLogicalTree(LogicalTreeAttachmentEventArgs e)
+        {
+            base.OnDetachedFromLogicalTree(e);
+            _disposables?.Dispose();
+            _disposables = null;
+            _floatingContent?.Close();
+            _floatingContent = null;
+        }
+
+    // protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
+    // {
+    //     var parentHandle = parent.Handle;
+    //     CreateFloatingWindow();
+    //     var floatingHandle = _floatingContent!.TryGetPlatformHandle();
+    //     
+    //     //var tcs = new TaskCompletionSource<bool>();
+    //     //PhotinoWindow.WindowCreated += (sender, e) => tcs.SetResult(true);
+    //
+    //     // Start WaitForClose in a separate task to avoid blocking
+    //     
+    //     // Task.Run(() =>
+    //     // {
+    //     //     var window = new PhotinoWindow(null, floatingHandle.Handle)
+    //     //         .SetTitle("Photino Embedded")
+    //     //         .SetResizable(true)
+    //     //         .SetSize(1024, 800)
+    //     //         .Load("wwwroot/index.html");
+    //     //
+    //     //     window.WaitForClose();
+    //     // });
+    //
+    //     // Wait for the window to be created and handle to be available
+    //    // tcs.Task.Wait(); // Deadlocks here, it should be able to access window handle when this event is published
+    //
+    //     //platformHandles.OnNext(new PlatformHandle(_photinoHandle, "Photino"));
+    //
+    //     return new PlatformHandle(floatingHandle.Handle, "Photino");
+    // }
 }

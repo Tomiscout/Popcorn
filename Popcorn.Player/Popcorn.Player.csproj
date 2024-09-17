@@ -31,4 +31,17 @@
     <ProjectReference Include="..\PopcornPlayer.Shared\PopcornPlayer.Shared.csproj" />
     <ProjectReference Include="..\photino.NET\Photino.NET\Photino.NET.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  
+  <Target Name="CopywwwrootFolder" AfterTargets="Build">
+    <ItemGroup>
+      <FilesToCopy Include="wwwroot\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(OutputPath)wwwroot\%(RecursiveDir)" />
+  </Target>
 </Project>

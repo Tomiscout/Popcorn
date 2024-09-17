@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/usr/lib/glib-2.0/include/",
+                "/usr/include/gtk-4.0",
+                "/usr/include/glib-2.0",
+                "/usr/include/webkitgtk-4.1",
+                "/usr/include/libsoup-3.0",
+                "/usr/include/cairo",
+                "/usr/include/pango-1.0",
+                "/usr/include/harfbuzz",
+                "/usr/include/gdk-pixbuf-2.0",
+                "/usr/lib//graphene-1.0/include/",
+                "/usr/include/graphene-1.0",
+                "/usr/include/webkitgtk-6.0"
+            ],
+            "defines": [],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-clang-x64"
+        }
+    ],
+    "version": 4
+}
