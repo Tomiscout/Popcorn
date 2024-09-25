@@ -1,0 +1,506 @@
+[   0.000][d][global] user path: 'mpv_log.log' -> 'mpv_log.log'
+[   0.001][v][cplayer] mpv v0.38.0-dirty Copyright © 2000-2024 mpv/MPlayer/mplayer2 projects
+[   0.001][v][cplayer]  built on Jul  3 2024 05:59:22
+[   0.001][v][cplayer] libplacebo version: v7.349.0
+[   0.001][v][cplayer] FFmpeg version: n7.0.2
+[   0.001][v][cplayer] FFmpeg library versions:
+[   0.001][v][cplayer]    libavutil       59.8.100
+[   0.001][v][cplayer]    libavcodec      61.3.100
+[   0.001][v][cplayer]    libavformat     61.1.100
+[   0.001][v][cplayer]    libswscale      8.1.100
+[   0.001][v][cplayer]    libavfilter     10.1.100
+[   0.001][v][cplayer]    libswresample   5.1.100
+[   0.001][v][cplayer] 
+[   0.002][v][cplayer] Configuration: -Db_pie=true -Dpython.bytecompile=1 -Dlibmpv=true -Dgl-x11=enabled -Dcaca=disabled -Dcdda=enabled -Ddvbin=enabled -Ddvdnav=enabled -Dlibarchive=enabled -Dopenal=enabled -Dprefix=/usr -Dlibexecdir=lib -Dsbindir=bin -Dauto_features=auto -Dbuildtype=plain -Dwrap_mode=nodownload
+[   0.002][v][cplayer] List of enabled features: alsa av-channel-layout avif-muxer build-date cdda cplugins cuda-hwaccel cuda-interop dmabuf-interop-gl dmabuf-wayland drm dvbin dvdnav egl egl-drm egl-wayland egl-x11 ffmpeg ffnvcodec gbm gl gl-x11 glibc-thread-name glob glob-posix gpl iconv jack javascript jpeg jpegxl lavu-uuid lcms2 libarchive libass libavdevice libbluray libdl libplacebo linux-fstatfs luajit memfd-create openal pipewire posix posix-shm ppoll pthread-condattr-setclock pulse rubberband rubberband-3 sixel uchardet vaapi vaapi-drm vaapi-wayland vaapi-x11 vapoursynth vdpau vdpau-gl-x11 vector vk-khr-display vt.h vulkan vulkan-interop wayland wayland-protocols-1-27 wayland-protocols-1-31 wayland-protocols-1-32 x11 xv zimg zimg-st428 zlib
+[   0.002][v][cplayer] mpv v0.38.0-dirty Copyright © 2000-2024 mpv/MPlayer/mplayer2 projects
+[   0.002][v][cplayer]  built on Jul  3 2024 05:59:22
+[   0.002][v][cplayer] libplacebo version: v7.349.0
+[   0.002][v][cplayer] FFmpeg version: n7.0.2
+[   0.002][v][cplayer] FFmpeg library versions:
+[   0.002][v][cplayer]    libavutil       59.8.100
+[   0.002][v][cplayer]    libavcodec      61.3.100
+[   0.002][v][cplayer]    libavformat     61.1.100
+[   0.002][v][cplayer]    libswscale      8.1.100
+[   0.002][v][cplayer]    libavfilter     10.1.100
+[   0.002][v][cplayer]    libswresample   5.1.100
+[   0.002][v][cplayer] 
+[   0.002][v][cplayer] Configuration: -Db_pie=true -Dpython.bytecompile=1 -Dlibmpv=true -Dgl-x11=enabled -Dcaca=disabled -Dcdda=enabled -Ddvbin=enabled -Ddvdnav=enabled -Dlibarchive=enabled -Dopenal=enabled -Dprefix=/usr -Dlibexecdir=lib -Dsbindir=bin -Dauto_features=auto -Dbuildtype=plain -Dwrap_mode=nodownload
+[   0.002][v][cplayer] List of enabled features: alsa av-channel-layout avif-muxer build-date cdda cplugins cuda-hwaccel cuda-interop dmabuf-interop-gl dmabuf-wayland drm dvbin dvdnav egl egl-drm egl-wayland egl-x11 ffmpeg ffnvcodec gbm gl gl-x11 glibc-thread-name glob glob-posix gpl iconv jack javascript jpeg jpegxl lavu-uuid lcms2 libarchive libass libavdevice libbluray libdl libplacebo linux-fstatfs luajit memfd-create openal pipewire posix posix-shm ppoll pthread-condattr-setclock pulse rubberband rubberband-3 sixel uchardet vaapi vaapi-drm vaapi-wayland vaapi-x11 vapoursynth vdpau vdpau-gl-x11 vector vk-khr-display vt.h vulkan vulkan-interop wayland wayland-protocols-1-27 wayland-protocols-1-31 wayland-protocols-1-32 x11 xv zimg zimg-st428 zlib
+[   0.002][d][global] home path: '' -> '-'
+[   0.002][d][global] user path: '~~home/' -> ''
+[   0.002][d][global] user path: '~~old_home/' -> ''
+[   0.003][d][global] user path: 'mpv_log.log' -> 'mpv_log.log'
+[   0.003][d][ytdl_hook] Loading lua script @ytdl_hook.lua...
+[   0.003][d][stats] Loading lua script @stats.lua...
+[   0.003][d][console] Loading lua script @console.lua...
+[   0.003][d][auto_profiles] Loading lua script @auto_profiles.lua...
+[   0.003][d][ytdl_hook] loading mp.defaults
+[   0.003][d][stats] loading mp.defaults
+[   0.003][d][console] loading mp.defaults
+[   0.003][v][cplayer] Waiting for scripts...
+[   0.003][v][libmpv_render] GL_VERSION='OpenGL ES 3.2 Mesa 24.1.6-arch1.1'
+[   0.003][v][libmpv_render] Detected GLES 3.2.
+[   0.003][v][libmpv_render] GL_VENDOR='AMD'
+[   0.003][v][libmpv_render] GL_RENDERER='AMD Radeon Graphics (radeonsi, renoir, LLVM 18.1.8, DRM 3.57, 6.9.12-3-MANJARO)'
+[   0.003][v][libmpv_render] GL_SHADING_LANGUAGE_VERSION='OpenGL ES GLSL ES 3.20'
+[   0.003][d][auto_profiles] loading mp.defaults
+[   0.003][d][libmpv_render] Combined OpenGL extensions string:
+[   0.003][d][libmpv_render]  GL_EXT_blend_minmax GL_EXT_multi_draw_arrays GL_EXT_texture_filter_anisotropic GL_EXT_texture_compression_s3tc GL_EXT_texture_compression_dxt1 GL_EXT_texture_compression_rgtc GL_EXT_texture_format_BGRA8888 GL_OES_compressed_ETC1_RGB8_texture GL_OES_depth24 GL_OES_element_index_uint GL_OES_fbo_render_mipmap GL_OES_mapbuffer GL_OES_rgb8_rgba8 GL_OES_standard_derivatives GL_OES_stencil8 GL_OES_texture_3D GL_OES_texture_float GL_OES_texture_float_linear GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_texture_npot GL_OES_vertex_half_float GL_EXT_draw_instanced GL_EXT_texture_sRGB_decode GL_OES_EGL_image GL_OES_depth_texture GL_AMD_performance_monitor GL_OES_packed_depth_stencil GL_EXT_texture_type_2_10_10_10_REV GL_NV_conditional_render GL_OES_get_program_binary GL_APPLE_texture_max_level GL_EXT_discard_framebuffer GL_EXT_read_format_bgra GL_EXT_texture_storage GL_NV_pack_subimage GL_NV_texture_barrier GL_EXT_frag_depth GL_NV_fbo_color_attachments GL_OES_EGL_image_external GL_OES_EGL_sync GL_OES_vertex_array_object GL_OES_viewport_array GL_ANGLE_pack_reverse_row_order GL_ANGLE_texture_compression_dxt3 GL_ANGLE_texture_compression_dxt5 GL_EXT_occlusion_query_boolean GL_EXT_robustness GL_EXT_texture_rg GL_EXT_unpack_subimage GL_NV_draw_buffers GL_NV_read_buffer GL_NV_read_depth GL_NV_read_depth_stencil GL_NV_read_stencil GL_APPLE_sync GL_EXT_draw_buffers GL_EXT_instanced_arrays GL_EXT_map_buffer_range GL_KHR_debug GL_KHR_robustness GL_KHR_texture_compression_astc_ldr GL_NV_generate_mipmap_sRGB GL_NV_pixel_buffer_object GL_OES_depth_texture_cube_map GL_OES_required_internalformat GL_OES_surfaceless_context GL_EXT_color_buffer_float GL_EXT_debug_label GL_EXT_sRGB_write_control GL_EXT_separate_shader_objects GL_EXT_shader_group_vote GL_EXT_shader_implicit_conversions GL_EXT_shader_integer_mix GL_EXT_tessellation_point_size GL_EXT_tessellation_shader GL_ANDROID_extension_pack_es31a GL_EXT_base_instance GL_EXT_compressed_ETC1_RGB8_sub_texture GL_EXT_copy_image GL_EXT_draw_buffers_indexed GL_EXT_draw_elements_base_vertex GL_EXT_gpu_shader5 GL_EXT_polygon_offset_clamp GL_EXT_primitive_bounding_box GL_EXT_render_snorm GL_EXT_shader_io_blocks GL_EXT_texture_border_clamp GL_EXT_texture_buffer GL_EXT_texture_cube_map_array GL_EXT_texture_norm16 GL_EXT_texture_view GL_KHR_blend_equation_advanced GL_KHR_context_flush_control GL_KHR_robust_buffer_access_behavior GL_NV_image_formats GL_NV_shader_noperspective_interpolation GL_OES_copy_image GL_OES_draw_buffers_indexed GL_OES_draw_elements_base_vertex GL_OES_gpu_shader5 GL_OES_primitive_bounding_box GL_OES_sample_shading GL_OES_sample_variables GL_OES_shader_io_blocks GL_OES_shader_multisample_interpolation GL_OES_tessellation_point_size GL_OES_tessellation_shader GL_OES_texture_border_clamp GL_OES_texture_buffer GL_OES_texture_cube_map_array GL_OES_texture_stencil8 GL_OES_texture_storage_multisample_2d_array GL_OES_texture_view GL_EXT_blend_func_extended GL_EXT_buffer_storage GL_EXT_float_blend GL_EXT_geometry_point_size GL_EXT_geometry_shader GL_EXT_shader_samples_identical GL_EXT_texture_sRGB_R8 GL_KHR_no_error GL_KHR_texture_compression_astc_sliced_3d GL_OES_EGL_image_external_essl3 GL_OES_geometry_point_size GL_OES_geometry_shader GL_OES_shader_image_atomic GL_EXT_clear_texture GL_EXT_clip_cull_distance GL_EXT_disjoint_timer_query GL_EXT_texture_compression_s3tc_srgb GL_EXT_window_rectangles GL_MESA_shader_integer_functions GL_EXT_clip_control GL_EXT_color_buffer_half_float GL_EXT_memory_object GL_EXT_memory_object_fd GL_EXT_semaphore GL_EXT_semaphore_fd GL_EXT_texture_compression_bptc GL_EXT_texture_mirror_clamp_to_edge GL_KHR_parallel_shader_compile GL_NV_alpha_to_coverage_dither_control GL_AMD_framebuffer_multisample_advanced GL_EXT_EGL_image_storage GL_EXT_texture_shadow_lod GL_INTEL_blackhole_render GL_MESA_framebuffer_flip_y GL_NV_compute_shader_derivatives GL_EXT_demote_to_helper_invocation GL_EXT_depth_clamp GL_EXT_texture_query_lod GL_MESA_sampler_objects GL_MESA_bgra GL_MESA_texture_const_bandwidth 
+[   0.004][v][libmpv_render] Loaded extension GL_EXT_texture_norm16.
+[   0.004][v][libmpv_render] Loaded extension GL_EXT_disjoint_timer_query.
+[   0.004][d][ytdl_hook] loading @ytdl_hook.lua
+[   0.004][v][libmpv_render] Loaded extension GL_EXT_buffer_storage.
+[   0.004][v][libmpv_render] GL_*_swap_control extension missing.
+[   0.004][d][stats] loading @stats.lua
+[   0.004][d][auto_profiles] loading @auto_profiles.lua
+[   0.004][d][console] loading @console.lua
+[   0.005][d][ytdl_hook] reading options for ytdl_hook
+[   0.005][d][ytdl_hook] script-opts/ytdl_hook.conf not found.
+[   0.005][d][ytdl_hook] lua-settings/ytdl_hook.conf not found.
+[   0.005][d][libmpv_render] Texture formats:
+[   0.005][d][libmpv_render]   NAME       COMP*TYPE SIZE           DEPTH PER COMP.
+[   0.005][d][libmpv_render]   r8         1*unorm   1B    LF CR ST {8}
+[   0.005][d][libmpv_render]   rg8        2*unorm   2B    LF CR ST {8 8}
+[   0.005][d][libmpv_render]   rgb8       3*unorm   3B    LF CR ST {8 8 8}
+[   0.005][d][libmpv_render]   rgba8      4*unorm   4B    LF CR ST {8 8 8 8}
+[   0.005][d][libmpv_render]   r16        1*unorm   2B    LF CR ST {16}
+[   0.005][d][libmpv_render]   rg16       2*unorm   4B    LF CR ST {16 16}
+[   0.005][d][libmpv_render]   rgba16     4*unorm   8B    LF CR ST {16 16 16 16}
+[   0.005][d][libmpv_render]   rgb16      3*unorm   6B    LF    ST {16 16 16}
+[   0.005][d][libmpv_render]   l          1*unorm   1B    LF CR ST {8}
+[   0.005][d][libmpv_render]   la         2*unorm   2B LA LF CR ST {8 8}
+[   0.005][d][libmpv_render]   r8ui       1*uint    1B       CR ST {8}
+[   0.005][d][libmpv_render]   rg8ui      2*uint    2B       CR ST {8 8}
+[   0.005][d][libmpv_render]   rgb8ui     3*uint    3B          ST {8 8 8}
+[   0.005][d][libmpv_render]   rgba8ui    4*uint    4B       CR ST {8 8 8 8}
+[   0.005][d][libmpv_render]   r16ui      1*uint    2B       CR ST {16}
+[   0.005][d][libmpv_render]   rg16ui     2*uint    4B       CR ST {16 16}
+[   0.005][d][libmpv_render]   rgb16ui    3*uint    6B          ST {16 16 16}
+[   0.005][d][libmpv_render]   rgba16ui   4*uint    8B       CR ST {16 16 16 16}
+[   0.006][d][libmpv_render]   r16f       1*float   4B    LF CR ST {32/16}
+[   0.006][d][libmpv_render]   rg16f      2*float   8B    LF CR ST {32/16 32/16}
+[   0.006][d][libmpv_render]   rgb16f     3*float  12B    LF    ST {32/16 32/16 32/16}
+[   0.006][d][libmpv_render]   rgba16f    4*float  16B    LF CR ST {32/16 32/16 32/16 32/16}
+[   0.006][d][libmpv_render]   r16f       1*float   4B    LF    ST {32/16}
+[   0.006][d][libmpv_render]   rg16f      2*float   8B    LF    ST {32/16 32/16}
+[   0.006][d][libmpv_render]   rgb16f     3*float  12B    LF    ST {32/16 32/16 32/16}
+[   0.006][d][libmpv_render]   rgba16f    4*float  16B    LF    ST {32/16 32/16 32/16 32/16}
+[   0.006][d][libmpv_render]   rgb10_a2   4*unorm   4B    LF CR ST {0/10 0/10 0/10 0/2}
+[   0.006][d][libmpv_render]  LA = LUMINANCE_ALPHA hack format
+[   0.006][d][libmpv_render]  LF = linear filterable
+[   0.006][d][libmpv_render]  CR = can be used for render targets
+[   0.006][d][libmpv_render]  ST = can be used for storable images
+[   0.006][d][libmpv_render] Image formats:
+[   0.006][d][libmpv_render]   yuv444p => 3 planes 1x1 8/0 [r8/r8/r8] (r/g/b) [unorm]
+[   0.006][d][libmpv_render]   yuv420p => 3 planes 2x2 8/0 [r8/r8/r8] (r/g/b) [unorm]
+[   0.006][d][libmpv_render]   gray => 1 planes 1x1 8/0 [r8] (r) [unorm]
+[   0.006][d][libmpv_render]   gray16 => 1 planes 1x1 16/0 [r16] (r) [unorm]
+[   0.006][d][libmpv_render]   uyvy422
+[   0.006][d][libmpv_render]   nv12 => 2 planes 2x2 8/0 [r8/rg8] (r/gb) [unorm]
+[   0.006][d][libmpv_render]   p010 => 2 planes 2x2 16/6 [r16/rg16] (r/gb) [unorm]
+[   0.006][d][libmpv_render]   argb => 1 planes 1x1 8/0 [rgba8] (argb) [unorm]
+[   0.006][d][libmpv_render]   bgra => 1 planes 1x1 8/0 [rgba8] (bgra) [unorm]
+[   0.006][d][libmpv_render]   abgr => 1 planes 1x1 8/0 [rgba8] (abgr) [unorm]
+[   0.006][d][libmpv_render]   rgba => 1 planes 1x1 8/0 [rgba8] (rgba) [unorm]
+[   0.006][d][libmpv_render]   bgr24 => 1 planes 1x1 8/0 [rgb8] (bgr) [unorm]
+[   0.006][d][libmpv_render]   rgb24 => 1 planes 1x1 8/0 [rgb8] (rgb) [unorm]
+[   0.006][d][libmpv_render]   0rgb => 1 planes 1x1 8/0 [rgba8] (_rgb) [unorm]
+[   0.006][d][libmpv_render]   bgr0 => 1 planes 1x1 8/0 [rgba8] (bgr) [unorm]
+[   0.006][d][libmpv_render]   0bgr => 1 planes 1x1 8/0 [rgba8] (_bgr) [unorm]
+[   0.006][d][libmpv_render]   rgb0 => 1 planes 1x1 8/0 [rgba8] (rgb) [unorm]
+[   0.006][d][libmpv_render]   rgba64 => 1 planes 1x1 16/0 [rgba16] (rgba) [unorm]
+[   0.006][d][libmpv_render]   rgb565
+[   0.006][d][libmpv_render]   pal8
+[   0.006][d][libmpv_render]   vdpau
+[   0.006][d][libmpv_render]   d3d11
+[   0.006][d][libmpv_render]   dxva2_vld
+[   0.006][d][libmpv_render]   mmal
+[   0.006][d][libmpv_render]   mediacodec
+[   0.006][d][libmpv_render]   cuda
+[   0.006][d][libmpv_render]   yap8 => 2 planes 1x1 8/0 [r8/r8] (r/a) [unorm]
+[   0.006][d][libmpv_render]   yap16 => 2 planes 1x1 16/0 [r16/r16] (r/a) [unorm]
+[   0.006][d][libmpv_render]   grayaf32 => 2 planes 1x1 32/0 [r16f/r16f] (r/a) [float]
+[   0.006][d][libmpv_render]   yuv444pf => 3 planes 1x1 32/0 [r16f/r16f/r16f] (r/g/b) [float]
+[   0.006][d][libmpv_render]   yuva444pf => 4 planes 1x1 32/0 [r16f/r16f/r16f/r16f] (r/g/b/a) [float]
+[   0.006][d][libmpv_render]   yuv420pf => 3 planes 2x2 32/0 [r16f/r16f/r16f] (r/g/b) [float]
+[   0.006][d][libmpv_render]   yuva420pf => 4 planes 2x2 32/0 [r16f/r16f/r16f/r16f] (r/g/b/a) [float]
+[   0.006][d][libmpv_render]   yuv422pf => 3 planes 2x1 32/0 [r16f/r16f/r16f] (r/g/b) [float]
+[   0.006][d][libmpv_render]   yuva422pf => 4 planes 2x1 32/0 [r16f/r16f/r16f/r16f] (r/g/b/a) [float]
+[   0.006][d][libmpv_render]   yuv440pf => 3 planes 1x2 32/0 [r16f/r16f/r16f] (r/g/b) [float]
+[   0.006][d][libmpv_render]   yuva440pf => 4 planes 1x2 32/0 [r16f/r16f/r16f/r16f] (r/g/b/a) [float]
+[   0.006][d][libmpv_render]   yuv410pf => 3 planes 4x4 32/0 [r16f/r16f/r16f] (r/g/b) [float]
+[   0.006][d][libmpv_render]   yuva410pf => 4 planes 4x4 32/0 [r16f/r16f/r16f/r16f] (r/g/b/a) [float]
+[   0.006][d][libmpv_render]   yuv411pf => 3 planes 4x1 32/0 [r16f/r16f/r16f] (r/g/b) [float]
+[   0.006][d][libmpv_render]   yuva411pf => 4 planes 4x1 32/0 [r16f/r16f/r16f/r16f] (r/g/b/a) [float]
+[   0.006][d][libmpv_render]   rgb30 => 1 planes 1x1 10/0 [rgb10_a2] (bgr) [unknown]
+[   0.006][d][libmpv_render]   y1 => 1 planes 1x1 8/-7 [r8] (r) [unorm]
+[   0.006][d][libmpv_render]   gbrp1 => 3 planes 1x1 8/-7 [r8/r8/r8] (g/b/r) [unorm]
+[   0.006][d][console] reading options for console
+[   0.006][d][console] script-opts/console.conf not found.
+[   0.006][d][console] lua-settings/console.conf not found.
+[   0.006][d][stats] reading options for stats
+[   0.006][d][stats] script-opts/stats.conf not found.
+[   0.006][d][stats] lua-settings/stats.conf not found.
+[   0.006][d][libmpv_render]   gbrp2 => 3 planes 1x1 8/-6 [r8/r8/r8] (g/b/r) [unorm]
+[   0.006][d][libmpv_render]   gbrp3 => 3 planes 1x1 8/-5 [r8/r8/r8] (g/b/r) [unorm]
+[   0.006][d][libmpv_render]   gbrp4 => 3 planes 1x1 8/-4 [r8/r8/r8] (g/b/r) [unorm]
+[   0.006][d][libmpv_render]   gbrp5 => 3 planes 1x1 8/-3 [r8/r8/r8] (g/b/r) [unorm]
+[   0.006][d][libmpv_render]   gbrp6 => 3 planes 1x1 8/-2 [r8/r8/r8] (g/b/r) [unorm]
+[   0.006][d][libmpv_render]   vdpau_output
+[   0.006][d][libmpv_render]   vaapi
+[   0.006][d][libmpv_render]   videotoolbox
+[   0.006][d][libmpv_render]   vulkan
+[   0.006][d][libmpv_render]   drm_prime
+[   0.006][d][libmpv_render]   yuyv422
+[   0.006][d][libmpv_render]   yuv422p => 3 planes 2x1 8/0 [r8/r8/r8] (r/g/b) [unorm]
+[   0.006][d][libmpv_render]   yuv410p => 3 planes 4x4 8/0 [r8/r8/r8] (r/g/b) [unorm]
+[   0.006][d][libmpv_render]   yuv411p => 3 planes 4x1 8/0 [r8/r8/r8] (r/g/b) [unorm]
+[   0.006][d][libmpv_render]   monow
+[   0.006][d][libmpv_render]   monob
+[   0.006][d][libmpv_render]   yuvj422p => 3 planes 2x1 8/0 [r8/r8/r8] (r/g/b) [unorm]
+[   0.006][d][libmpv_render]   uyyvyy411
+[   0.006][d][libmpv_render]   bgr8
+[   0.006][d][libmpv_render]   bgr4
+[   0.006][d][libmpv_render]   bgr4_byte
+[   0.007][d][libmpv_render]   rgb8
+[   0.007][d][libmpv_render]   rgb4
+[   0.007][d][libmpv_render]   rgb4_byte
+[   0.007][d][libmpv_render]   nv21 => 2 planes 2x2 8/0 [r8/rg8] (r/bg) [unorm]
+[   0.007][d][libmpv_render]   gray16be
+[   0.007][d][libmpv_render]   yuv440p => 3 planes 1x2 8/0 [r8/r8/r8] (r/g/b) [unorm]
+[   0.007][d][libmpv_render]   yuvj440p => 3 planes 1x2 8/0 [r8/r8/r8] (r/g/b) [unorm]
+[   0.007][d][libmpv_render]   yuva420p => 4 planes 2x2 8/0 [r8/r8/r8/r8] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   rgb48be
+[   0.007][d][libmpv_render]   rgb48 => 1 planes 1x1 16/0 [rgb16] (rgb) [unorm]
+[   0.007][d][libmpv_render]   rgb565be
+[   0.007][d][libmpv_render]   rgb555be
+[   0.007][d][libmpv_render]   rgb555
+[   0.007][d][libmpv_render]   bgr565be
+[   0.007][d][libmpv_render]   bgr565
+[   0.007][d][libmpv_render]   bgr555be
+[   0.007][d][libmpv_render]   bgr555
+[   0.007][d][libmpv_render]   yuv420p16 => 3 planes 2x2 16/0 [r16/r16/r16] (r/g/b) [unorm]
+[   0.007][d][libmpv_render]   yuv420p16be
+[   0.007][d][libmpv_render]   yuv422p16 => 3 planes 2x1 16/0 [r16/r16/r16] (r/g/b) [unorm]
+[   0.007][d][libmpv_render]   yuv422p16be
+[   0.007][d][libmpv_render]   yuv444p16 => 3 planes 1x1 16/0 [r16/r16/r16] (r/g/b) [unorm]
+[   0.007][d][libmpv_render]   yuv444p16be
+[   0.007][d][libmpv_render]   rgb444
+[   0.007][d][libmpv_render]   rgb444be
+[   0.007][d][libmpv_render]   bgr444
+[   0.007][d][libmpv_render]   bgr444be
+[   0.007][d][libmpv_render]   ya8 => 1 planes 1x1 8/0 [rg8] (ra) [unorm]
+[   0.007][d][libmpv_render]   bgr48be
+[   0.007][d][libmpv_render]   bgr48 => 1 planes 1x1 16/0 [rgb16] (bgr) [unorm]
+[   0.007][d][libmpv_render]   yuv420p9be
+[   0.007][d][libmpv_render]   yuv420p9 => 3 planes 2x2 16/-7 [r16/r16/r16] (r/g/b) [unorm]
+[   0.007][d][libmpv_render]   yuv420p10be
+[   0.007][d][libmpv_render]   yuv420p10 => 3 planes 2x2 16/-6 [r16/r16/r16] (r/g/b) [unorm]
+[   0.007][d][libmpv_render]   yuv422p10be
+[   0.007][d][libmpv_render]   yuv422p10 => 3 planes 2x1 16/-6 [r16/r16/r16] (r/g/b) [unorm]
+[   0.007][d][libmpv_render]   yuv444p9be
+[   0.007][d][libmpv_render]   yuv444p9 => 3 planes 1x1 16/-7 [r16/r16/r16] (r/g/b) [unorm]
+[   0.007][d][libmpv_render]   yuv444p10be
+[   0.007][d][libmpv_render]   yuv444p10 => 3 planes 1x1 16/-6 [r16/r16/r16] (r/g/b) [unorm]
+[   0.007][d][libmpv_render]   yuv422p9be
+[   0.007][d][libmpv_render]   yuv422p9 => 3 planes 2x1 16/-7 [r16/r16/r16] (r/g/b) [unorm]
+[   0.007][d][libmpv_render]   gbrp => 3 planes 1x1 8/0 [r8/r8/r8] (g/b/r) [unorm]
+[   0.007][d][cplayer] Run command: define-section, flags=64, args=[name="input_stats", contents="", flags="default"]
+[   0.007][d][libmpv_render]   gbrp9be
+[   0.007][d][libmpv_render]   gbrp9 => 3 planes 1x1 16/-7 [r16/r16/r16] (g/b/r) [unorm]
+[   0.007][d][libmpv_render]   gbrp10be
+[   0.007][d][libmpv_render]   gbrp10 => 3 planes 1x1 16/-6 [r16/r16/r16] (g/b/r) [unorm]
+[   0.007][d][libmpv_render]   gbrp16be
+[   0.007][d][libmpv_render]   gbrp16 => 3 planes 1x1 16/0 [r16/r16/r16] (g/b/r) [unorm]
+[   0.007][d][libmpv_render]   yuva422p => 4 planes 2x1 8/0 [r8/r8/r8/r8] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   yuva444p => 4 planes 1x1 8/0 [r8/r8/r8/r8] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   yuva420p9be
+[   0.007][d][libmpv_render]   yuva420p9 => 4 planes 2x2 16/-7 [r16/r16/r16/r16] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   yuva422p9be
+[   0.007][d][libmpv_render]   yuva422p9 => 4 planes 2x1 16/-7 [r16/r16/r16/r16] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   yuva444p9be
+[   0.007][d][libmpv_render]   yuva444p9 => 4 planes 1x1 16/-7 [r16/r16/r16/r16] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   yuva420p10be
+[   0.007][d][libmpv_render]   yuva420p10 => 4 planes 2x2 16/-6 [r16/r16/r16/r16] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   yuva422p10be
+[   0.007][d][libmpv_render]   yuva422p10 => 4 planes 2x1 16/-6 [r16/r16/r16/r16] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   yuva444p10be
+[   0.007][d][libmpv_render]   yuva444p10 => 4 planes 1x1 16/-6 [r16/r16/r16/r16] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   yuva420p16be
+[   0.007][d][libmpv_render]   yuva420p16 => 4 planes 2x2 16/0 [r16/r16/r16/r16] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   yuva422p16be
+[   0.007][d][libmpv_render]   yuva422p16 => 4 planes 2x1 16/0 [r16/r16/r16/r16] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   yuva444p16be
+[   0.007][d][libmpv_render]   yuva444p16 => 4 planes 1x1 16/0 [r16/r16/r16/r16] (r/g/b/a) [unorm]
+[   0.007][d][libmpv_render]   xyz12 => 1 planes 1x1 16/4 [rgb16] (rgb) [unorm]
+[   0.007][d][libmpv_render]   xyz12be
+[   0.007][d][libmpv_render]   nv16 => 2 planes 2x1 8/0 [r8/rg8] (r/gb) [unorm]
+[   0.007][d][libmpv_render]   nv20 => 2 planes 2x1 16/-6 [r16/rg16] (r/gb) [unorm]
+[   0.007][d][libmpv_render]   nv20be
+[   0.007][d][libmpv_render]   rgba64be
+[   0.007][d][libmpv_render]   bgra64be
+[   0.007][d][libmpv_render]   bgra64 => 1 planes 1x1 16/0 [rgba16] (bgra) [unorm]
+[   0.007][d][libmpv_render]   yvyu422
+[   0.007][d][libmpv_render]   ya16be
+[   0.007][d][libmpv_render]   ya16 => 1 planes 1x1 16/0 [rg16] (ra) [unorm]
+[   0.007][d][libmpv_render]   gbrap => 4 planes 1x1 8/0 [r8/r8/r8/r8] (g/b/r/a) [unorm]
+[   0.007][d][libmpv_render]   gbrap16be
+[   0.007][d][libmpv_render]   gbrap16 => 4 planes 1x1 16/0 [r16/r16/r16/r16] (g/b/r/a) [unorm]
+[   0.007][d][libmpv_render]   qsv
+[   0.007][d][libmpv_render]   d3d11va_vld
+[   0.007][d][libmpv_render]   yuv420p12be
+[   0.008][d][libmpv_render]   yuv420p12 => 3 planes 2x2 16/-4 [r16/r16/r16] (r/g/b) [unorm]
+[   0.008][d][libmpv_render]   yuv420p14be
+[   0.008][d][libmpv_render]   yuv420p14 => 3 planes 2x2 16/-2 [r16/r16/r16] (r/g/b) [unorm]
+[   0.008][d][libmpv_render]   yuv422p12be
+[   0.008][d][libmpv_render]   yuv422p12 => 3 planes 2x1 16/-4 [r16/r16/r16] (r/g/b) [unorm]
+[   0.008][d][libmpv_render]   yuv422p14be
+[   0.008][d][libmpv_render]   yuv422p14 => 3 planes 2x1 16/-2 [r16/r16/r16] (r/g/b) [unorm]
+[   0.008][d][libmpv_render]   yuv444p12be
+[   0.008][d][libmpv_render]   yuv444p12 => 3 planes 1x1 16/-4 [r16/r16/r16] (r/g/b) [unorm]
+[   0.008][d][libmpv_render]   yuv444p14be
+[   0.008][d][libmpv_render]   yuv444p14 => 3 planes 1x1 16/-2 [r16/r16/r16] (r/g/b) [unorm]
+[   0.008][d][libmpv_render]   gbrp12be
+[   0.008][d][libmpv_render]   gbrp12 => 3 planes 1x1 16/-4 [r16/r16/r16] (g/b/r) [unorm]
+[   0.008][d][libmpv_render]   gbrp14be
+[   0.008][d][libmpv_render]   gbrp14 => 3 planes 1x1 16/-2 [r16/r16/r16] (g/b/r) [unorm]
+[   0.008][d][libmpv_render]   yuvj411p => 3 planes 4x1 8/0 [r8/r8/r8] (r/g/b) [unorm]
+[   0.008][d][libmpv_render]   bayer_bggr8
+[   0.008][d][libmpv_render]   bayer_rggb8
+[   0.008][d][libmpv_render]   bayer_gbrg8
+[   0.008][d][libmpv_render]   bayer_grbg8
+[   0.008][d][libmpv_render]   bayer_bggr16
+[   0.008][d][libmpv_render]   bayer_bggr16be
+[   0.008][d][libmpv_render]   bayer_rggb16
+[   0.008][d][libmpv_render]   bayer_rggb16be
+[   0.008][d][libmpv_render]   bayer_gbrg16
+[   0.008][d][libmpv_render]   bayer_gbrg16be
+[   0.008][d][libmpv_render]   bayer_grbg16
+[   0.008][d][libmpv_render]   bayer_grbg16be
+[   0.008][d][libmpv_render]   yuv440p10 => 3 planes 1x2 16/-6 [r16/r16/r16] (r/g/b) [unorm]
+[   0.008][d][libmpv_render]   yuv440p10be
+[   0.008][d][libmpv_render]   yuv440p12 => 3 planes 1x2 16/-4 [r16/r16/r16] (r/g/b) [unorm]
+[   0.008][d][libmpv_render]   yuv440p12be
+[   0.008][d][libmpv_render]   ayuv64 => 1 planes 1x1 16/0 [rgba16] (argb) [unorm]
+[   0.008][d][libmpv_render]   ayuv64be
+[   0.008][d][libmpv_render]   p010be
+[   0.008][d][libmpv_render]   gbrap12be
+[   0.008][d][libmpv_render]   gbrap12 => 4 planes 1x1 16/-4 [r16/r16/r16/r16] (g/b/r/a) [unorm]
+[   0.008][d][libmpv_render]   gbrap10be
+[   0.008][d][libmpv_render]   gbrap10 => 4 planes 1x1 16/-6 [r16/r16/r16/r16] (g/b/r/a) [unorm]
+[   0.008][d][libmpv_render]   gray12be
+[   0.008][d][libmpv_render]   gray12 => 1 planes 1x1 16/-4 [r16] (r) [unorm]
+[   0.008][d][libmpv_render]   gray10be
+[   0.008][d][libmpv_render]   gray10 => 1 planes 1x1 16/-6 [r16] (r) [unorm]
+[   0.008][d][libmpv_render]   p016 => 2 planes 2x2 16/0 [r16/rg16] (r/gb) [unorm]
+[   0.008][d][libmpv_render]   p016be
+[   0.008][d][libmpv_render]   gray9be
+[   0.008][d][libmpv_render]   gray9 => 1 planes 1x1 16/-7 [r16] (r) [unorm]
+[   0.008][d][libmpv_render]   gbrpf32be
+[   0.008][d][libmpv_render]   gbrpf32 => 3 planes 1x1 32/0 [r16f/r16f/r16f] (g/b/r) [float]
+[   0.008][d][libmpv_render]   gbrapf32be
+[   0.008][d][libmpv_render]   gbrapf32 => 4 planes 1x1 32/0 [r16f/r16f/r16f/r16f] (g/b/r/a) [float]
+[   0.008][d][libmpv_render]   opencl
+[   0.008][d][libmpv_render]   gray14be
+[   0.008][d][libmpv_render]   gray14 => 1 planes 1x1 16/-2 [r16] (r) [unorm]
+[   0.008][d][libmpv_render]   grayf32be
+[   0.008][d][libmpv_render]   grayf32 => 1 planes 1x1 32/0 [r16f] (r) [float]
+[   0.008][d][libmpv_render]   yuva422p12be
+[   0.008][d][libmpv_render]   yuva422p12 => 4 planes 2x1 16/-4 [r16/r16/r16/r16] (r/g/b/a) [unorm]
+[   0.008][d][libmpv_render]   yuva444p12be
+[   0.008][d][libmpv_render]   yuva444p12 => 4 planes 1x1 16/-4 [r16/r16/r16/r16] (r/g/b/a) [unorm]
+[   0.008][d][cplayer] Run command: enable-section, flags=64, args=[name="input_stats", flags="allow-hide-cursor+allow-vo-dragging"]
+[   0.008][d][libmpv_render]   nv24 => 2 planes 1x1 8/0 [r8/rg8] (r/gb) [unorm]
+[   0.008][d][libmpv_render]   nv42 => 2 planes 1x1 8/0 [r8/rg8] (r/bg) [unorm]
+[   0.008][d][libmpv_render]   y210be
+[   0.008][d][libmpv_render]   y210
+[   0.008][d][libmpv_render]   x2rgb10be
+[   0.008][d][libmpv_render]   x2bgr10
+[   0.008][d][libmpv_render]   x2bgr10be
+[   0.008][d][libmpv_render]   p210be
+[   0.008][d][libmpv_render]   p210 => 2 planes 2x1 16/6 [r16/rg16] (r/gb) [unorm]
+[   0.008][d][libmpv_render]   p410be
+[   0.008][d][libmpv_render]   p410 => 2 planes 1x1 16/6 [r16/rg16] (r/gb) [unorm]
+[   0.008][d][libmpv_render]   p216be
+[   0.008][d][libmpv_render]   p216 => 2 planes 2x1 16/0 [r16/rg16] (r/gb) [unorm]
+[   0.008][d][libmpv_render]   p416be
+[   0.008][d][libmpv_render]   p416 => 2 planes 1x1 16/0 [r16/rg16] (r/gb) [unorm]
+[   0.008][d][libmpv_render]   vuya => 1 planes 1x1 8/0 [rgba8] (bgra) [unorm]
+[   0.008][d][libmpv_render]   rgbaf16be
+[   0.008][d][libmpv_render]   rgbaf16
+[   0.008][d][libmpv_render]   vuyx => 1 planes 1x1 8/0 [rgba8] (bgr) [unorm]
+[   0.008][d][libmpv_render]   p012 => 2 planes 2x2 16/4 [r16/rg16] (r/gb) [unorm]
+[   0.008][d][libmpv_render]   p012be
+[   0.008][d][libmpv_render]   y212be
+[   0.008][d][libmpv_render]   y212
+[   0.008][d][libmpv_render]   xv30be
+[   0.009][d][libmpv_render]   xv30
+[   0.009][d][libmpv_render]   xv36be
+[   0.009][d][libmpv_render]   xv36 => 1 planes 1x1 16/4 [rgba16] (grb) [unorm]
+[   0.009][d][libmpv_render]   rgbf32be
+[   0.009][d][libmpv_render]   rgbf32
+[   0.009][d][libmpv_render]   rgbaf32be
+[   0.009][d][libmpv_render]   rgbaf32
+[   0.009][d][libmpv_render]   p212be
+[   0.009][d][libmpv_render]   p212 => 2 planes 2x1 16/4 [r16/rg16] (r/gb) [unorm]
+[   0.009][d][libmpv_render]   p412be
+[   0.009][d][libmpv_render]   p412 => 2 planes 1x1 16/4 [r16/rg16] (r/gb) [unorm]
+[   0.009][d][libmpv_render]   gbrap14be
+[   0.009][d][libmpv_render]   gbrap14 => 4 planes 1x1 16/-2 [r16/r16/r16/r16] (g/b/r/a) [unorm]
+[   0.009][d][libmpv_render]   d3d12
+[   0.009][d][cplayer] Run command: define-section, flags=64, args=[name="input_forced_stats", contents="", flags="force"]
+[   0.009][d][cplayer] Run command: enable-section, flags=64, args=[name="input_forced_stats", flags="allow-hide-cursor+allow-vo-dragging"]
+[   0.009][v][libmpv_render] Testing FBO format rgba16f
+[   0.009][d][libmpv_render] Resizing texture: 16x16
+[   0.009][v][cplayer] Done loading scripts.
+[   0.009][d][cplayer] Run command: define-section, flags=64, args=[name="input_console", contents="", flags="default"]
+[   0.009][d][cplayer] Run command: enable-section, flags=64, args=[name="input_console", flags="allow-hide-cursor+allow-vo-dragging"]
+[   0.009][d][cplayer] Run command: define-section, flags=64, args=[name="input_forced_console", contents="", flags="force"]
+[   0.009][d][cplayer] Run command: enable-section, flags=64, args=[name="input_forced_console", flags="allow-hide-cursor+allow-vo-dragging"]
+[   0.009][v][libmpv_render] Using FBO format rgba16f.
+[   0.009][v][libmpv_render] Disabling HDR peak computation (one or more of the following is not supported: compute shaders=0, SSBO=1).
+[   0.009][d][global] cache path: '' -> '-'
+[   0.009][v][libmpv_render] Loading hwdec driver 'vaapi'
+[   0.009][v][libmpv_render/vaapi] Using EGL dmabuf interop via GL_OES_EGL_image
+[   0.009][v][libmpv_render/vaapi] Trying to open a x11 VA display...
+[   0.009][v][libmpv_render/vaapi] Trying to open a wayland VA display...
+[   0.029][v][libmpv_render/vaapi/vaapi] libva: VA-API version 1.22.0
+[   0.029][v][libmpv_render/vaapi/vaapi] libva: Trying to open /usr/lib/dri/radeonsi_drv_video.so
+[   0.034][v][libmpv_render/vaapi/vaapi] libva: Found init function __vaDriverInit_1_22
+[   0.047][v][libmpv_render/vaapi/vaapi] libva: va_openDriver() returns 0
+[   0.047][v][libmpv_render/vaapi/vaapi] Initialized VAAPI: version 1.22
+[   0.047][d][ffmpeg] AVHWDeviceContext: VAAPI driver: Mesa Gallium driver 24.1.6-arch1.1 for AMD Radeon Graphics (radeonsi, renoir, LLVM 18.1.8, DRM 3.57, 6.9.12-3-MANJARO).
+[   0.047][d][ffmpeg] AVHWDeviceContext: Driver not found in known nonstandard list, using standard behaviour.
+[   0.047][v][libmpv_render/vaapi] Going to probe surface formats (may log bogus errors)...
+[   0.059][d][libmpv_render/vaapi] Failed to create mapper
+[   0.059][d][libmpv_render/vaapi] Unsupported format: yuyv422
+[   0.059][d][libmpv_render/vaapi] Failed to create mapper
+[   0.059][d][libmpv_render/vaapi] Unsupported format: uyvy422
+[   0.060][d][libmpv_render/vaapi] vaExportSurfaceHandle() failed (an unsupported memory type was supplied)
+[   0.060][d][libmpv_render/vaapi] Unsupported format: argb
+[   0.061][d][libmpv_render/vaapi] Supported formats:
+[   0.061][d][libmpv_render/vaapi]  nv12
+[   0.061][d][libmpv_render/vaapi]  p010
+[   0.061][d][libmpv_render/vaapi]  yuv420p
+[   0.061][d][libmpv_render/vaapi]  gray
+[   0.061][d][libmpv_render/vaapi]  yuv444p
+[   0.061][d][libmpv_render/vaapi]  bgra
+[   0.061][d][libmpv_render/vaapi]  rgba
+[   0.061][d][libmpv_render/vaapi]  bgr0
+[   0.061][d][libmpv_render/vaapi]  rgb0
+[   0.061][v][libmpv_render/vaapi] Done probing surface formats.
+[   0.061][v][libmpv_render] Loading hwdec driver 'cuda'
+[   1.591][v][libmpv_render/cuda] cu->cuGLGetDevices(&device_count, &display_dev, 1, CU_GL_DEVICE_LIST_ALL) failed -> CUDA_ERROR_INVALID_GRAPHICS_CONTEXT: invalid OpenGL or DirectX context
+[   1.591][v][libmpv_render/cuda] CUDA hwdec only works with OpenGL or Vulkan backends.
+[   1.591][v][libmpv_render] Loading failed.
+[   1.591][v][libmpv_render] Loading hwdec driver 'vdpau-gl'
+[   1.591][v][libmpv_render] Loading failed.
+[   1.591][v][libmpv_render] Loading hwdec driver 'drmprime'
+[   1.591][v][libmpv_render/drmprime] Using EGL dmabuf interop via GL_OES_EGL_image
+[   1.591][v][libmpv_render/drmprime] Using DRM device: /dev/dri/renderD128
+[   1.591][d][ffmpeg] AVHWDeviceContext: Opened DRM device /dev/dri/renderD128: driver amdgpu version 3.57.0.
+[   1.591][v][libmpv_render] Loading hwdec driver 'drmprime-overlay'
+[   1.591][v][libmpv_render/drmprime-overlay] Failed to retrieve DRM fd from native display.
+[   1.591][v][libmpv_render] Loading failed.
+[   1.591][v][libmpv_render] Loading hwdec driver 'vulkan'
+[   1.591][v][libmpv_render/vulkan] This is not a libplacebo vulkan gpu api context.
+[   1.591][d][cplayer] Run command: loadfile, flags=64, args=[url="/home/tom/Projects/python-mpv-gtk4/test.webm", flags="replace", index="-1", options=""]
+[   1.591][v][cplayer] Running hook: auto_profiles/on_before_start_file
+[   1.591][d][global] state path: 'watch_later' -> '-'
+[   1.591][v][cplayer] Running hook: ytdl_hook/on_load
+[   1.591][v][ytdl_hook] ytdl:// hook
+[   1.591][v][ytdl_hook] not a ytdl:// url
+[   1.591][v][cplayer] Running hook: ytdl_hook/on_load
+[   1.591][v][ytdl_hook] playlist hook
+[   1.591][v][cplayer] Running hook: auto_profiles/on_load
+[   1.592][v][ifo_dvdnav] Opening /home/tom/Projects/python-mpv-gtk4/test.webm
+[   1.592][v][bdmv/bluray] Opening /home/tom/Projects/python-mpv-gtk4/test.webm
+[   1.592][v][file] Opening /home/tom/Projects/python-mpv-gtk4/test.webm
+[   1.592][d][file] resize stream to 131072 bytes, drop 0 bytes
+[   1.592][d][file] Stream opened successfully.
+[   1.592][v][demux] Trying demuxers for level=normal.
+[   1.592][d][demux] Trying demuxer: disc (force-level: normal)
+[   1.592][d][demux] Trying demuxer: edl (force-level: normal)
+[   1.592][d][demux] Trying demuxer: cue (force-level: normal)
+[   1.592][d][demux] Trying demuxer: rawaudio (force-level: normal)
+[   1.592][d][demux] Trying demuxer: rawvideo (force-level: normal)
+[   1.592][d][demux] Trying demuxer: mkv (force-level: normal)
+[   1.592][d][mkv] Found the head...
+[   1.592][d][mkv] + a segment...
+[   1.592][d][mkv] Parsing seek head...
+[   1.592][d][mkv] |+ segment information...
+[   1.592][d][mkv] float 2753.000000
+[   1.592][d][mkv] | + muxing app: libebml v1.3.0 + libmatroska v1.4.0
+[   1.592][d][mkv] | + writing app: mkvmerge v6.1.0 ('Old Devil') built on Mar 26 2013 06:21:10
+[   1.592][d][mkv] | + timecode scale: 1000000
+[   1.592][d][mkv] | + duration: 2.753s
+[   1.592][d][mkv] |+ segment tracks...
+[   1.592][d][mkv] | + a track...
+[   1.592][d][mkv] |  + Track number: 1
+[   1.592][d][mkv] |  + Track type: Video
+[   1.592][d][mkv] |  + Video track
+[   1.592][d][mkv] |   + Display width: 1280
+[   1.592][d][mkv] |   + Display height: 720
+[   1.592][d][mkv] |   + Pixel width: 1280
+[   1.592][d][mkv] |   + Pixel height: 720
+[   1.592][d][mkv] |  + Codec ID: V_VP8
+[   1.592][d][mkv] |  + Language: und
+[   1.592][d][mkv] |  + Default duration: 41.708ms ( = 23.976 fps)
+[   1.592][d][mkv] |+ found cluster
+[   1.592][v][mkv] Deferring reading cues.
+[   1.592][v][mkv] All headers are parsed!
+[   1.592][v][demux] Detected file format: Matroska
+[   1.592][v][cplayer] Opening done: /home/tom/Projects/python-mpv-gtk4/test.webm
+[   1.592][v][find_files] Loading external files in /home/tom/Projects/python-mpv-gtk4/
+[   1.592][v][cplayer] Running hook: ytdl_hook/on_preloaded
+[   1.592][v][cplayer] Running hook: auto_profiles/on_preloaded
+[   1.592][v][mkv] select track 0
+[   1.592][i][cplayer]  (+) Video --vid=1 (*) (vp8 1280x720 23.976fps)
+[   1.593][v][vd] Container reported FPS: 23.976024
+[   1.593][v][vd] Codec list:
+[   1.593][v][vd]     vp8 - On2 VP8
+[   1.593][v][vd]     vp8_v4l2m2m (vp8) - V4L2 mem2mem VP8 decoder wrapper
+[   1.593][v][vd]     libvpx (vp8) - libvpx VP8
+[   1.593][v][vd]     vp8_cuvid (vp8) - Nvidia CUVID VP8 decoder
+[   1.593][v][vd]     vp8_qsv (vp8) - VP8 video (Intel Quick Sync Video acceleration)
+[   1.593][v][vd] Opening decoder vp8
+[   1.593][v][vd] Looking at hwdec vp8-nvdec...
+[   1.593][v][vd] Could not create device.
+[   1.593][v][vd] Looking at hwdec vp8-vaapi...
+[   1.593][v][vd] Trying hardware decoding via vp8-vaapi.
+[   1.593][v][vd] Selected codec: On2 VP8
+[   1.593][v][vf] User filter list:
+[   1.593][v][vf]   (empty)
+[   1.593][v][cplayer] Starting playback...
+[   1.593][v][vd] Pixel formats supported by decoder: vaapi cuda yuv420p
+[   1.593][v][vd] Codec profile: unknown (0xffffff9d)
+[   1.593][e][ffmpeg/video] vp8: No support for codec vp8 profile -99.
+[   1.593][v][vd] Hardware decoding of this stream is unsupported?
+[   1.593][v][vd] Requesting pixfmt 'yuv420p' from decoder.
+[   1.598][v][vd] Attempting next decoding method after failure of vp8-vaapi.
+[   1.598][d][vd] Skipping previously attempted hwdec: vp8-nvdec
+[   1.598][d][vd] Skipping previously attempted hwdec: vp8-vaapi
+[   1.598][v][vd] Looking at hwdec vp8-nvdec-copy...
+[   1.660][v][vd] Trying hardware decoding via vp8-nvdec-copy.
+[   1.660][v][vd] Pixel formats supported by decoder: vaapi cuda yuv420p
+[   1.660][v][vd] Codec profile: unknown (0xffffff9d)
+[   1.660][v][vd] Requesting pixfmt 'cuda' from decoder.
+[   1.664][d][ffmpeg/video] vp8: NVDEC capabilities:
+[   1.664][d][ffmpeg/video] vp8: format supported: yes, max_mb_count: 65536
+[   1.664][d][ffmpeg/video] vp8: min_width: 48, max_width: 4096
+[   1.664][d][ffmpeg/video] vp8: min_height: 16, max_height: 4096
+[   1.680][i][vd] Using hardware decoding (nvdec-copy).
+[   1.680][v][vd] Decoder format: 1280x720 [0:1] nv12 bt.601/auto/auto/limited/auto CL=unknown crop=1280x720+0+0
+[   1.680][v][vd] Using container aspect ratio.
+[   1.680][v][vf] [in] 1280x720 nv12 bt.601/bt.709/bt.1886/limited/display CL=mpeg2/4/h264 crop=1280x720+0+0
+[   1.680][v][vf] [userdeint] 1280x720 nv12 bt.601/bt.709/bt.1886/limited/display CL=mpeg2/4/h264 crop=1280x720+0+0
+[   1.680][v][vf] [userdeint] (disabled)
+[   1.680][v][vf] [autorotate] 1280x720 nv12 bt.601/bt.709/bt.1886/limited/display CL=mpeg2/4/h264 crop=1280x720+0+0
+[   1.680][v][vf] [autorotate] (disabled)
+[   1.680][v][vf] [convert] 1280x720 nv12 bt.601/bt.709/bt.1886/limited/display CL=mpeg2/4/h264 crop=1280x720+0+0
+[   1.680][v][vf] [convert] (disabled)
+[   1.680][v][vf] [out] 1280x720 nv12 bt.601/bt.709/bt.1886/limited/display CL=mpeg2/4/h264 crop=1280x720+0+0
+[   1.682][i][cplayer] VO: [libmpv] 1280x720 nv12
+[   1.682][v][cplayer] VO: Description: render API for libmpv
+[   1.682][v][vo/libmpv] reconfig to 1280x720 nv12 bt.601/bt.709/bt.1886/limited/display CL=mpeg2/4/h264 crop=1280x720+0+0

@@ -22,6 +22,9 @@
         "gdkx.h": "c",
         "webkit.h": "c",
         "webkitwebview.h": "c",
-        "casilda-compositor.h": "c"
+        "casilda-compositor.h": "c",
+        "fstream": "c",
+        "sstream": "c",
+        "streambuf": "c"
     }
 }

@@ -36,8 +36,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Photino.NET", "photino.NET\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Popcorn.Player.Linux", "Popcorn.Player.Linux\Popcorn.Player.Linux.csproj", "{BE61E878-BA44-438F-8C5B-377E57398DD7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tomiscout.MPVSharp2", "Tomiscout.MPVSharp2\Tomiscout.MPVSharp2.csproj", "{BE61E878-BA44-438F-8C5B-377E57398DD8}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -308,30 +306,14 @@ Global
 		{BE61E878-BA44-438F-8C5B-377E57398DD7}.Release|x64.Build.0 = Release|Any CPU
 		{BE61E878-BA44-438F-8C5B-377E57398DD7}.Release|x86.ActiveCfg = Release|Any CPU
 		{BE61E878-BA44-438F-8C5B-377E57398DD7}.Release|x86.Build.0 = Release|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Debug|ARM64.ActiveCfg = Debug|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Debug|ARM64.Build.0 = Debug|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Debug|x64.Build.0 = Debug|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Debug|x86.Build.0 = Debug|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Release|ARM64.ActiveCfg = Release|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Release|ARM64.Build.0 = Release|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Release|x64.ActiveCfg = Release|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Release|x64.Build.0 = Release|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Release|x86.ActiveCfg = Release|Any CPU
-		{BE61E878-BA44-438F-8C5B-377E57398DD8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {61F7FB11-1E47-470C-91E2-47F8143E1572}
-	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D7114ED8-ECA4-43DB-BA9F-1D09F57EAD1C} = {C4167069-EEF5-481A-9F6E-5A79AA78562E}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {61F7FB11-1E47-470C-91E2-47F8143E1572}
 	EndGlobalSection
 EndGlobal
