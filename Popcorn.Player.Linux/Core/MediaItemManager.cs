@@ -1,5 +1,6 @@
 ﻿using Popcorn.Domain.Models;
 using Popcorn.Player.Linux.Contracts;
+using Popcorn.Player.Linux.WebSocket;
 using PopcornPlayer.Domain.Extensions;
 
 namespace Popcorn.Player.Linux.Core;
@@ -35,6 +36,6 @@ public static class MediaItemManager
             Files = CurrentMediaItem.Files.GetFilesForDirectory(path),
         };
         CurrentMediaItem.RecalculatePlayedFiles(@event.Files);
-        PlayerCore.PostEvent("folder_loaded", @event);
+        PlayerWebSocket.PostEvent("folder_loaded", @event);
     }
 }

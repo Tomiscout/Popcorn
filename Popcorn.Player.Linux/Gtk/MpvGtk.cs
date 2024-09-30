@@ -5,12 +5,12 @@ using Popcorn.Player.Linux.Player;
 
 namespace Popcorn.Player.Linux.Gtk;
 
-public class MpvGtk
+public static class MpvGtk
 {
     private static RenderContext? _ctx;
-    public GLArea GlArea { get; }
-
-    public MpvGtk()
+    public static GLArea? GlArea { get; private set; }
+    
+    public static GLArea CreateGlArea()
     {
         GlArea = GLArea.New();
         GlArea.AutoRender = false;
@@ -22,6 +22,7 @@ public class MpvGtk
         GlArea.OnRealize += OnRealizeGLArea;
         GlArea.OnUnrealize += OnUnrealizeGLArea;
         GlArea.OnRender += OnRenderGLArea;
+        return GlArea;
     }
     
     /// <summary>
@@ -29,9 +30,9 @@ public class MpvGtk
     /// </summary>
     /// <param name="sender">Gtk.Widget that invoked the event</param>
     /// <param name="e">EventArgs</param>
-    private void OnRealizeGLArea(Widget sender, EventArgs e)
+    private static void OnRealizeGLArea(Widget sender, EventArgs e)
     {
-        GlArea.MakeCurrent();
+        GlArea!.MakeCurrent();
         var player = (MpvPlayer)Program.GetPlayer();
         player.Initialize();
 
@@ -42,11 +43,7 @@ public class MpvGtk
         // the callback calls GtkGLArea.QueueDraw which in turn makes RenderContext draw image
         _ctx.SetupGL((x) => GLib.Functions.IdleAdd(0, () =>
         {
-            int data2;
-            OpenGLHelpers.GLGetIntegerV(36006, out data2); // QueueDraw FBO: 0
-            
             GlArea.QueueRender(); // QueueDraw must be called from GTK thread
-
             return false;
         }));
     }
@@ -56,9 +53,9 @@ public class MpvGtk
     /// </summary>
     /// <param name="sender">Gtk.Widget that invoked the event</param>
     /// <param name="e">EventArgs</param>
-    private bool OnRenderGLArea(Widget sender, EventArgs e)
+    private static bool OnRenderGLArea(Widget sender, EventArgs e)
     {
-        GlArea.MakeCurrent();
+        GlArea!.MakeCurrent();
         var scaleFactor = Program.GetScaleFactor();
         _ctx?.RenderGL(GlArea.GetAllocatedWidth() * scaleFactor, GlArea.GetAllocatedHeight() * scaleFactor);
         return false;

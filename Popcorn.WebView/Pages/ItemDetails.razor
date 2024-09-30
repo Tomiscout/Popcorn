@@ -25,7 +25,7 @@
 @inject FolderService FolderService
 @inject INativeFolderService _nativeFolderService
 @inject SettingsRepository SettingsRepository
-@inject PlayerService PlayerService
+@inject IPlayerService PlayerService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JsRunTime
 @inject IDialogService _dialogService
@@ -416,7 +416,7 @@
         var dialog = _dialogService.Show<CommonDialog>("Delete", parameters, options);
         var result = await dialog.Result;
 
-        if (!result.Cancelled)
+        if (!result.Canceled)
         {
             await MediaItemRepository.DeleteMediaItem(Guid.Parse(Id));
             OnBack();

@@ -1,39 +1,21 @@
-﻿using System.ComponentModel;
-using Microsoft.AspNetCore.StaticFiles;
+﻿
+namespace Popcorn.Domain.Utils;
 
-namespace Popcorn.Domain;
-
+/// <summary>
+/// Class for getting mime types. Most probably will only be used for finding default programs.
+/// </summary>
 public static class MimeUtils
 {
     private const string DefaultContentType = "application/octet-stream";
-    private static FileExtensionContentTypeProvider _provider;
-
-    static MimeUtils()
+    private static readonly Dictionary<string, string> _mimeMappings = new()
     {
-        _provider = new FileExtensionContentTypeProvider();
-
-        _provider.AddMimeType(".torrent", "application/x-bittorrent");
-    }
+        {".torrent", "application/x-bittorrent"},
+        {".mp4", "application/mp4"},
+    };
 
     public static string GetMimeTypeForFileExtension(string filePath)
     {
-        if (!_provider.TryGetContentType(filePath, out string contentType))
-        {
-            contentType = DefaultContentType;
-        }
-
-        return contentType;
-    }
-
-    private static void AddMimeType(this FileExtensionContentTypeProvider provider, string extension, string mimeType)
-    {
-        if (!_provider.Mappings.TryGetValue(extension, out var _))
-        {
-            provider.Mappings.Add(extension, mimeType);
-        }
-        else
-        {
-            provider.Mappings[extension] = mimeType;
-        }
+        var extension = Path.GetExtension(filePath);
+        return _mimeMappings.GetValueOrDefault(extension, DefaultContentType);
     }
 }

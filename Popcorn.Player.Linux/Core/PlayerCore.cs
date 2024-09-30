@@ -5,6 +5,7 @@ using Popcorn.Domain.Models;
 using Popcorn.Player.Linux.Contracts;
 using Popcorn.Player.Linux.Player;
 using Popcorn.Player.Linux.Services;
+using Popcorn.Player.Linux.WebSocket;
 using PopcornPlayer.Domain.Extensions;
 using PopcornPlayer.Shared.PipeEvents.Server;
 using Serilog;
@@ -20,10 +21,8 @@ internal static class PlayerCore
 
     public static IPlayer Player;
 
-    public static Action<string> PostWebMessage { get; set; }
     public static Action<string, byte[]> PostStreamMessage { get; set; }
     public static Func<bool> PlayerInitialized { get; set; }
-    public static Func<bool, bool> ChangeFullscreen { get; set; }
     private static List<MediaFile> _inputFilePaths { get; set; }
     private static bool _isLoadedFromArgs = false;
 
@@ -38,6 +37,7 @@ internal static class PlayerCore
         Player.MediaEnded += PlaybackEndReached;
         Player.MediaPlaying += PlayingStarted;
 
+        ThumbnailService.Initialize();
         Log.Information("Player core initialized");
     }
 
@@ -91,6 +91,20 @@ internal static class PlayerCore
         
         Player.LoadMedia(file.Path);
         
+        //Sending media info to frontend
+        PlayerWebSocket.PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
+        {
+            FileName = CurrentMediaFile.Path,
+            Title = CurrentMediaFile.Title,
+            ShortTitle = CurrentMediaFile.GetDisplayTitle(),
+        });
+        OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
+        AudioAndSubtitles.AutoSelectAudioAndSubtitles();
+        AudioAndSubtitles.SendAudioAndSubtitles();
+
+        // On initial run from media player due to fast startup dummy media item is created, and will have no data for segments and other extra options
+        AudioAndSubtitles.SendAudioSegments();
+        
         //Update history in main app
         // if (MediaItemManager.CurrentMediaItem is not null)
         // {
@@ -129,6 +143,16 @@ internal static class PlayerCore
         LoadMedia(mediaFile);
         return true;
     }
+    
+    public static bool PlayNextTitle()
+    {
+        var nextItem = MediaItemManager.CurrentMediaItem?.GetNextMediaFile();
+        if (nextItem is null) return false;
+
+        PlayerCore.LoadMedia(nextItem);
+
+        return true;
+    }
 
     private static IMediaAnalysis ProbeMetadata(string path)
     {
@@ -146,7 +170,7 @@ internal static class PlayerCore
     private static void PlayingStarted(object sender, EventArgs e)
     {
         if (!_isLoadingTrack) return;
-        PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
+        PlayerWebSocket.PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
         {
             FileName = CurrentMediaFile.Path,
             Title = CurrentMediaFile.Title,
@@ -161,33 +185,16 @@ internal static class PlayerCore
         _isLoadingTrack = false;
     }
 
-    //This is invoked 3-4 times per second
-    // private static void RecalculateSeekValue(object sender, MediaPlayerTimeChangedEventArgs e)
-    // {
-    //     PostEvent("current_time", e.Time);
-    // }
-    //
-    // private static void SendLengthEvent(object sender, MediaPlayerLengthChangedEventArgs e)
-    // {
-    //     PostEvent("duration_update", e.Length);
-    // }
-
     private static void PlaybackEndReached(object sender, EventArgs e)
     {
-        PostEvent("playback_ended", null);
+        PlayerWebSocket.PostEvent("playback_ended", null);
     }
 
-    private static bool SetFullscreen(object data)
-    {
-        var fullscreen = ((JsonElement)data).GetBoolean();
-        return ChangeFullscreen(fullscreen);
-    }
-
-    private static bool OpenFolder(string path)
+    public static bool OpenFolder(string path)
     {
         if (MediaItemManager.CurrentMediaItem is null)
         {
-            PostEvent("folder_loaded", new FolderLoadedEvent()
+            PlayerWebSocket.PostEvent("folder_loaded", new FolderLoadedEvent()
             {
                 Files = _isLoadedFromArgs ? _inputFilePaths : _inputFilePaths.GetFilesForDirectory(path)
             });
@@ -197,33 +204,6 @@ internal static class PlayerCore
         MediaItemManager.SendCurrentMediaFolderLoaded(path);
         return true;
     }
-
-    // public static void WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
-    // {
-    //     var message = e.WebMessageAsJson;
-    //     var webEvent = JsonSerializer.Deserialize<WebEvent>(message);
-    //
-    //     Log.Information(webEvent.Name);
-    //     var _ = webEvent.Name switch
-    //     {
-    //         "play_status_changed" => MediaPlayback.PlayPause(webEvent.Data),
-    //         "fullscreen" => SetFullscreen(webEvent.Data),
-    //         "set_playback_time" => MediaPlayback.SetPlaybackTime(webEvent.Data),
-    //         "skip_seconds" => MediaPlayback.SetPlaybackTimeSkip(webEvent.Data),
-    //         "volume" => AudioAndSubtitles.SetVolume(webEvent.Data),
-    //         "play_next_title" => MediaPlayback.PlayNextTitle(),
-    //         "initialized" => PlayerInitialized(),
-    //         "audio_track_selected" => AudioAndSubtitles.AudioTrackSelected(webEvent.Data),
-    //         "subtitle_track_selected" => AudioAndSubtitles.SubtitleTrackSelected(webEvent.Data),
-    //         "subtitle_file_select" => AudioAndSubtitles.SubtitleFileAdd(),
-    //         "subtitle_delay_set" => AudioAndSubtitles.SubtitleDelaySet(webEvent.Data),
-    //         "file_open" => LoadMedia(webEvent.Data.GetJsonString()),
-    //         "folder_open" => OpenFolder(webEvent.Data.GetJsonString()),
-    //         "folder_open_root" => OpenFolder(MediaItemManager.CurrentMediaItem?.FolderDirectory ?? Path.GetDirectoryName(CurrentMediaFile.Path)),
-    //         "thumb_requested" => ThumbnailService.OnThumbnailRequest(webEvent.Data.GetJsonInt64()),
-    //         _ => throw new NotImplementedException($"Event from player not supported: {webEvent.Name}")
-    //     };
-    // }
 
     #region Events from main program
 
@@ -249,17 +229,5 @@ internal static class PlayerCore
         Program.GetPlayer().Dispose();
     }
 
-    public static void PostEvent(string eventName, object? data = null)
-    {
-        var json = JsonSerializer.Serialize(new WebEvent
-        {
-            Name = eventName,
-            Data = data
-        }, new JsonSerializerOptions()
-        {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-        });
-        PostWebMessage(json); //TODO fix task was canceled exception. Happends probably on current time update, since it's called a lot
-    }
     #endregion
 }

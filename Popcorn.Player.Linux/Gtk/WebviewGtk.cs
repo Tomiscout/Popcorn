@@ -2,7 +2,6 @@ using System.Reflection;
 using Gdk;
 using Gio;
 using Popcorn.Player.Linux.WebSocket;
-using Serilog;
 using WebKit;
 using Soup;
 using Settings = WebKit.Settings;
@@ -46,38 +45,6 @@ public class WebviewGtk
             allowList: null,
             blockList: null)
         );
-
-        WebKit.UserContentManager.ScriptMessageReceivedSignal.Connect(ucm, (manager, signalArgs) =>
-        {
-            System.Diagnostics.Debug.Assert(signalArgs.Value.IsObject(), "Returned value is expected to be an object");
-            
-            System.Console.WriteLine($"{DateTime.Now} Received event: ${signalArgs.Value.ObjectGetProperty("name").ToString()}");
-            // signalArgs.Value.;
-            // var result = signalArgs.Value.ToJson(0);
-            // System.Console.WriteLine(result.ToString());
-        }, true, "eventBus");
-
-        if (!ucm.RegisterScriptMessageHandler("eventBus", null))
-            throw new System.Exception("Could not register script message handler");
-
-        Console.WriteLine($"{DateTime.Now} Sending ping");
-        ucm.AddScript(WebKit.UserScript.New(
-            source: "window.dispatchEvent(new CustomEvent('eventBus', { name: 'ping'}));",
-            injectedFrames: WebKit.UserContentInjectedFrames.AllFrames,
-            injectionTime: WebKit.UserScriptInjectionTime.End,
-            allowList: null,
-            blockList: null)
-        );
-
-
-        webView.OnLoadChanged += (view, signalArgs) =>
-        {
-            if (signalArgs.LoadEvent != WebKit.LoadEvent.Finished)
-                return;
-
-            //var result = await webView.EvaluateJavascriptAsync("testFunc();");
-            //Console.WriteLine(result.ToString()); // Writes "Success" into the console
-        };
         
         //webView.LoadUri("http://localhost:3000");
         var webContext = webView.GetContext();

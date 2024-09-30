@@ -8,8 +8,8 @@ import '../Styles/SubtitleControl.css';
 const SubtitleControl = () => {
   const subtitlePopupWidth = 500;
 
-  const [audioTracks, setAudioTracks] = useState([{ description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }]);
-  const [subtitleTracks, setSubtitleTracks] = useState([{ description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }, { description: 'test', language: 'LT', id: 1 }]);
+  const [audioTracks, setAudioTracks] = useState([{ description: 'test', language: 'EN', id: 1 }, { description: 'test', language: 'JP', id: 1 }]);
+  const [subtitleTracks, setSubtitleTracks] = useState([{ description: 'test', language: 'JP', id: 1 }, { description: 'test', language: 'EN', id: 1 }]);
   const [selectedAudio, setSelectedAudio] = useState(-1);
   const [selectedSubtitle, setSelectedSubtitle] = useState(-1);
   const [showPopup, setShowPopup] = useState(false);
@@ -18,7 +18,9 @@ const SubtitleControl = () => {
   const subtitlePopupRef = useRef(null);
 
   useEffect(() => {
+    console.log('SUB CONTROL');
     registerWebviewEventHandler('audio_subtitles_loaded', (data) => {
+      console.log('Settings subs', data.subtitleTracks );
       setAudioTracks(data.audioTracks || []);
       setSubtitleTracks(data.subtitleTracks || []);
     });

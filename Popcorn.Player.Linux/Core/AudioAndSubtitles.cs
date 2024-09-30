@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Popcorn.Player.Linux.Contracts;
+using Popcorn.Player.Linux.WebSocket;
 using Serilog;
 
 namespace Popcorn.Player.Linux.Core;
@@ -9,16 +10,14 @@ public static class AudioAndSubtitles
 
     public static void SendAudioAndSubtitles()
     {
-        /*var @event = new AudioAndSubtitlesLoadedEvent()
+        var mediaTracks = Program.GetPlayer().GetMediaTracks();
+        
+        var @event = new AudioAndSubtitlesLoadedEvent
         {
-            AudioTracks = PlayerCore.MediaPlayer.AudioTrackDescription
-            .Select(track => MapToVlcTrack(track, track.Id == PlayerCore.MediaPlayer.AudioTrack))
-            .ToList(),
-            SubtitleTracks = PlayerCore.MediaPlayer.SpuDescription
-            .Select(track => MapToVlcTrack(track, track.Id == PlayerCore.MediaPlayer.Spu))
-            .ToList(),
+            AudioTracks = mediaTracks.Where(track => track.Type == MediaTrackType.Audio).ToList(),
+            SubtitleTracks =  mediaTracks.Where(track => track.Type == MediaTrackType.Subtitle).ToList(),
         };
-        PlayerCore.PostEvent("audio_subtitles_loaded", @event);*/
+        PlayerWebSocket.PostEvent("audio_subtitles_loaded", @event);
     }
 
     public static void SendAudioSegments()
@@ -34,7 +33,7 @@ public static class AudioAndSubtitles
             Intro = PlayerCore.CurrentMediaFile.SegmentLocations.Where(s => s.StartSeconds >= 0).ToList(),
             Outro = PlayerCore.CurrentMediaFile.SegmentLocations.Where(s => s.StartSeconds < 0).ToList(),
         };
-        PlayerCore.PostEvent("segments_update", @event);
+        PlayerWebSocket.PostEvent("segments_update", @event);
     }
 
     public static bool SubtitleFileAdd()
@@ -89,14 +88,7 @@ public static class AudioAndSubtitles
             }
         }*/
     }
-
-    public static bool SubtitleDelaySet(object data)
-    {
-        var delay = ((JsonElement)data).GetDouble();
-        //return ThreadPool.QueueUserWorkItem(_ => PlayerCore.MediaPlayer.SetSpuDelay(Convert.ToInt64(delay * 1000000)));
-        return true;
-    }
-
+    
     public static bool SetVolume(object data)
     {
         // try

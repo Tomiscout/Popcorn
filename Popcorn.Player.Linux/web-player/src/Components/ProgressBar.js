@@ -47,8 +47,8 @@ const ProgressBar = () => {
     const currentSkipTimeEndRef = useRef(currentSkipTimeEnd);
 
     useEffect(() => {
-        registerWebviewEventHandler('current_time', (data) => handleCurrentTime(data));
-        registerWebviewEventHandler('duration_update', (data) => setTotalTime(data));
+        registerWebviewEventHandler('current_time', (data) => handleCurrentTime(data * 1000)); //TODO vlc uses ms, while mpv returns seconds double. Should convert logic to mpv
+        registerWebviewEventHandler('duration_update', (data) => setTotalTime(data * 1000));
         registerWebviewEventHandler('segments_update', (data) => setSegments(data));
 
         registerSharedBufferHandler('thumb', thumbnailCallback);
@@ -188,11 +188,9 @@ const ProgressBar = () => {
         postMessage('thumb_requested', time / 1000);
     }, 100)).current; //Debounced 100ms
 
-    const thumbnailCallback = (sharedBuffer, additionalData) => {
-        const blob = new Blob([sharedBuffer]);
-        const imageUrl = URL.createObjectURL(blob);
-
-        setThumbnail(imageUrl);
+    const thumbnailCallback = (blobUrl) => {
+        //TODO do revoke afterwards. URL.revokeObjectURL(blobUrl);
+        setThumbnail(blobUrl);
         setIsLoading(false);
     }
 

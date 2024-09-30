@@ -6,16 +6,19 @@ public class AudioAndSubtitlesLoadedEvent
 {
 
     [JsonPropertyName("audioTracks")]
-    public IList<VlcTrack> AudioTracks { get; set; }
+    public IList<MediaTrack> AudioTracks { get; set; }
 
     [JsonPropertyName("subtitleTracks")]
-    public IList<VlcTrack> SubtitleTracks { get; set; }
+    public IList<MediaTrack> SubtitleTracks { get; set; }
 }
 
-public class VlcTrack
+public class MediaTrack
 {
     [JsonPropertyName("id")]
     public int Id { get; set; }
+    
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
 
     [JsonPropertyName("language")]
     public string Language { get; set; }

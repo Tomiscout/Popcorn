@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "GefyTR4iTo0=",
+  "success": true,
+  "projectFilePath": "/home/tom/Projects/Popcorn/photino.NET/Photino.NET/Photino.NET.csproj",
+  "expectedPackageFiles": [
+    "/home/tom/.nuget/packages/microsoft.aspnetcore.app.ref/6.0.31/microsoft.aspnetcore.app.ref.6.0.31.nupkg.sha512",
+    "/home/tom/.nuget/packages/microsoft.netcore.app.ref/6.0.31/microsoft.netcore.app.ref.6.0.31.nupkg.sha512"
+  ],
+  "logs": []
+}

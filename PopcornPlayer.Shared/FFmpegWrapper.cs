@@ -34,30 +34,28 @@ public static class FFmpegWrapper
         {
             FileName = ExePath,
             Arguments = args,
-            RedirectStandardOutput = true,
+            //RedirectStandardOutput = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
 
-        using (Process process = new Process { StartInfo = startInfo })
+        using Process process = new Process();
+        process.StartInfo = startInfo;
+        process.Start();
+        cancellationToken?.Register(() =>
         {
-            process.Start();
-            cancellationToken?.Register(() =>
+            if (process == null || !process.StartInfo.FileName.Any()) return;
+            try
             {
-                if (process == null || !process.StartInfo.FileName.Any()) return;
-                try
-                {
-                    if (process.HasExited) return;
-                    process.Kill();
-                    process.WaitForExit(100);
-                }
-                catch (InvalidOperationException)
-                {
-                }
+                if (process.HasExited) return;
+                process.Kill();
+                process.WaitForExit(100);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        });
 
-            });
-
-            process.WaitForExit();
-        }
+        process.WaitForExit();
     }
 }

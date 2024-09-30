@@ -1,5 +1,7 @@
 ﻿using FFMpegCore;
+using Popcorn.Player.Linux.Contracts;
 using Popcorn.Player.Linux.Core;
+using Popcorn.Player.Linux.WebSocket;
 using Popcorn.Player.Services;
 using Popcorn.Shared.Utils;
 using PopcornPlayer.Shared;
@@ -33,15 +35,11 @@ public class ThumbnailService
                     FfmpegCts = new CancellationTokenSource(); //Race condition dirty fix
                 }
                 var bytes = GetThumbnailBytes(PlayerCore.CurrentMediaFile.Path, PlayerCore.CurrentMediaProbe, PlayerCore.CurrentMediaFile.Id.ToString(), time, FfmpegCts.Token);
-                if (bytes is not null)
-                {
-                    PlayerCore.PostStreamMessage($"{{\"name\":\"thumb\",\"time\":{time}}}", bytes);
-                }
+                if (!bytes.Any()) return Task.CompletedTask;
+                
+                PlayerWebSocket.PostBinaryEvent(bytes);
             }
-            catch (OperationCanceledException)
-            {
-                // Nothing
-            }
+            catch (OperationCanceledException) { } // It was canceled by another thumb request
             catch (Exception ex)
             {
                 // Log exception if needed
@@ -52,6 +50,8 @@ public class ThumbnailService
                 FfmpegCts?.Dispose();
                 FfmpegCts = null;
             }
+            
+            return Task.CompletedTask;
         });
         return true;
     }

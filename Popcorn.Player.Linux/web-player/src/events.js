@@ -1,7 +1,7 @@
 /* eslint-disable no-use-before-define */
 const localHandlers = {};
 const webviewHandlers = {};
-const sharedBufferHandlers = {};
+const sharedBufferHandlers = [];
 
 const webviewContext = window?.chrome?.webview;
 let socket = null;
@@ -13,7 +13,7 @@ export function initEvents() {
 
   if (webviewContext) {
     webviewContext.addEventListener('message', eventHandler);
-    webviewContext.addEventListener('sharedbufferreceived', bufferEventHandler);
+    //webviewContext.addEventListener('sharedbufferreceived', bufferEventHandlerWindows);
 
     postMessage('initialized');
     isInitialized = true;
@@ -32,16 +32,30 @@ export function initEvents() {
       console.log("WebSocket connection closed");
     };
 
-    socket.onmessage = function (event) {
-      const data = JSON.parse(event.data);
-      console.log('Got message in socket',data.name);
-      if(event.sharedBuffer){
-        bufferEventHandler(event);
+    socket.onmessage = async function (event) {
+      if (event.data instanceof Blob) {
+        const blobUrl = URL.createObjectURL(event.data);
+        /*const arrayBuffer = await event.data.arrayBuffer();
+
+        const dataView = new DataView(arrayBuffer);
+
+        // Read the first 4 bytes as int32 (JSON length)
+        const jsonLength = dataView.getUint32(0, true); // true for little-endian
+
+        // Extract the JSON bytes and decode to a string
+        const jsonBytes = new Uint8Array(arrayBuffer, 4, jsonLength);
+        const jsonString = new TextDecoder("utf-8").decode(jsonBytes);
+        const jsonData = JSON.parse(jsonString);
+
+        // Extract the remaining binary data (image)
+        const imageBytes = new Uint8Array(arrayBuffer, 4 + jsonLength);
+        const blob = new Blob([imageBytes]);
+        const imageUrl = URL.createObjectURL(blob);*/
+
+        bufferEventHandler(blobUrl);
       } else {
-        if(data.name === 'ping') {
-          postMessage('pong');
-        }
-        eventHandler(event);
+        const data = JSON.parse(event.data);
+        eventHandler(data);
       }
     };
   }
@@ -78,23 +92,19 @@ export function registerWebviewEventHandler(name, handler) {
 }
 
 export function registerSharedBufferHandler(name, handler) {
-  if (!sharedBufferHandlers[name]) {
-    sharedBufferHandlers[name] = [handler];
-    return;
-  }
-
-  sharedBufferHandlers[name].push(handler);
+  sharedBufferHandlers.push(handler);
 }
 
-export function eventHandler(event) {
-  const eventData = event.data;
-  const currentHandlers = webviewHandlers[eventData.name];
+export function eventHandler(webEvent) {
+  const currentHandlers = webviewHandlers[webEvent.name];
 
   if (currentHandlers) {
     for (let i = 0; i < currentHandlers.length; i++) {
-      currentHandlers[i](eventData.data);
+      currentHandlers[i](webEvent.data);
     }
     return;
+  } else {
+    console.log('Received unknown event', webEvent.name, webEvent.data);
   }
 }
 
@@ -108,14 +118,21 @@ function localEventHandler(name, data) {
   }
 }
 
-export function bufferEventHandler(event) {
-  const currentArrayBufferHandlers = sharedBufferHandlers[event.additionalData.name]; // Assuming this array exists
-  if (currentArrayBufferHandlers) {
-    const arrayBuffer = event.getBuffer();
-    for (let i = 0; i < currentArrayBufferHandlers.length; i++) {
-      currentArrayBufferHandlers[i](arrayBuffer, event.additionalData);
-    }
-  } else {
-    console.log('No handler found for event:', event.additionalData.name);
+// export function bufferEventHandlerWindows(event) {
+//   const currentArrayBufferHandlers = sharedBufferHandlers[event.additionalData.name]; // Assuming this array exists
+//   if (currentArrayBufferHandlers) {
+//     const arrayBuffer = event.getBuffer();
+//     for (let i = 0; i < currentArrayBufferHandlers.length; i++) {
+//       currentArrayBufferHandlers[i](arrayBuffer, event.additionalData);
+//     }
+//   } else {
+//     console.log('No handler found for event:', event.additionalData.name);
+//   }
+// }
+
+export function bufferEventHandler(blobUrl) {
+  for(const handler of sharedBufferHandlers) {
+    handler(blobUrl);
   }
 }
+

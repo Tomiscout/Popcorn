@@ -10,6 +10,7 @@ public class WebSocketContainer
 {
     private static WebSocketServer? _server;
     private static IWebSocketConnection _currentSocket;
+    private static List<string> _pendingMessages = new();
     
     public static string StartServer()
     {
@@ -26,6 +27,8 @@ public class WebSocketContainer
             socket.OnMessage = message =>
             {
                 var webEvent = JsonSerializer.Deserialize<WebEvent>(message);
+                if (webEvent == null) return;
+                
                 PlayerWebSocket.OnMessage(webEvent);
             };
         });
@@ -34,7 +37,27 @@ public class WebSocketContainer
 
     public static void SendMessage(string message)
     {
+        if (_currentSocket == null || !_currentSocket.IsAvailable)
+        {
+            _pendingMessages.Add(message);
+            return;
+        }
         _currentSocket?.Send(message);
+    }
+    
+    public static void SendBytesMessage(byte[] message)
+    {
+        _currentSocket?.Send(message);
+    }
+    
+    //Hacky way to fix webview race condition, but works whatever
+    public static void SendPendingMessages()
+    {
+        foreach (var msg in _pendingMessages)
+        {
+            SendMessage(msg);
+        }
+        _pendingMessages = new List<string>();
     }
 
     private static int FindOpenPort(int startingPort = 8181)

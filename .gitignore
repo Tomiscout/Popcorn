@@ -14,3 +14,4 @@
 /Installer/**/*.*
 Popcorn.Player.Linux/old/**/*.*
 Tomiscout.MPVSharp2/**/*.*
+/build

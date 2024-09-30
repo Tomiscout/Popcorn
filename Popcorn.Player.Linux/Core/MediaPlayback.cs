@@ -6,16 +6,6 @@ namespace Popcorn.Player.Linux.Core;
 public static class MediaPlayback
 {
 
-    public static bool PlayNextTitle()
-    {
-        var nextItem = MediaItemManager.CurrentMediaItem?.GetNextMediaFile();
-        if (nextItem is null) return false;
-
-        PlayerCore.LoadMedia(nextItem);
-
-        return true;
-    }
-
     public static bool PlayPause(object data)
     {
         /*try
