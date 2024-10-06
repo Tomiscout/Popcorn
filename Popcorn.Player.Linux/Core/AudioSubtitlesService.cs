@@ -1,28 +1,39 @@
 ﻿using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Popcorn.Domain.Models;
 using Popcorn.Player.Linux.Contracts;
+using Popcorn.Player.Linux.Player;
 using Popcorn.Player.Linux.WebSocket;
 using Serilog;
 
 namespace Popcorn.Player.Linux.Core;
-public static class AudioAndSubtitles
+public class AudioSubtitlesService
 {
-    public static Func<string> SubtitleFileSelect { get; set; }
+    private readonly IPlayer _player;
+    private readonly Lazy<PlayerWebSocket>  _webSocket;
+    public Func<string> SubtitleFileSelect { get; set; }
 
-    public static void SendAudioAndSubtitles()
+    public AudioSubtitlesService(IPlayer player, Lazy<PlayerWebSocket> webSocket)
     {
-        var mediaTracks = Program.GetPlayer().GetMediaTracks();
+        _player = player;
+        _webSocket = webSocket;
+    }
+    
+    public void SendAudioAndSubtitles()
+    {
+        var mediaTracks = _player.GetMediaTracks();
         
         var @event = new AudioAndSubtitlesLoadedEvent
         {
             AudioTracks = mediaTracks.Where(track => track.Type == MediaTrackType.Audio).ToList(),
             SubtitleTracks =  mediaTracks.Where(track => track.Type == MediaTrackType.Subtitle).ToList(),
         };
-        PlayerWebSocket.PostEvent("audio_subtitles_loaded", @event);
+        _webSocket.Value.PostEvent("audio_subtitles_loaded", @event);
     }
 
-    public static void SendAudioSegments()
+    public void SendAudioSegments(MediaFile mediaFile)
     {
-        if (PlayerCore.CurrentMediaFile is null)
+        if (mediaFile is null)
         {
             Log.Warning("Trying to send audio segments of null media file");
             return;
@@ -30,13 +41,13 @@ public static class AudioAndSubtitles
 
         var @event = new AudioSegmentsEvent()
         {
-            Intro = PlayerCore.CurrentMediaFile.SegmentLocations.Where(s => s.StartSeconds >= 0).ToList(),
-            Outro = PlayerCore.CurrentMediaFile.SegmentLocations.Where(s => s.StartSeconds < 0).ToList(),
+            Intro = mediaFile.SegmentLocations.Where(s => s.StartSeconds >= 0).ToList(),
+            Outro = mediaFile.SegmentLocations.Where(s => s.StartSeconds < 0).ToList(),
         };
-        PlayerWebSocket.PostEvent("segments_update", @event);
+        _webSocket.Value.PostEvent("segments_update", @event);
     }
 
-    public static bool SubtitleFileAdd()
+    public bool SubtitleFileAdd()
     {
         /*var filePath = SubtitleFileSelect();
         if (string.IsNullOrWhiteSpace(filePath)) return true;
@@ -67,7 +78,7 @@ public static class AudioAndSubtitles
         return true;
     }
 
-    public static void AutoSelectAudioAndSubtitles()
+    public void AutoSelectAudioAndSubtitles()
     {
         // TODO default japaneese preference for anime
         /*if (PlayerCore.MediaPlayer.AudioTrackCount > 1)
@@ -89,7 +100,7 @@ public static class AudioAndSubtitles
         }*/
     }
     
-    public static bool SetVolume(object data)
+    public bool SetVolume(object data)
     {
         // try
         // {
@@ -104,21 +115,21 @@ public static class AudioAndSubtitles
         return true;
     }
 
-    public static bool AudioTrackSelected(object data)
+    public bool AudioTrackSelected(object data)
     {
         // var trackId = ((JsonElement)data).GetInt32();
         // return PlayerCore.MediaPlayer.SetAudioTrack(trackId); //TODO threadpool
         return true;
     }
 
-    public static bool SubtitleTrackSelected(object data)
+    public bool SubtitleTrackSelected(object data)
     {
         // var trackId = ((JsonElement)data).GetInt32();
         // return PlayerCore.MediaPlayer.SetSpu(trackId); //TODO threadpool
         return true;
     }
 
-    // private static VlcTrack MapToVlcTrack(TrackDescription track, bool isSelected)
+    // private VlcTrack MapToVlcTrack(TrackDescription track, bool isSelected)
     // {
     //     var (lang, description) = TrackDescriptionParser.Parse(track.Name);
     //     return new VlcTrack
@@ -130,7 +141,7 @@ public static class AudioAndSubtitles
     //     };
     // }
     //
-    // private static Func<TrackDescription, bool> EnglishSelectPredicate = (track) =>
+    // private Func<TrackDescription, bool> EnglishSelectPredicate = (track) =>
     // {
     //     var (lang, description) = TrackDescriptionParser.Parse(track.Name);
     //     if (lang?.ToLower() == "english") return true;

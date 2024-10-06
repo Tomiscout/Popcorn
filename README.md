@@ -1,4 +1,20 @@
 
+# TODO - linux
+
+Item history not working
+Socket
+Prevent from sleep
+Auto select subtitles regression
+
+Popcorn settings not saving
+Investigate gpu-next
+Use callback instead of polling in mpv messaging
+
+Subtitle box adjusting
+
+
+Packaging for windows
+Investigate gtk for windows and if possible to reuse the player
 
 # Development environment #
 

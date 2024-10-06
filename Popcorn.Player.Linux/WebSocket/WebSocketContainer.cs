@@ -8,11 +8,17 @@ namespace Popcorn.Player.Linux.WebSocket;
 
 public class WebSocketContainer
 {
-    private static WebSocketServer? _server;
-    private static IWebSocketConnection _currentSocket;
-    private static List<string> _pendingMessages = new();
+    private WebSocketServer? _server;
+    private IWebSocketConnection _currentSocket;
+    private List<string> _pendingMessages = new();
+    private readonly Action<WebEvent> _onMessage;
     
-    public static string StartServer()
+    public WebSocketContainer(Action<WebEvent> onMessage)
+    {
+        _onMessage = onMessage;
+    }
+    
+    public string StartServer()
     {
         var port = FindOpenPort();
         var wsAddress = $"ws://127.0.0.1:{port}";
@@ -29,13 +35,13 @@ public class WebSocketContainer
                 var webEvent = JsonSerializer.Deserialize<WebEvent>(message);
                 if (webEvent == null) return;
                 
-                PlayerWebSocket.OnMessage(webEvent);
+                _onMessage(webEvent);
             };
         });
         return wsAddress;
     }
 
-    public static void SendMessage(string message)
+    public void SendMessage(string message)
     {
         if (_currentSocket == null || !_currentSocket.IsAvailable)
         {
@@ -45,13 +51,13 @@ public class WebSocketContainer
         _currentSocket?.Send(message);
     }
     
-    public static void SendBytesMessage(byte[] message)
+    public void SendBytesMessage(byte[] message)
     {
         _currentSocket?.Send(message);
     }
     
     //Hacky way to fix webview race condition, but works whatever
-    public static void SendPendingMessages()
+    public void SendPendingMessages()
     {
         foreach (var msg in _pendingMessages)
         {
@@ -62,7 +68,7 @@ public class WebSocketContainer
 
     private static int FindOpenPort(int startingPort = 8181)
     {
-        int port = startingPort;
+        var port = startingPort;
         while (port < 65535)
         {
             try
@@ -80,7 +86,7 @@ public class WebSocketContainer
         throw new Exception("No open ports available");
     }
 
-    public static void Dispose()
+    public void Dispose()
     {
         _currentSocket?.Close();
         _server?.Dispose();

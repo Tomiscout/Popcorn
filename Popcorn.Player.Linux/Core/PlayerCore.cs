@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FFMpegCore;
+using Microsoft.Extensions.DependencyInjection;
 using Popcorn.Domain.Models;
 using Popcorn.Player.Linux.Contracts;
 using Popcorn.Player.Linux.Player;
@@ -14,34 +15,51 @@ namespace Popcorn.Player.Linux.Core;
 
 //using PopcornPlayer.Pipes;
 
-internal static class PlayerCore
+public class PlayerCore
 {
-    public static MediaFile CurrentMediaFile = null;
-    public static IMediaAnalysis CurrentMediaProbe = null;
+    private readonly IPlayer _player;
+    private readonly MediaItemManager _mediaItemManager;
+    private readonly Lazy<PlayerWebSocket> _webSocket;
+    private readonly AudioSubtitlesService _audioSubtitlesService;
+    private readonly ThumbnailService _thumbnailService;
 
-    public static IPlayer Player;
-
-    public static Action<string, byte[]> PostStreamMessage { get; set; }
-    public static Func<bool> PlayerInitialized { get; set; }
-    private static List<MediaFile> _inputFilePaths { get; set; }
-    private static bool _isLoadedFromArgs = false;
-
-    private static bool _isLoadingTrack = false;
-
-    public static void Initialize()
+    public PlayerCore(IPlayer player, MediaItemManager mediaItemManager, AudioSubtitlesService audioSubtitlesService, ThumbnailService thumbnailService, Lazy<PlayerWebSocket> webSocket)
     {
-        Player = Program.GetPlayer();
+        _player = player;
+        _mediaItemManager = mediaItemManager;
+        _webSocket = webSocket;
+        _audioSubtitlesService = audioSubtitlesService;
+        _thumbnailService = thumbnailService;
 
         //player.TimeChanged += RecalculateSeekValue;
         //player.LengthChanged += SendLengthEvent;
-        Player.MediaEnded += PlaybackEndReached;
-        Player.MediaPlaying += PlayingStarted;
+        _player.MediaEnded += PlaybackEndReached;
+        _player.MediaPlaying += PlayingStarted;
 
-        ThumbnailService.Initialize();
-        Log.Information("Player core initialized");
+        _thumbnailService.Initialize();
+    }
+    
+    public MediaFile CurrentMediaFile = null;
+    public IMediaAnalysis CurrentMediaProbe = null;
+
+    public Action<string, byte[]> PostStreamMessage { get; set; }
+    public Func<bool> PlayerInitialized { get; set; }
+    private List<MediaFile> _inputFilePaths { get; set; }
+    private bool _isLoadedFromArgs = false;
+
+    private bool _isLoadingTrack = false;
+
+    public void LoadFileId(Guid fileId)
+    {
+        //Get file
+        
+        //Get item
+        
+        //Load file
+        //LoadMedia(file);
     }
 
-    public static void LoadFilesFromInput(List<string> paths)
+    public void LoadFilesFromInput(List<string> paths)
     {
         _isLoadedFromArgs = true;
         _inputFilePaths = paths.Select(p => new MediaFile
@@ -49,13 +67,6 @@ internal static class PlayerCore
             Path = p,
             FormatTags = new List<string>() { Path.GetExtension(p) }
         }).ToList();
-
-        //On initial load initial pipe event will have already happened, so we can load the file from main app
-        if (MediaItemManager.CurrentMediaItem != null)
-        {
-            LoadMedia(MediaItemManager.CurrentMediaItem.Files.First(f => f.Path == _inputFilePaths.First().Path));
-            return;
-        }
 
         foreach (var file in _inputFilePaths)
         {
@@ -65,7 +76,7 @@ internal static class PlayerCore
         LoadMedia(media);
     }
 
-    public static void LoadMedia(MediaFile file)
+    public void LoadMedia(MediaFile file)
     {
         _isLoadingTrack = true;
         if (!File.Exists(file.Path))
@@ -89,21 +100,18 @@ internal static class PlayerCore
         file.Played = true;
         CurrentMediaFile = file;
         
-        Player.LoadMedia(file.Path);
+        _player.LoadMedia(file.Path);
         
         //Sending media info to frontend
-        PlayerWebSocket.PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
+        _webSocket.Value.PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
         {
             FileName = CurrentMediaFile.Path,
             Title = CurrentMediaFile.Title,
             ShortTitle = CurrentMediaFile.GetDisplayTitle(),
         });
         OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
-        AudioAndSubtitles.AutoSelectAudioAndSubtitles();
-        AudioAndSubtitles.SendAudioAndSubtitles();
 
         // On initial run from media player due to fast startup dummy media item is created, and will have no data for segments and other extra options
-        AudioAndSubtitles.SendAudioSegments();
         
         //Update history in main app
         // if (MediaItemManager.CurrentMediaItem is not null)
@@ -122,9 +130,9 @@ internal static class PlayerCore
         //     }).ConfigureAwait(false);
         // }
     }
-    public static bool LoadMedia(string path)
+    public bool LoadMedia(string path)
     {
-        var mediaFile = MediaItemManager.CurrentMediaItem?.Files.FirstOrDefault(f => f.Path == path) ?? _inputFilePaths?.FirstOrDefault(f => f.Path == path);
+        var mediaFile = _mediaItemManager.CurrentMediaItem?.Files.FirstOrDefault(f => f.Path == path) ?? _inputFilePaths?.FirstOrDefault(f => f.Path == path);
         if (mediaFile is null)
         {
             if (_inputFilePaths is null)
@@ -144,17 +152,17 @@ internal static class PlayerCore
         return true;
     }
     
-    public static bool PlayNextTitle()
+    public bool PlayNextTitle()
     {
-        var nextItem = MediaItemManager.CurrentMediaItem?.GetNextMediaFile();
+        var nextItem = _mediaItemManager.CurrentMediaItem?.GetNextMediaFile();
         if (nextItem is null) return false;
 
-        PlayerCore.LoadMedia(nextItem);
+        LoadMedia(nextItem);
 
         return true;
     }
 
-    private static IMediaAnalysis ProbeMetadata(string path)
+    private IMediaAnalysis ProbeMetadata(string path)
     {
         try
         {
@@ -167,66 +175,66 @@ internal static class PlayerCore
     }
 
 
-    private static void PlayingStarted(object sender, EventArgs e)
+    private void PlayingStarted(object sender, EventArgs e)
     {
         if (!_isLoadingTrack) return;
-        PlayerWebSocket.PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
+        _webSocket.Value.PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
         {
             FileName = CurrentMediaFile.Path,
             Title = CurrentMediaFile.Title,
             ShortTitle = CurrentMediaFile.GetDisplayTitle(),
         });
         OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
-        AudioAndSubtitles.AutoSelectAudioAndSubtitles();
-        AudioAndSubtitles.SendAudioAndSubtitles();
+        _audioSubtitlesService.AutoSelectAudioAndSubtitles();
+        _audioSubtitlesService.SendAudioAndSubtitles();
 
         // On initial run from media player due to fast startup dummy media item is created, and will have no data for segments and other extra options
-        AudioAndSubtitles.SendAudioSegments();
+        _audioSubtitlesService.SendAudioSegments(CurrentMediaFile);
         _isLoadingTrack = false;
     }
 
-    private static void PlaybackEndReached(object sender, EventArgs e)
+    private void PlaybackEndReached(object sender, EventArgs e)
     {
-        PlayerWebSocket.PostEvent("playback_ended", null);
+        _webSocket.Value.PostEvent("playback_ended", null);
     }
 
-    public static bool OpenFolder(string path)
+    public bool OpenFolder(string path)
     {
-        if (MediaItemManager.CurrentMediaItem is null)
+        if (_mediaItemManager.CurrentMediaItem is null)
         {
-            PlayerWebSocket.PostEvent("folder_loaded", new FolderLoadedEvent()
+            _webSocket.Value.PostEvent("folder_loaded", new FolderLoadedEvent()
             {
                 Files = _isLoadedFromArgs ? _inputFilePaths : _inputFilePaths.GetFilesForDirectory(path)
             });
             return true;
         }
 
-        MediaItemManager.SendCurrentMediaFolderLoaded(path);
+        _mediaItemManager.SendCurrentMediaFolderLoaded(path);
         return true;
     }
 
     #region Events from main program
 
-    internal static void SavePlayerHistory(TrackPlayedEvent e) //Backup save when main client has exited
+    internal void SavePlayerHistory(TrackPlayedEvent e) //Backup save when main client has exited
     {
         Log.Information("Main app is missing, saving progress from player");
-        MediaItemManager.SendCurrentMediaFolderLoaded(e.HistoryItem.Filename);
+        _mediaItemManager.SendCurrentMediaFolderLoaded(e.HistoryItem.Filename);
         //TODO save info. Need to reference persistence and pass item folder.
     }
     #endregion
 
     #region Utility
-    public static void Dispose()
+    public void Dispose()
     {
-        if(ThumbnailService.FfmpegCts?.IsCancellationRequested == false)
+        if(_thumbnailService.FfmpegCts?.IsCancellationRequested == false)
         {
             // Not tested :)
-            ThumbnailService.FfmpegCts?.Cancel();
+            _thumbnailService.FfmpegCts?.Cancel();
             Thread.Sleep(200);
         }
-        ThumbnailService.FfmpegCts?.Dispose();
+        _thumbnailService.FfmpegCts?.Dispose();
 
-        Program.GetPlayer().Dispose();
+        _player.Dispose();
     }
 
     #endregion

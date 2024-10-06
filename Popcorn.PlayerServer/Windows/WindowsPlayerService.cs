@@ -20,26 +20,25 @@ public class WindowsPlayerService : IPlayerService
         _mediaItemRefreshService = mediaItemRefreshService;
     }
 
-    public async Task OpenFile(string filePath, MediaItem item)
+    public async Task OpenFile(Guid fileId)
     {
         try
         {
             if (ServerPipeManager.IsConnected())
             {
-                await ServerPipeManager.SendMediaInfoEvent(item);
-                await ServerPipeManager.LoadMediaEvent(filePath);
+                await ServerPipeManager.LoadMediaEvent(fileId);
                 return;
             }
 
-            Task.Run(async () => await ServerPipeManager.StartServer(item, _mediaItemRepository, _mediaItemRefreshService)).ConfigureAwait(false); //TODO is this okay?
-            LaunchPlayer(filePath);
+            Task.Run(async () => await ServerPipeManager.StartServer(_mediaItemRepository, _mediaItemRefreshService)).ConfigureAwait(false); //TODO is this okay?
+            LaunchPlayer(fileId);
         } catch(Exception e)
         {
             _logger.LogError(e, "Failed to open file with internal player");
         }
     }
 
-    private void LaunchPlayer(string mediaPath)
+    private void LaunchPlayer(Guid fileId)
     {
         var path = GetPlayerExePath();
         if (!File.Exists(path))
@@ -50,7 +49,7 @@ public class WindowsPlayerService : IPlayerService
         var startInfo = new ProcessStartInfo
         {
             FileName = path,
-            Arguments = $"\"{mediaPath}\"",
+            Arguments = $"\"{fileId.ToString()}\"",
             UseShellExecute = false,
             RedirectStandardOutput = true,  // Redirect the standard output
             RedirectStandardError = true,  // Redirect the error output

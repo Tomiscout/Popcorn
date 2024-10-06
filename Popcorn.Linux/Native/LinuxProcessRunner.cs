@@ -22,7 +22,7 @@ public class LinuxProcessRunner : INativeProcessRunner
             StartInfo = new ProcessStartInfo
             {
                 FileName = "/bin/sh",
-                Arguments = $"-c \"{command} & disown\"",
+                Arguments = $"-c \"{command} {args} & disown\"",
                 UseShellExecute = false,
                 CreateNoWindow = true,
             }

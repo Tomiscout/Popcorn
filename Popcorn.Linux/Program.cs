@@ -2,11 +2,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Photino.Blazor;
 using System;
+using Blazored.Modal;
 using Popcorn.Core;
 using PopcornPlayer.Shared;
 using FluentMigrator.Runner;
+using MudBlazor.Services;
 using Popcorn.Shared.Utils;
 using Popcorn.Domain.Interfaces;
+using Popcorn.Persistence;
 using Serilog;
 using Popcorn.Photino.Native;
 using Popcorn.PlayerServer;
@@ -22,7 +25,12 @@ class Program
 
         appBuilder.Services.AddLogging(builder => builder.AddSerilog());
 
+        appBuilder.Services.AddMudServices();
+        appBuilder.Services.AddBlazoredModal();
+
         appBuilder.Services.AddPopcornServices();
+        appBuilder.Services.AddPopcornDatabase();
+
         appBuilder.Services.AddSingleton<INativeFolderService, LinuxFolderService>();
         appBuilder.Services.AddSingleton<INativeFileAssosiation, LinuxFileAssociation>();
         appBuilder.Services.AddSingleton<INativeProcessRunner, LinuxProcessRunner>();
@@ -40,6 +48,9 @@ class Program
         runner.MigrateUp();
 
         // customize window
+                
+        app.MainWindow.SetContextMenuEnabled(true);
+        app.MainWindow.SetDevToolsEnabled(true);
         app.MainWindow.SetIconFile("favicon.ico");
         app.MainWindow.SetTitle("Popcorn");
         app.MainWindow.SetUseOsDefaultSize(false);
@@ -47,7 +58,6 @@ class Program
         app.MainWindow.SetUseOsDefaultLocation(false);
         app.MainWindow.SetTop(0);
         app.MainWindow.SetLeft(0);
-        //app.MainWindow.SetDevToolsEnabled(true);
         app.MainWindow.SetLogVerbosity(-1);
 
         AppDomain.CurrentDomain.UnhandledException += (sender, error) =>
@@ -76,6 +86,6 @@ class Program
 
     private static void Dispose()
     {
-        PlayerSocketManager.Dispose();
+        //PlayerSocketManager.Dispose();
     }
 }

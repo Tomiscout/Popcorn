@@ -24,6 +24,7 @@
 @inject IMediaItemRepository MediaItemRepository
 @inject FolderService FolderService
 @inject INativeFolderService _nativeFolderService
+@inject ImageRepository _imageRepository
 @inject SettingsRepository SettingsRepository
 @inject IPlayerService PlayerService
 @inject ISnackbar Snackbar
@@ -218,6 +219,7 @@
     private async Task LoadMediaItem()
     {
         item = await MediaItemRepository.GetMediaItemFull(Guid.Parse(Id));
+        item.Image = await _imageRepository.LoadImage(item.ImagePath);
         playbackHistory = await MediaItemRepository.GetHistoryItems(item.Id);
     }
 
@@ -279,7 +281,7 @@
                 Title = historyItem.Title,
                 PlaybackTime = DateTime.Now
             });
-            await LaunchFile(item.Files.First(f => f.Id == historyItem.FileId).Path);
+            await LaunchFile(item.Files.First(f => f.Id == historyItem.FileId));
             await LoadMediaItem();
         });
     }
@@ -297,26 +299,26 @@
                     });
             }
 
-            await LaunchFile(file.Path);
+            await LaunchFile(file);
             await LoadMediaItem();
         });
     }
 
-    private async Task LaunchFile(string path) {
-        if(!File.Exists(path))
+    private async Task LaunchFile(MediaFile file) {
+        if(!File.Exists(file.Path))
         {
-            Snackbar.Add($"File \"{Path.GetFileName(path)}\" not found", Severity.Error);
+            Snackbar.Add($"File \"{Path.GetFileName(file.Path)}\" not found", Severity.Error);
             return;
         }
 
         if(_settings.UseInternalPlayer)
         {
-            await PlayerService.OpenFile(path, item);
+            await PlayerService.OpenFile(file.Id!.Value);
         } else
         {
             try
             {
-                _fileService.LaunchMediaFileDefault(path);
+                _fileService.LaunchMediaFileDefault(file.Path);
             }
             catch (UnknownAssociatedProgramException e)
             {
@@ -331,12 +333,12 @@
 
     private async Task LoadFolder(MediaFile folder)
     {
-        currentFiles = item.Files.GetFilesForDirectory(folder.Path);
+        currentFiles = item.Files.GetFilesForDirectory(folder.Path).OrderBy(f => f.Title).ToList();
         await RecalculateTags();
     }
 
     public async Task OpenRootFolder() {
-        currentFiles = item.Files.GetFilesForDirectory(item.FolderDirectory);
+        currentFiles = item.Files.GetFilesForDirectory(item.FolderDirectory).OrderBy(f => f.Title).ToList();
         navigation = new List<MediaFile>();
         await RecalculateTags();
     }

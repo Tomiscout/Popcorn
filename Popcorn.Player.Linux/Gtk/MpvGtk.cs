@@ -1,4 +1,5 @@
 using Gtk;
+using Microsoft.Extensions.DependencyInjection;
 using Nickvision.MPVSharp;
 using Nickvision.MPVSharp.Internal;
 using Popcorn.Player.Linux.Player;
@@ -33,7 +34,7 @@ public static class MpvGtk
     private static void OnRealizeGLArea(Widget sender, EventArgs e)
     {
         GlArea!.MakeCurrent();
-        var player = (MpvPlayer)Program.GetPlayer();
+        var player = (MpvPlayer)Program.Services.GetService<IPlayer>()!;
         player.Initialize();
 
         // Render offscreen, then transfer to GLArea
@@ -69,6 +70,6 @@ public static class MpvGtk
     private static void OnUnrealizeGLArea(Widget sender, EventArgs e)
     {
         _ctx?.Dispose();
-        Program.GetPlayer().Dispose();
+        Program.Services.GetService<IPlayer>()!.Dispose();
     }
 }

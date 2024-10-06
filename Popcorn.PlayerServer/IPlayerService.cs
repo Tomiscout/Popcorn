@@ -4,7 +4,7 @@ namespace Popcorn.PlayerServer;
 
 public interface IPlayerService
 {
-    Task OpenFile(string filePath, MediaItem item);
+    Task OpenFile(Guid fileId);
 
     void Dispose(); //TODO call this from root program
 }

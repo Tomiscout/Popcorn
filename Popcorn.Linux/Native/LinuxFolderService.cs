@@ -8,30 +8,17 @@ namespace Popcorn.Photino;
 
 public class LinuxFolderService : INativeFolderService
 {
+    private readonly INativeProcessRunner _processRunner;
     private readonly ILogger<LinuxFolderService> _logger;
-    public LinuxFolderService(ILogger<LinuxFolderService> logger)
+    public LinuxFolderService(INativeProcessRunner processRunner, ILogger<LinuxFolderService> logger)
     {
+        _processRunner = processRunner;
         _logger = logger;
     }
 
     public void OpenFolderInExplorer(string path)
     {
-        try
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "xdg-open",
-                Arguments = path,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            };
-            Process.Start(psi);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error opening folder: {path}", path);
-        }
+        _processRunner.ExecuteCommandDetached("xdg-open", $"'{path}'");
     }
 
     public Task<string?> OpenFolderPicker()

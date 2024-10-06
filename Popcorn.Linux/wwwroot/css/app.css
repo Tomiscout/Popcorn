@@ -3,6 +3,7 @@
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     height: 100%;
+    background-image: linear-gradient(to bottom, #42246d, #222222);
 }
 
 ::-webkit-scrollbar {
@@ -12,6 +13,30 @@ html, body {
 
 #app {
     height: 100%;
+}
+
+#app-loading {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: white;
+}
+#app-loading img {
+    width: 128px;
+    animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1); /* Adjust the scale for the pulse effect */
+    }
+    100% {
+        transform: scale(1);
+    }
 }
 
 h1:focus {

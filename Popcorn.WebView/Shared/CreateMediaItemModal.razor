@@ -66,7 +66,6 @@
         if (string.IsNullOrWhiteSpace(createItem.Title)) return; //TODO proper form validation using mud form stuff
 
         await MediaItemService.CreateMediaItemFromScan(createItem, inputData);
-        MudDialog.Close(DialogResult.Ok(true));
     }
 
     public async Task PickImageFromFile()

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Nickvision.MPVSharp;
 using Nickvision.MPVSharp.Internal;
 using Popcorn.Player.Linux.Contracts;
@@ -7,10 +8,12 @@ namespace Popcorn.Player.Linux.Player;
 
 public class MpvPlayer : IPlayer
 {
+    private readonly Lazy<PlayerWebSocket> _webSocket;
     public Client _player { get; }
 
-    public MpvPlayer()
+    public MpvPlayer(Lazy<PlayerWebSocket> webSocket)
     {
+        _webSocket = webSocket;
         _player = new Client();
         _player.SetProperty("vo", "libmpv");
         _player.SetProperty("hwdec", "auto");
@@ -41,10 +44,10 @@ public class MpvPlayer : IPlayer
             switch (e.Name)
             {
                 case "time-pos":
-                    PlayerWebSocket.PostEvent("current_time", (double)e.Node.Value!);
+                    _webSocket.Value.PostEvent("current_time", (double)e.Node.Value!);
                     return;
                 case "duration":
-                    PlayerWebSocket.PostEvent("duration_update", (double)e.Node.Value!);
+                    _webSocket.Value.PostEvent("duration_update", (double)e.Node.Value!);
                     return;
             }
             
@@ -62,6 +65,7 @@ public class MpvPlayer : IPlayer
     public void LoadMedia(string path)
     {
         _player.Command($"loadfile '{path}' append-play");
+        MediaPlaying?.Invoke(this, EventArgs.Empty); //TODO this feels kinda nasty, should review the event system
     }
 
     public void Play(bool play = true)
@@ -151,7 +155,6 @@ public class MpvPlayer : IPlayer
 
     public void Dispose()
     {
-        WebSocketContainer.Dispose();
         _player.Dispose();
     }
 

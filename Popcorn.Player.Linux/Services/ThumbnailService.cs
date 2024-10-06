@@ -1,5 +1,5 @@
 ﻿using FFMpegCore;
-using Popcorn.Player.Linux.Contracts;
+using Microsoft.Extensions.DependencyInjection;
 using Popcorn.Player.Linux.Core;
 using Popcorn.Player.Linux.WebSocket;
 using Popcorn.Player.Services;
@@ -10,18 +10,26 @@ using Serilog;
 namespace Popcorn.Player.Linux.Services;
 public class ThumbnailService
 {
+    private readonly Lazy<PlayerCore> _playerCore;
+    private readonly Lazy<PlayerWebSocket>  _webSocket;
 
-    private static readonly string OutputFolder = Path.Combine(DirUtils.DataFolder, "thumb");
+    private readonly string OutputFolder = Path.Combine(DirUtils.DataFolder, "thumb");
 
-    public static void Initialize() {
+    public ThumbnailService(Lazy<PlayerCore> playerCore, Lazy<PlayerWebSocket> webSocket)
+    {
+        _playerCore = playerCore;
+        _webSocket = webSocket;
+    }
+    
+    public void Initialize() {
         if(!Directory.Exists(OutputFolder))
         {
             Directory.CreateDirectory(OutputFolder); 
         }
     }
 
-    public static CancellationTokenSource FfmpegCts;
-    public static bool OnThumbnailRequest(long time)
+    public CancellationTokenSource FfmpegCts;
+    public bool OnThumbnailRequest(long time)
     {
         FfmpegCts?.Cancel();
         FfmpegCts = new CancellationTokenSource();
@@ -30,14 +38,13 @@ public class ThumbnailService
         {
             try
             {
-                if(FfmpegCts is null)
-                {
-                    FfmpegCts = new CancellationTokenSource(); //Race condition dirty fix
-                }
-                var bytes = GetThumbnailBytes(PlayerCore.CurrentMediaFile.Path, PlayerCore.CurrentMediaProbe, PlayerCore.CurrentMediaFile.Id.ToString(), time, FfmpegCts.Token);
+                FfmpegCts ??= new CancellationTokenSource();
+
+                var currentFile = _playerCore.Value.CurrentMediaFile;
+                var bytes = GetThumbnailBytes(currentFile.Path, _playerCore.Value.CurrentMediaProbe, currentFile.Id.ToString(), time, FfmpegCts.Token);
                 if (!bytes.Any()) return Task.CompletedTask;
                 
-                PlayerWebSocket.PostBinaryEvent(bytes);
+                _webSocket.Value.PostBinaryEvent(bytes);
             }
             catch (OperationCanceledException) { } // It was canceled by another thumb request
             catch (Exception ex)
@@ -59,7 +66,7 @@ public class ThumbnailService
     // TODO argument caching, since for file it would be reused, except of output file path and timestamp
     // But need to benchmark if it's necessary at all, since caching may be too complex.
     // Although it would be beneficial, because if some method fails to generate, fallback would be faster and multiple ffmpeg instances / file checks wouldnt be called
-    public static byte[] GetThumbnailBytes(string inputFilePath, IMediaAnalysis metadata, string id, long timeInSeconds, CancellationToken ct)
+    public byte[] GetThumbnailBytes(string inputFilePath, IMediaAnalysis metadata, string id, long timeInSeconds, CancellationToken ct)
     {
         var outputFilePath = $"{OutputFolder + Path.DirectorySeparatorChar + id}-{timeInSeconds}.jpg"; // HDR generates png output, but jpg is kept for now
         var thumbFile = new FileInfo(outputFilePath);
