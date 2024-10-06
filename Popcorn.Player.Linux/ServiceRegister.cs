@@ -1,6 +1,8 @@
 using Fleck;
 using Microsoft.Extensions.DependencyInjection;
+using Popcorn.Persistence;
 using Popcorn.Player.Linux.Core;
+using Popcorn.Player.Linux.Pipes;
 using Popcorn.Player.Linux.Player;
 using Popcorn.Player.Linux.Services;
 using Popcorn.Player.Linux.WebSocket;
@@ -17,6 +19,8 @@ public static class ServiceRegister
         services.AddSingleton<ThumbnailService>();
         services.AddSingleton<PlayerWebSocket>();
         services.AddSingleton<IPlayer, MpvPlayer>();
+        services.AddSingleton<ImageRepository>();
+        services.AddSingleton<PopcornEventHandler>();
         
         // Since the app was all static classes at start, sadly we have to deal with circular dependencies
         services.AddTransient<Lazy<PlayerWebSocket>>(provider => new Lazy<PlayerWebSocket>(() => provider.GetRequiredService<PlayerWebSocket>()));

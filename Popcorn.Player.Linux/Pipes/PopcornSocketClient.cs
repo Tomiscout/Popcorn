@@ -2,8 +2,12 @@ using System;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using NetCoreServer;
+using PopcornPlayer.Shared.PipeEvents;
+using PopcornPlayer.Shared.PipeEvents.Client;
+using Serilog;
 
 public class PopcornSocketClient
 {
@@ -49,7 +53,6 @@ public class PopcornSocketClient
         {
             _hasConnectedOnce = true;
             Console.WriteLine($"Client connected with Id {Id}");
-            _wrapper.SendMessage("TEST FROM PLAYER");
         }
 
         protected override void OnDisconnected()
@@ -62,7 +65,6 @@ public class PopcornSocketClient
             
             Console.WriteLine("Popcorn socket disconnected");
 
-            // Try reconnecting if not stopped
             if (!_wrapper._stop)
             {
                 var result = ConnectAsync();
@@ -71,21 +73,20 @@ public class PopcornSocketClient
 
         protected override void OnReceived(byte[] buffer, long offset, long size)
         {
-            string message = Encoding.UTF8.GetString(buffer, (int)offset, (int)size);
-            Console.WriteLine($"Received: {message}");
-
+            var message = Encoding.UTF8.GetString(buffer, (int)offset, (int)size);
+            
             // Raise the event for received messages
             _wrapper.OnMessageReceived(message);
         }
 
         protected override void OnError(SocketError error)
         {
-            Console.WriteLine($"Client error: {error}");
+            Log.Error($"Client error: {error}");
         }
     }
 
     // This method is used to invoke the event safely
-    protected virtual void OnMessageReceived(string message)
+    protected virtual void OnMessageReceived(string message) //TODO there are two handlers, figure this out
     {
         MessageReceived?.Invoke(this, message);
     }

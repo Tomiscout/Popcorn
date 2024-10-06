@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
@@ -30,19 +31,15 @@ public class LinuxPlayerService : IPlayerService
         {
             if (_server?.ConnectedSessions > 0)
             {
-                _server.SendEvent(new LoadMediaEvent { FileId = fileId });
+                _server.Multicast(JsonSerializer.Serialize(new LoadMediaEvent { FileId = fileId }));
                 return;
             }
 
             if (_server == null)
             {
                 StartPlayerServer();
-                LaunchPlayer(fileId);
             }
-            else
-            {
-                _logger.LogWarning("Socket server is running, but it has no clients yet. Ignoring file id: {fileId}", fileId);
-            }
+            LaunchPlayer(fileId);
         } catch(Exception e)
         {
             _logger.LogError(e, "Failed to open file with internal player");
@@ -70,7 +67,7 @@ public class LinuxPlayerService : IPlayerService
         var startInfo = new ProcessStartInfo
         {
             FileName = path,
-            Arguments = $"{fileId.ToString()}",
+            Arguments = $"\"{fileId.ToString()}\"",
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true

@@ -80,24 +80,42 @@ public class AudioSubtitlesService
 
     public void AutoSelectAudioAndSubtitles()
     {
-        // TODO default japaneese preference for anime
-        /*if (PlayerCore.MediaPlayer.AudioTrackCount > 1)
+        var mediaTracks = _player.GetMediaTracks();
+        var audioTracks = mediaTracks.Where(track => track.Type == MediaTrackType.Audio).ToList();
+        var subtitleTracks = mediaTracks.Where(track => track.Type == MediaTrackType.Subtitle).ToList();
+        
+        //Prefers japaneese audio, for anime. TODO needs to be a setting
+        var jpAudioTracks = audioTracks.Where(track => track.Language == "ja").ToList();
+
+        if (audioTracks.Count > 1)
         {
-            var englishTracks = PlayerCore.MediaPlayer.AudioTrackDescription.Where(EnglishSelectPredicate).ToList();
-            if (englishTracks.Any())
+            int? id = null;
+            
+            if (jpAudioTracks.Any())
             {
-                ThreadPool.QueueUserWorkItem(_ => PlayerCore.MediaPlayer.SetAudioTrack(englishTracks.First().Id));
+                id = audioTracks.FirstOrDefault(track => track.Language == "ja")?.Id;
             }
+            else
+            {
+                var englishTracks = audioTracks.Where(t => t.Language == "en").ToList();
+                if (englishTracks.Any())
+                {
+                    id = englishTracks.FirstOrDefault()?.Id;
+                }
+            }
+            
+            id ??= audioTracks.First().Id;
+            _player.AudioTrackSelected(id.Value);
         }
 
-        if (PlayerCore.MediaPlayer.SpuCount > 1)
+        if (subtitleTracks.Count > 1)
         {
-            var englishTracks = PlayerCore.MediaPlayer.SpuDescription.Where(EnglishSelectPredicate).ToList();
+            var englishTracks = subtitleTracks.Where(t => t.Language == "en").ToList();
             if (englishTracks.Any())
             {
-                ThreadPool.QueueUserWorkItem(_ => PlayerCore.MediaPlayer.SetSpu(englishTracks.First().Id));
+                _player.SubtitleTrackSelected(englishTracks.First().Id);
             }
-        }*/
+        }
     }
     
     public bool SetVolume(object data)
@@ -148,4 +166,5 @@ public class AudioSubtitlesService
     //
     //     return false;
     // };
+    
 }

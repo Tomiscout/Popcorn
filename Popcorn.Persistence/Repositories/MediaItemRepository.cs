@@ -164,6 +164,14 @@ public class MediaItemRepository : IMediaItemRepository
         return await GetMediaItemInternal(connection, id);
     }
 
+    public async Task<MediaItem?> GetMediaItemFromFileId(Guid id)
+    {
+        using var connection = _dbContext.CreateConnection();
+        var itemId = (await connection.QueryAsync<string>("SELECT item_id FROM MediaFile WHERE id = @Id", new { Id = id.SqliteId() })).ToList().First();
+
+        return await GetMediaItemFull(Guid.Parse(itemId));
+    }
+
     public async Task<MediaItem?> GetMediaItemFull(Guid id)
     {
         using var connection = _dbContext.CreateConnection();

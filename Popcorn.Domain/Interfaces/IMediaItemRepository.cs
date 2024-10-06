@@ -5,6 +5,7 @@ public interface IMediaItemRepository
 {
     Task<List<MediaItem>> GetMediaItemsWithHistory();
     Task<MediaItem?> GetMediaItem(Guid id);
+    Task<MediaItem?> GetMediaItemFromFileId(Guid id);
     Task<MediaItem?> GetMediaItemFull(Guid id);
     Task<MediaItem?> GetMediaItemWithSegments(Guid id);
     Task<List<string>> GetMediaItemFolders();

@@ -219,7 +219,10 @@
     private async Task LoadMediaItem()
     {
         item = await MediaItemRepository.GetMediaItemFull(Guid.Parse(Id));
-        item.Image = await _imageRepository.LoadImage(item.ImagePath);
+        if(!string.IsNullOrWhiteSpace(item?.ImagePath))
+        {
+            item.Image = await _imageRepository.LoadImage(item.ImagePath);
+        }
         playbackHistory = await MediaItemRepository.GetHistoryItems(item.Id);
     }
 

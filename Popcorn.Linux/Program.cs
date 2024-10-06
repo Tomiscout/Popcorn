@@ -21,6 +21,12 @@ class Program
     [STAThread]
     static void Main(string[] args)
     {
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .WriteTo.Debug()
+            //.WriteTo.File(Path.Combine(DirUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}PopcornPlayer.txt"), rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+        
         PhotinoBlazorAppBuilder appBuilder = PhotinoBlazorAppBuilder.CreateDefault(args);
 
         appBuilder.Services.AddLogging(builder => builder.AddSerilog());

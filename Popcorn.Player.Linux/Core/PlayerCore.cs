@@ -2,7 +2,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using FFMpegCore;
 using Microsoft.Extensions.DependencyInjection;
+using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
+using Popcorn.Persistence.Repositories;
 using Popcorn.Player.Linux.Contracts;
 using Popcorn.Player.Linux.Player;
 using Popcorn.Player.Linux.Services;
@@ -42,8 +44,6 @@ public class PlayerCore
     public MediaFile CurrentMediaFile = null;
     public IMediaAnalysis CurrentMediaProbe = null;
 
-    public Action<string, byte[]> PostStreamMessage { get; set; }
-    public Func<bool> PlayerInitialized { get; set; }
     private List<MediaFile> _inputFilePaths { get; set; }
     private bool _isLoadedFromArgs = false;
 
@@ -51,12 +51,10 @@ public class PlayerCore
 
     public void LoadFileId(Guid fileId)
     {
-        //Get file
+        _mediaItemManager.LoadMediaInfo(fileId);
+        var file = _mediaItemManager.CurrentMediaItem.Files.First(f => f.Id == fileId);  
         
-        //Get item
-        
-        //Load file
-        //LoadMedia(file);
+        LoadMedia(file);
     }
 
     public void LoadFilesFromInput(List<string> paths)

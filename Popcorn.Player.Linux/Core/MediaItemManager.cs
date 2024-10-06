@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
 using Popcorn.Player.Linux.Contracts;
 using Popcorn.Player.Linux.Player;
@@ -10,12 +11,14 @@ public class MediaItemManager
 {
     private readonly IPlayer _player;
     private readonly Lazy<PlayerWebSocket> _webSocket;
+    private readonly IMediaItemRepository _mediaItemRepository;
     public MediaItem CurrentMediaItem { get; private set; }
 
-    public MediaItemManager(IPlayer player, Lazy<PlayerWebSocket> webSocket)
+    public MediaItemManager(IPlayer player, Lazy<PlayerWebSocket> webSocket, IMediaItemRepository mediaItemRepository)
     {
         _player = player;
         _webSocket = webSocket;
+        _mediaItemRepository = mediaItemRepository;
     }
 
     public void UpdateItemHistory(List<ItemHistory> history) //From main client
@@ -25,9 +28,9 @@ public class MediaItemManager
         CurrentMediaItem.RecalculatePlayedFiles(CurrentMediaItem.Files.Where(f => f.Path == lastPlayed.Filename).ToList());
     }
 
-    public void SetMediaInfo(MediaItem item)
+    public void LoadMediaInfo(Guid fileId)
     {
-        CurrentMediaItem = item;
+        CurrentMediaItem = _mediaItemRepository.GetMediaItemFromFileId(fileId).Result;
         CurrentMediaItem.RecalculatePlayedFiles(CurrentMediaItem.Files);
 
         // Update current item if it already playing

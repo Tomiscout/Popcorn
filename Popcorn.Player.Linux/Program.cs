@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Popcorn.Persistence;
 using Popcorn.Player.Linux.Core;
 using Popcorn.Player.Linux.Gtk;
+using Popcorn.Player.Linux.Pipes;
 using Popcorn.Player.Linux.Player;
 using Serilog;
 
@@ -32,7 +33,7 @@ public class Program
         var application = global::Gtk.Application.New("tomiscout.popcorn.player", Gio.ApplicationFlags.FlagsNone);
 
         application.OnActivate += OnActivate;
-        application.OnShutdown += OnShutdown; ;
+        application.OnShutdown += OnShutdown;
 
         return application.RunWithSynchronizationContext(null);
     }
@@ -55,19 +56,23 @@ public class Program
         
         var player = Services.GetService<PlayerCore>()!;
         var envPaths = Environment.GetCommandLineArgs().Skip(1).ToList();
-        if (envPaths.Count > 1)
+        if (envPaths.Count >= 1)
         {
             if (Guid.TryParse(envPaths[0], out var guidOutput))
             {
+                Log.Logger.Information("Loading from file id: {fileId}", guidOutput);
                 player.LoadFileId(guidOutput);
             }
             else
             {
-                player.LoadFilesFromInput(envPaths.Where(arg => !arg.StartsWith("-")).ToList());
+                var paths = envPaths.Where(arg => !arg.StartsWith("-")).ToList();
+                Log.Logger.Information($"Loading from file path: {string.Join(",", paths)}");
+                player.LoadFilesFromInput(paths);
             }
         }
         else
         {
+            Log.Logger.Information("Loading default file");
             //PlayerCore.LoadMedia(@"/mnt/data/Downloads/JoJo no Kimyou na Bouken Part 5 Ougon no Kaze [Dual]/[Cleo]JoJo_no_Kimyou_na_Bouken_Part_5_Ougon_no_Kaze_-_37_(Dual Audio_10bit_BD1080p_x265).mkv");
             player.LoadMedia(@"/mnt/data/Downloads/Sex.Education.S04.COMPLETE.1080p.NF.WEB-DL.DDP5.1.H.264-Archie[TGx]/Sex.Education.S04E01.Episode.1.1080p.NF.WEB-DL.DDP5.1.H.264-Archie.mkv");
         }
@@ -109,6 +114,10 @@ public class Program
         }
         
         PopcornClient = new PopcornSocketClient(_socketPath);
+        PopcornClient.MessageReceived += (sender, @event) =>
+        {
+            Services.GetService<PopcornEventHandler>().Handle(@event);
+        };
         PopcornClient.Start();
     }
 }
