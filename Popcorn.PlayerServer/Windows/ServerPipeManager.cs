@@ -18,7 +18,7 @@ namespace Popcorn.PlayerServer
         private static readonly string _pipeNameFile = DirUtils.DataFolder + "pipeName.txt";
         private static PipeServerWithCallback<IPipeClient, PopcornPlayer.Shared.IPipeServer> _pipeServer;
 
-        public static async Task StartServer(IMediaItemRepository mediaItemRepository, MediaItemRefreshService mediaItemRefreshService)
+        public static async Task StartServer(MediaItem initialItem, IMediaItemRepository mediaItemRepository, MediaItemRefreshService mediaItemRefreshService)
         {
             try
             {
@@ -68,7 +68,7 @@ namespace Popcorn.PlayerServer
             }
         }
 
-        public static async Task LoadMediaEvent(Guid fileId) => await _pipeServer.InvokeAsync(x => x.LoadMedia(new LoadMediaEvent() { FileId = fileId }));
+        public static async Task LoadMediaEvent(string path) => await _pipeServer.InvokeAsync(x => x.LoadMedia(new LoadMediaEventWindows() { FilePath = path }));
 
         public static async Task SendMediaInfoEvent(MediaItem item) => await _pipeServer.InvokeAsync(x => x.MediaInfo(item));
         public static async Task UpdateMediaItemHistory(List<ItemHistory> item) => await _pipeServer.InvokeAsync(x => x.UpdateMediaItemHistory(item));

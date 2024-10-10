@@ -22,23 +22,30 @@ public class WindowsPlayerService : IPlayerService
 
     public async Task OpenFile(Guid fileId)
     {
+        throw new NotImplementedException();
+    }
+
+    public async Task OpenFileWindows(string filePath, MediaItem item)
+    {
         try
         {
             if (ServerPipeManager.IsConnected())
             {
-                await ServerPipeManager.LoadMediaEvent(fileId);
+                await ServerPipeManager.SendMediaInfoEvent(item);
+                await ServerPipeManager.LoadMediaEvent(filePath);
                 return;
             }
 
-            Task.Run(async () => await ServerPipeManager.StartServer(_mediaItemRepository, _mediaItemRefreshService)).ConfigureAwait(false); //TODO is this okay?
-            LaunchPlayer(fileId);
-        } catch(Exception e)
+            Task.Run(async () => await ServerPipeManager.StartServer(item, _mediaItemRepository, _mediaItemRefreshService)).ConfigureAwait(false); //TODO is this okay?
+            LaunchPlayer(filePath);
+        }
+        catch (Exception e)
         {
             _logger.LogError(e, "Failed to open file with internal player");
         }
     }
 
-    private void LaunchPlayer(Guid fileId)
+    private void LaunchPlayer(string mediaPath)
     {
         var path = GetPlayerExePath();
         if (!File.Exists(path))
@@ -49,16 +56,16 @@ public class WindowsPlayerService : IPlayerService
         var startInfo = new ProcessStartInfo
         {
             FileName = path,
-            Arguments = $"\"{fileId.ToString()}\"",
+            Arguments = $"\"{mediaPath}\"",
             UseShellExecute = false,
             RedirectStandardOutput = true,  // Redirect the standard output
             RedirectStandardError = true,  // Redirect the error output
             Environment =
-            {
-                { "LANG", "en_US.UTF-8" }
-            }
+                {
+                    { "LANG", "en_US.UTF-8" }
+                }
         };
-        if(Environment.GetEnvironmentVariable("UseLocalWeb")?.ToLower() == "true") // Inject develop web player
+        if (Environment.GetEnvironmentVariable("UseLocalWeb")?.ToLower() == "true") // Inject develop web player
         {
             startInfo.Environment.Add("UseLocalWeb", "true");
         }
@@ -95,7 +102,7 @@ public class WindowsPlayerService : IPlayerService
     {
         var binLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         var installedExe = Path.Join(binLocation, @"\Player\PopcornPlayer.exe");
-        if(File.Exists(installedExe))
+        if (File.Exists(installedExe))
         {
             return installedExe;
         }
@@ -110,19 +117,19 @@ public class WindowsPlayerService : IPlayerService
                 throw new Exception("Popcorn folder not found");
             }
         }
-        if(binLocation == null)
+        if (binLocation == null)
         {
             throw new Exception("Popcorn folder not found");
         }
         binLocation = Path.GetDirectoryName(binLocation);
 
-        if(Debugger.IsAttached)
+        if (Debugger.IsAttached)
         {
             return Path.Join(binLocation, @"\PopcornPlayer\bin\Debug\net8.0-windows7.0\PopcornPlayer.exe");
         }
         return Path.Join(binLocation, @"\PopcornPlayer\bin\Release\net8.0-windows7.0\PopcornPlayer.exe");
     }
-        
+
     public void Dispose()
     {
         ServerPipeManager.GracefullDispose();

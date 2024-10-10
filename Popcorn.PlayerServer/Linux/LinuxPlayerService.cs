@@ -25,6 +25,7 @@ public class LinuxPlayerService : IPlayerService
         _mediaItemRefreshService = mediaItemRefreshService;
     }
     
+
     public async Task OpenFile(Guid fileId)
     {
         try
@@ -115,5 +116,10 @@ public class LinuxPlayerService : IPlayerService
     {
         _server?.DisconnectAll();
         _server?.Dispose();
+    }
+
+    public Task OpenFileWindows(string filePath, MediaItem item)
+    {
+        throw new NotImplementedException();
     }
 }

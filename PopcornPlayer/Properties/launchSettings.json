@@ -5,7 +5,7 @@
       "commandLineArgs": "\"C:\\Users\\Tomas\\Desktop\\korra.mkv\"\r\n\"C:\\Users\\Tomas\\Desktop\\naruto.mkv\"\r\n\"C:\\Users\\Tomas\\Desktop\\vita_LRT.mp4\"\r\n\"C:\\Users\\Tomas\\Downloads\\Video samples\\Redwoods 4K 60p HDR [d_xyD3nNQuo].webm\"\r\n",
       "environmentVariables": {
         "LANG": "en_US.UTF-8",
-        "UseLocalWeb": "false"
+        "UseLocalWeb": "true"
       }
     }
   }

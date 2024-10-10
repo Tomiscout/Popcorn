@@ -24,7 +24,7 @@ namespace PopcornPlayer.Pipes
             _mainWindow.Close();
         }
 
-        public void LoadMedia(LoadMediaEvent loadEvent)
+        public void LoadMedia(LoadMediaEventWindows loadEvent)
         {
             Debug.WriteLine("Load media received from server " + loadEvent.FilePath);
             PlayerCore.LoadMedia(loadEvent.FilePath);

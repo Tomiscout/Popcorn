@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ReactComponent as PlayButton } from '../assets/icons/play.svg';
 import { ReactComponent as StopButton } from '../assets/icons/stop.svg';
 import { ReactComponent as RewindButton } from '../assets/icons/10-back.svg';
@@ -10,13 +10,25 @@ import VolumeControl from './VolumeControl';
 import EpisodesControl from './EpisodesControl';
 import SubtitleControl from './SubtitleControl';
 import TrackTitle from './TrackTitle';
-import { postMessage, registerWebviewEventHandler } from '../events';
+import { postMessage, registerWebviewEventHandler, registerEventHandler } from '../events';
 import { useEventListeners } from '../Utlis/helpers';
 
 
 const PlaybackControls = () => {
   const [playing, setPlaying] = useState(false); //TODO this should come from backend, it may become out of sync in some scenario
   const [fullscreen, setFullscreen] = useState(false);
+
+  const playingRef = useRef(playing);
+  const fullscreenRef = useRef(fullscreen);
+
+  // Update ref whenever state changes
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
+
+  useEffect(() => {
+    fullscreenRef.current = fullscreen;
+  }, [fullscreen]);
 
   const getPlayButton = () => playing ? <StopButton /> : <PlayButton />;
   const getFullscreenButton = () => fullscreen ? <ExitFullscreen /> : <Fullscreen />;
@@ -35,17 +47,18 @@ const PlaybackControls = () => {
   const nextTrack = () => {
     postMessage('play_next_title', 10);
   }
-  const toggleFullscreen = () => {
-    const newFullscreenValue = !fullscreen;
+  const toggleFullscreen = useCallback(() => {
+    const newFullscreenValue = !fullscreenRef.current;
     setFullscreen(newFullscreenValue);
     postMessage('fullscreen', newFullscreenValue);
-  }
-  const exitFullscreen = () => {
+  }, [fullscreen]); 
+
+  const exitFullscreen = useCallback(() => {
     if (fullscreen) {
       setFullscreen(false);
       postMessage('fullscreen', false);
     }
-  }
+  }, [fullscreen]); 
 
   useEventListeners('keyup', {
     'Space': playPause,
@@ -59,7 +72,12 @@ const PlaybackControls = () => {
     registerWebviewEventHandler('track_loaded', (data) => {
       setPlaying(true);
     });
+
+    // Event from main container doubleclick
+    registerEventHandler('toggleFullscreen', () => toggleFullscreen())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   return (
     <div className="controls">

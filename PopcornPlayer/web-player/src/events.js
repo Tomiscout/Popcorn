@@ -4,8 +4,13 @@ const webviewHandlers = {};
 const sharedBufferHandlers = {};
 
 export function postMessage(name, data = null) {
-  console.log('Posting event:',name, data);
+  console.log('Posting event:', name, data);
   window?.chrome?.webview?.postMessage({ name, data });
+  localEventHandler(name, data);
+}
+
+export function postMessageLocalOnly(name, data = null) {
+  console.log('Posting event:', name, data);
   localEventHandler(name, data);
 }
 

@@ -20,7 +20,8 @@
 @inject IMediaItemRepository MediaItemRepository
 @inject FolderService FolderService
 @inject SettingsRepository SettingsRepository
-@inject PlayerService PlayerService
+@inject INativeFileAssosiation FileAssosiation
+@inject IPlayerService PlayerService
 @inject ISnackbar Snackbar
 @inject IJSRuntime JsRunTime
 @inject IDialogService _dialogService
@@ -306,10 +307,10 @@
 
         if(_settings.UseInternalPlayer)
         {
-            await PlayerService.OpenFile(path, item);
+            await PlayerService.OpenFileWindows(path, item);
         } else
         {
-            FileService.LaunchMediaFileDefault(path);
+            //FileAssosiation.LaunchMediaFileDefault(path); TODO use function from Popcorn.Webview
         }
     }
 

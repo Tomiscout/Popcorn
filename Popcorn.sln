@@ -1,4 +1,5 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31611.283
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -24,11 +25,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.SegmentFinder", "Po
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.Domain.Tests", "Popcorn.Domain.Tests\Popcorn.Domain.Tests.csproj", "{0FF3EFA3-4E0F-4B10-AD41-2CFE5B29461A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Popcorn.Linux", "Popcorn.Linux\Popcorn.Linux.csproj", "{98ED2F56-7326-4A9C-AA53-B24EE1106569}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.Linux", "Popcorn.Linux\Popcorn.Linux.csproj", "{98ED2F56-7326-4A9C-AA53-B24EE1106569}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Popcorn.WebView", "Popcorn.WebView\Popcorn.WebView.csproj", "{334B448E-5046-49B2-AF18-D04663537F51}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.WebView", "Popcorn.WebView\Popcorn.WebView.csproj", "{334B448E-5046-49B2-AF18-D04663537F51}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Popcorn.Player.Linux", "Popcorn.Player.Linux\Popcorn.Player.Linux.csproj", "{BE61E878-BA44-438F-8C5B-377E57398DD7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.Player.Linux", "Popcorn.Player.Linux\Popcorn.Player.Linux.csproj", "{BE61E878-BA44-438F-8C5B-377E57398DD7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Popcorn.Player.Windows", "Popcorn.Player.Windows\Popcorn.Player.Windows.csproj", "{218A645C-51E0-405A-B899-DF454772152D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -268,11 +271,25 @@ Global
 		{BE61E878-BA44-438F-8C5B-377E57398DD7}.Release|x64.Build.0 = Release|Any CPU
 		{BE61E878-BA44-438F-8C5B-377E57398DD7}.Release|x86.ActiveCfg = Release|Any CPU
 		{BE61E878-BA44-438F-8C5B-377E57398DD7}.Release|x86.Build.0 = Release|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Debug|x64.Build.0 = Debug|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Debug|x86.Build.0 = Debug|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Release|ARM64.Build.0 = Release|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Release|x64.ActiveCfg = Release|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Release|x64.Build.0 = Release|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Release|x86.ActiveCfg = Release|Any CPU
+		{218A645C-51E0-405A-B899-DF454772152D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {61F7FB11-1E47-470C-91E2-47F8143E1572}
