@@ -1,4 +1,5 @@
 ﻿using Popcorn.PlayerServer;
+using Popcorn.PlayerServer.Windows;
 
 namespace Popcorn;
 
@@ -14,7 +15,7 @@ public partial class App : Application
     //TODO tray icon
     private void Window_Destroying(object sender, EventArgs e)
     {
-        ServerPipeManager.GracefullDispose();
+        ServerPipeManager.Dispose();
         FileServer.FileServer.Dispose();
     }
 

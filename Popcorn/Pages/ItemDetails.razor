@@ -307,7 +307,7 @@
 
         if(_settings.UseInternalPlayer)
         {
-            await PlayerService.OpenFileWindows(path, item);
+            await PlayerService.OpenFile(path, item);
         } else
         {
             //FileAssosiation.LaunchMediaFileDefault(path); TODO use function from Popcorn.Webview

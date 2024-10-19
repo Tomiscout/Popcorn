@@ -1,8 +1,7 @@
 using Gtk;
 using Microsoft.Extensions.DependencyInjection;
 using Nickvision.MPVSharp;
-using Nickvision.MPVSharp.Internal;
-using Popcorn.Player.Linux.Player;
+using Popcorn.Player.Core.Player;
 
 namespace Popcorn.Player.Linux.Gtk;
 

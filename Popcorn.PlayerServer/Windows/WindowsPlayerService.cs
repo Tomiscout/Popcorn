@@ -1,5 +1,8 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
@@ -22,22 +25,16 @@ public class WindowsPlayerService : IPlayerService
 
     public async Task OpenFile(Guid fileId)
     {
-        throw new NotImplementedException();
-    }
-
-    public async Task OpenFileWindows(string filePath, MediaItem item)
-    {
         try
         {
             if (ServerPipeManager.IsConnected())
             {
-                await ServerPipeManager.SendMediaInfoEvent(item);
-                await ServerPipeManager.LoadMediaEvent(filePath);
+                await ServerPipeManager.LoadMediaEvent(fileId);
                 return;
             }
 
-            Task.Run(async () => await ServerPipeManager.StartServer(item, _mediaItemRepository, _mediaItemRefreshService)).ConfigureAwait(false); //TODO is this okay?
-            LaunchPlayer(filePath);
+            Task.Run(async () => await ServerPipeManager.StartServer(_mediaItemRepository, _mediaItemRefreshService)).ConfigureAwait(false); //TODO is this okay?
+            LaunchPlayer(fileId);
         }
         catch (Exception e)
         {
@@ -45,7 +42,7 @@ public class WindowsPlayerService : IPlayerService
         }
     }
 
-    private void LaunchPlayer(string mediaPath)
+    private void LaunchPlayer(Guid fileId)
     {
         var path = GetPlayerExePath();
         if (!File.Exists(path))
@@ -56,7 +53,7 @@ public class WindowsPlayerService : IPlayerService
         var startInfo = new ProcessStartInfo
         {
             FileName = path,
-            Arguments = $"\"{mediaPath}\"",
+            Arguments = $"\"{fileId}\"",
             UseShellExecute = false,
             RedirectStandardOutput = true,  // Redirect the standard output
             RedirectStandardError = true,  // Redirect the error output
@@ -92,10 +89,10 @@ public class WindowsPlayerService : IPlayerService
         process.BeginOutputReadLine();  // Start async read of standard output
         process.BeginErrorReadLine();  // Start async read of error output
 
-        if (Environment.GetEnvironmentVariable("PlayerDebugger")?.ToLower() == "true") // Inject develop web player
-        {
-            DebugUtils.AttachProcessToDebugger(process.Id);
-        }
+        /* if (Environment.GetEnvironmentVariable("PlayerDebugger")?.ToLower() == "true") // Inject develop web player
+         {
+             DebugUtils.AttachProcessToDebugger(process.Id);
+         }*/
     }
 
     private string GetPlayerExePath()
@@ -132,6 +129,6 @@ public class WindowsPlayerService : IPlayerService
 
     public void Dispose()
     {
-        ServerPipeManager.GracefullDispose();
+        ServerPipeManager.Dispose();
     }
 }

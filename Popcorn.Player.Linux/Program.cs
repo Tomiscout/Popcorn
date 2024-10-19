@@ -1,11 +1,12 @@
 ﻿using Gtk;
 using Microsoft.Extensions.DependencyInjection;
 using Popcorn.Persistence;
-using Popcorn.Player.Linux.Core;
+using Popcorn.Player.Core;
+using Popcorn.Player.Core.Core;
 using Popcorn.Player.Linux.Gtk;
-using Popcorn.Player.Linux.Pipes;
-using Popcorn.Player.Linux.Player;
+using Popcorn.Player.Core.Player;
 using Serilog;
+using Popcorn.Player.Core.WebSocket;
 
 namespace Popcorn.Player.Linux;
 
@@ -116,7 +117,7 @@ public class Program
         PopcornClient = new PopcornSocketClient(_socketPath);
         PopcornClient.MessageReceived += (sender, @event) =>
         {
-            Services.GetService<PopcornEventHandler>().Handle(@event);
+            Services.GetService<PopcornPipeEventHandler>().Handle(@event);
         };
         PopcornClient.Start();
     }

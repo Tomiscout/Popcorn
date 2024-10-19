@@ -9,6 +9,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Compile Remove="Utils\**" />
+      <EmbeddedResource Remove="Utils\**" />
+      <None Remove="Utils\**" />
+    </ItemGroup>
+
+    <ItemGroup>
       <PackageReference Include="Fleck" Version="1.2.0" />
       <PackageReference Include="GirCore.WebKit-6.0" Version="0.5.0" />
       <PackageReference Include="NetCoreServer" Version="8.0.7" />
@@ -22,13 +28,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
-      <ProjectReference Include="..\Popcorn.Persistence\Popcorn.Persistence.csproj" />
-      <ProjectReference Include="..\PopcornPlayer.Shared\PopcornPlayer.Shared.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Utils\" />
+      <ProjectReference Include="..\Popcorn.Player.Core\Popcorn.Player.Core.csproj" />
     </ItemGroup>
 
 

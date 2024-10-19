@@ -2,10 +2,10 @@ using System.Reflection;
 using Gdk;
 using Gio;
 using Microsoft.Extensions.DependencyInjection;
-using Popcorn.Player.Linux.WebSocket;
 using WebKit;
 using Soup;
 using Settings = WebKit.Settings;
+using Popcorn.Player.Core.WebSocket;
 
 namespace Popcorn.Player.Linux.Gtk;
 
@@ -34,7 +34,7 @@ public class WebviewGtk
         webView.SetSettings(webViewSettings);
 
         var ucm = webView.GetUserContentManager();
-        var wsAddress = Program.Services.GetService<PlayerWebSocket>()!.StartServer();
+        var wsAddress = Program.Services.GetService<WebEventHandler>()!.StartServer();
         
         //Make webkit object persistent, not sure if it's a good idea, but it works
         ucm.AddScript(WebKit.UserScript.New(

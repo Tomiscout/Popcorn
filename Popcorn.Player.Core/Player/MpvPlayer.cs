@@ -1,0 +1,169 @@
+using Microsoft.Extensions.DependencyInjection;
+using Nickvision.MPVSharp;
+using Nickvision.MPVSharp.Internal;
+using Popcorn.Player.Core.Contracts;
+using Popcorn.Player.Core.WebSocket;
+
+namespace Popcorn.Player.Core.Player;
+
+public class MpvPlayer : IPlayer
+{
+    private readonly Lazy<WebEventHandler> _webSocket;
+    public Client _player { get; }
+
+    public MpvPlayer(Lazy<WebEventHandler> webSocket)
+    {
+        _webSocket = webSocket;
+        _player = new Client();
+        _player.SetProperty("vo", "libmpv");
+        _player.SetProperty("hwdec", "auto");
+        _player.SetProperty("osd-level", "0");
+        _player.SetOption("sub-border-size", "1");
+        //_player.SetProperty("log-file", "mpv_log.log");
+
+        //_player.RequestLogMessages("debug");
+        _player.LogMessageReceived += (sender, e) =>
+        {
+            Console.Write($"[{e.Prefix}] {e.Text}"); // Log messages (e.Text) end with newline char
+        };
+        _player.PropertyChanged += (sender, e) =>
+        {
+            switch (e.Name)
+            {
+                //case "time-pos": _currentTimePos = e.Node.Value.ToString(); return;
+                case "media-title": /*Program.SetTitle((string)e.Node!);*/ return; //TODO
+            }
+        };
+        _player.ObserveProperty("time-pos");
+        _player.ObserveProperty("duration");
+
+        _player.PropertyChanged += (sender, e) =>
+        {
+            if (e.Node == null) return;
+
+            switch (e.Name)
+            {
+                case "time-pos":
+                    _webSocket.Value.PostEvent("current_time", (double)e.Node.Value!);
+                    return;
+                case "duration":
+                    _webSocket.Value.PostEvent("duration_update", (double)e.Node.Value!);
+                    return;
+            }
+
+            Console.WriteLine($"{e.Name}: {e.Node.ToString()}");
+        };
+    }
+
+    public Client Client => _player;
+
+    public void Initialize()
+    {
+        _player.Initialize();
+    }
+
+    public void InitializeWindows(string wid)
+    {
+        _player.SetProperty("vo", "gpu");
+        _player.SetOption("wid", wid);
+        Initialize();
+    }
+
+    public void LoadMedia(string path)
+    {
+        _player.Command($"loadfile '{path}' append-play");
+        MediaPlaying?.Invoke(this, EventArgs.Empty); //TODO this feels kinda nasty, should review the event system
+    }
+
+    public void Play(bool play = true)
+    {
+        _player.SetProperty("pause", YesNo(!play));
+    }
+
+    public void Stop()
+    {
+        _player.Command("stop");
+    }
+
+    public void SetPlaybackTime(long time)
+    {
+        _player.Command($"seek {time / 1000} absolute");
+    }
+
+    public void SkipTime(long time)
+    {
+        _player.Command($"seek {time}");
+    }
+
+    public void SetVolume(double volume)
+    {
+        _player.SetProperty("ao-volume", (int)Math.Floor(volume * 100));
+    }
+
+    public event EventHandler? MediaEnded;
+    public event EventHandler<long>? TimeChanged;
+    public event EventHandler<long>? LengthChanged;
+    public event EventHandler? MediaPlaying;
+    public MediaTrack[] GetMediaTracks()
+    {
+        _player.GetProperty("track-list", out MPVNode trackListNode);
+
+        if (trackListNode.Format != MPVFormat.NodeArray) throw new Exception("track-list is not an array.");
+
+        var trackNodes = (MPVNode[])trackListNode;
+        var mediaTracks = new List<MediaTrack>();
+
+        foreach (var trackNode in trackNodes)
+        {
+            if (trackNode.Format != MPVFormat.NodeMap) continue;
+
+            var trackNodeList = (MPVNodeList)trackNode;
+
+            var trackDict = MPVNodeList.ToDictionary(trackNodeList);
+            if (trackDict == null) continue;
+
+            var type = trackDict.ContainsKey("type") ? (string)trackDict["type"] : "";
+            if (type != "audio" && type != "video" && type != "sub") continue;
+
+            var mediaTrack = new MediaTrack
+            {
+                Id = trackDict.ContainsKey("id") ? (int)trackDict["id"] : 0,
+                Type = trackDict.ContainsKey("type") ? (string?)trackDict["type"] : string.Empty,
+                Language = trackDict.ContainsKey("lang") ? (string)trackDict["lang"] : string.Empty,
+                Description = trackDict.ContainsKey("title") ? (string)trackDict["title"] : string.Empty,
+                Selected = trackDict.ContainsKey("selected") && (bool)trackDict["selected"]
+            };
+
+            mediaTracks.Add(mediaTrack);
+        }
+
+        return mediaTracks.ToArray();
+    }
+
+    public void AudioTrackSelected(int track)
+    {
+        _player.SetProperty("aid", track);
+    }
+
+    public void SubtitleTrackSelected(int track)
+    {
+        _player.SetProperty("sid", track);
+    }
+
+    public void SubtitleSetDelay(double delay)
+    {
+        _player.SetProperty("sub-delay", delay);
+    }
+
+    public MediaTrack[] GetSubtitleTracks()
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Dispose()
+    {
+        _player.Dispose();
+    }
+
+    private static string YesNo(bool val) => val ? "yes" : "no";
+}

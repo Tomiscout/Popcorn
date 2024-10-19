@@ -12,7 +12,7 @@ export function initEvents() {
   if (isInitialized) return;
 
   if (webviewContext) {
-    webviewContext.addEventListener('message', eventHandler);
+    webviewContext.addEventListener('message', eventHandlerChromium);
     //webviewContext.addEventListener('sharedbufferreceived', bufferEventHandlerWindows);
 
     postMessage('initialized');
@@ -67,8 +67,11 @@ export function postMessage(name, data = null) {
   const message = { name, data };
   if(webviewContext) {
     webviewContext.postMessage(message);
-  } else {
+  } else if(socket) {
     socket.send(JSON.stringify(message));
+  } else {
+    console.log('No event transport for postMessage', name);
+    return;
   }
   localEventHandler(name, data);
 }
@@ -95,8 +98,14 @@ export function registerSharedBufferHandler(name, handler) {
   sharedBufferHandlers.push(handler);
 }
 
+function eventHandlerChromium(webEvent) {
+  eventHandler(webEvent.data);
+}
 export function eventHandler(webEvent) {
   const currentHandlers = webviewHandlers[webEvent.name];
+  if(webEvent.name !== 'current_time') {
+    console.log('Received event', webEvent);
+  }
 
   if (currentHandlers) {
     for (let i = 0; i < currentHandlers.length; i++) {
