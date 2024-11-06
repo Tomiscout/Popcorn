@@ -1,14 +1,9 @@
 
-using System;
-using System.Diagnostics;
-using System.IO;
-using Blazorise.Extensions;
 using Microsoft.Extensions.Logging;
-using Popcorn.Domain;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Utils;
 
-namespace Popcorn.Photino.Native;
+namespace Popcorn.Linux;
 
 public class LinuxFileAssociation : INativeFileAssosiation
 {
@@ -24,7 +19,7 @@ public class LinuxFileAssociation : INativeFileAssosiation
     public string? GetExecCommandForExtention(string ext, string filePath, string args)
     {
         // Also its possible to get mime from here: grep 'mp4' /etc/mime.types or 'file' command
-        
+
         string? desktopFileName;
         if (string.IsNullOrEmpty(ext))
         {
@@ -63,7 +58,7 @@ public class LinuxFileAssociation : INativeFileAssosiation
     private string? FindDesktopFile(string desktopFileName)
     {
         var envPaths = _processRunner.ExecuteCommandRead("printenv XDG_DATA_DIRS")?.Split(':');
-        if (envPaths.IsNullOrEmpty()) return null;
+        if (envPaths == null || envPaths.Length == 0) return null;
 
         foreach (var path in envPaths!)
         {

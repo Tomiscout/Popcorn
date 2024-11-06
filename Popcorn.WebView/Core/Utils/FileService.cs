@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Popcorn.Core.Exceptions;
 using Popcorn.Domain;
 using Popcorn.Domain.Interfaces;
@@ -24,7 +25,8 @@ public class FileService : IFileService
     {
         try
         {
-            var command = _fileAssosiation.GetExecCommandForExtention(Path.GetExtension(path), path, $" \'{path}\'"); // linux required ', while it was " before
+            var pathEscape = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? '"' : '\'';
+            var command = _fileAssosiation.GetExecCommandForExtention(Path.GetExtension(path), path, $" {pathEscape}{path}{pathEscape}");
             if (string.IsNullOrWhiteSpace(command))
                 throw new UnknownAssociatedProgramException(Path.GetExtension(path));
 

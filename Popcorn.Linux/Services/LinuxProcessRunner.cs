@@ -4,7 +4,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Popcorn.Domain.Interfaces;
 
-namespace Popcorn.Photino.Native;
+namespace Popcorn.WebView.Linux;
 
 public class LinuxProcessRunner : INativeProcessRunner
 {

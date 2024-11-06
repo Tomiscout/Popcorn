@@ -1,19 +1,19 @@
-﻿using Popcorn.Core;
-using MudBlazor.Services;
+﻿using MudBlazor.Services;
 using Popcorn.SearchProviders.MovieDb;
 using Popcorn.SearchProviders.Utils;
 using Serilog;
 using Popcorn.Shared.Utils;
-using Serilog.Events;
 using PopcornPlayer.Shared;
 using CommunityToolkit.Maui;
 using CommunityToolkit.Maui.Storage;
 using Popcorn.Persistence;
 using FluentMigrator.Runner;
-using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
-using Dapper.FluentMap;
-using Microsoft.Maui.LifecycleEvents;
+using MathNet.Numerics;
+using Popcorn.Domain.Interfaces;
+using Popcorn.PlayerServer.Windows;
+using Popcorn.PlayerServer;
+using Popcorn.Shared;
+using Popcorn.Services;
 
 namespace Popcorn;
 
@@ -48,17 +48,8 @@ public static class MauiProgram
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddMudServices();
 
-        builder.Services
-       .AddFluentMigratorCore()
-       .ConfigureRunner(rb => rb
-           .AddSQLite()
-           .WithGlobalConnectionString(DapperContext.ConnectionString)
-           .ScanIn(typeof(DapperContext).Assembly).For.Migrations());
-        builder.Services.AddSingleton<DapperContext>();
-        DapperContext.RegisterMappings();
-
+       
         // Register the FolderPicker as a singleton
-        builder.Services.AddSingleton<IFolderPicker>(FolderPicker.Default);
 
         //#if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
@@ -66,10 +57,18 @@ public static class MauiProgram
 
         builder.Logging.AddSerilog(dispose: true);
 
-        Popcorn.Core.ServiceRegister.RegisterServices(builder.Services);
-        Popcorn.Persistence.ServiceRegister.AddPopcornDatabase(builder.Services);
+        WebView.ServiceRegister.AddPopcornServices(builder.Services);
+        ServiceRegister.AddPopcornDatabase(builder.Services);
 
-		TorrentUtils.EnsureTorrentsFolder();
+
+        builder.Services.AddSingleton(FolderPicker.Default);
+        builder.Services.AddSingleton<INativeFolderService, WindowsFolderService>();
+
+        builder.Services.AddSingleton<IPlayerService, WindowsPlayerService>();
+        builder.Services.AddSingleton<INativeFileAssosiation, WindowsFileAssosiation>();
+        builder.Services.AddSingleton<INativeProcessRunner, WindowsProcessRunner>();
+
+        TorrentUtils.EnsureTorrentsFolder();
         MovieDbProvider.Initialize();
         FFmpegWrapper.ExePath = "ffmpeg"; //TODO proper linking
 

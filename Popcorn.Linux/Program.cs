@@ -8,11 +8,14 @@ using PopcornPlayer.Shared;
 using FluentMigrator.Runner;
 using MudBlazor.Services;
 using Popcorn.Shared.Utils;
-using Popcorn.Domain.Interfaces;
 using Popcorn.Persistence;
 using Serilog;
-using Popcorn.Photino.Native;
+using Popcorn.WebView;
+using MathNet.Numerics;
+using Popcorn.Domain.Interfaces;
+using Popcorn.Linux;
 using Popcorn.PlayerServer;
+using Popcorn.WebView.Linux;
 
 namespace Popcorn.Photino;
 
@@ -37,6 +40,7 @@ class Program
         appBuilder.Services.AddPopcornServices();
         appBuilder.Services.AddPopcornDatabase();
 
+        appBuilder.Services.AddSingleton<IPlayerService, LinuxPlayerService>();
         appBuilder.Services.AddSingleton<INativeFolderService, LinuxFolderService>();
         appBuilder.Services.AddSingleton<INativeFileAssosiation, LinuxFileAssociation>();
         appBuilder.Services.AddSingleton<INativeProcessRunner, LinuxProcessRunner>();

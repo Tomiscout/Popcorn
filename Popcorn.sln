@@ -19,8 +19,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PopcornPlayer.Shared", "Pop
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.PlayerServer", "Popcorn.PlayerServer\Popcorn.PlayerServer.csproj", "{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.Installer", "Popcorn.Installer\Popcorn.Installer.csproj", "{F8627ECD-402F-41EB-9252-627067047BDA}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.SegmentFinder", "Popcorn.SegmentFinder\Popcorn.SegmentFinder.csproj", "{B10DA878-D231-46C2-A19F-7481DC29688D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.Domain.Tests", "Popcorn.Domain.Tests\Popcorn.Domain.Tests.csproj", "{0FF3EFA3-4E0F-4B10-AD41-2CFE5B29461A}"
@@ -31,7 +29,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.WebView", "Popcorn.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.Player.Linux", "Popcorn.Player.Linux\Popcorn.Player.Linux.csproj", "{BE61E878-BA44-438F-8C5B-377E57398DD7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Popcorn.Player.Core", "Popcorn.Player.Core\Popcorn.Player.Core.csproj", "{778CBA00-126D-4F74-8C79-1CF196262423}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.Player.Core", "Popcorn.Player.Core\Popcorn.Player.Core.csproj", "{778CBA00-126D-4F74-8C79-1CF196262423}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -175,22 +173,6 @@ Global
 		{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}.Release|x64.Build.0 = Release|Any CPU
 		{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}.Release|x86.ActiveCfg = Release|Any CPU
 		{4E067176-9FAF-4C5C-8DC4-F96D78C952F4}.Release|x86.Build.0 = Release|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|ARM64.ActiveCfg = Debug|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|ARM64.Build.0 = Debug|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|x64.Build.0 = Debug|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Debug|x86.Build.0 = Debug|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|ARM64.ActiveCfg = Release|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|ARM64.Build.0 = Release|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|x64.ActiveCfg = Release|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|x64.Build.0 = Release|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|x86.ActiveCfg = Release|Any CPU
-		{F8627ECD-402F-41EB-9252-627067047BDA}.Release|x86.Build.0 = Release|Any CPU
 		{B10DA878-D231-46C2-A19F-7481DC29688D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B10DA878-D231-46C2-A19F-7481DC29688D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B10DA878-D231-46C2-A19F-7481DC29688D}.Debug|ARM64.ActiveCfg = Debug|Any CPU
