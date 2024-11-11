@@ -27,12 +27,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Remove="ffmpeg.exe" />
+    <None Remove="popcorn.ico" />
   </ItemGroup>
   
   <ItemGroup>
     <PackageReference Include="FFMpegCore" Version="5.1.0" />
     <PackageReference Include="LibVLCSharp.WPF" Version="3.8.2" />
-    <PackageReference Include="MahApps.Metro" Version="3.0.0-alpha0476" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
@@ -44,6 +44,7 @@
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
     <PackageReference Include="SharpVectors.Wpf" Version="1.8.1" />
     <PackageReference Include="Nickvision.MPVSharp.Bundled" Version="2023.9.0" />
+    <PackageReference Include="System.Drawing.Common" Version="8.0.8" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
@@ -60,9 +61,6 @@
     <ProjectReference Include="..\Popcorn.Player.Core\Popcorn.Player.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="popcorn.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Resources\popcorn.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -71,6 +69,14 @@
       <PackagePath>\</PackagePath>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Resources\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="popcorn.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">

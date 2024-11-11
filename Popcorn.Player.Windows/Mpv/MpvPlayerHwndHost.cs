@@ -50,7 +50,7 @@ internal class MpvPlayerHwndHost : HwndHost
                                                         (IntPtr)HOST_ID,
                                                         IntPtr.Zero,
                                                         0);
-
+        App.SetupEvents();
         App.InitializeMpv(playerHostPtr);
 
         return new HandleRef(this, playerHostPtr);

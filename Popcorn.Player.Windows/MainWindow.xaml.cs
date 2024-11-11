@@ -1,18 +1,14 @@
-﻿using LibVLCSharp.WPF;
-using MahApps.Metro.Controls;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Web.WebView2.Core;
-using Microsoft.Win32;
 using Popcorn.Player.Core.Contracts;
 using Popcorn.Player.Core.Core;
-using Popcorn.Player.Core.Services;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Player.Services;
 using Popcorn.Player.Windows.Mpv;
 using Popcorn.Player.Windows.Pipe;
+using Popcorn.Player.Windows.Utils;
 using Serilog;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -20,6 +16,10 @@ using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Shell;
+using static Popcorn.Player.Windows.Utils.WindowUtils;
 
 namespace Popcorn.Player.Windows;
 
@@ -28,9 +28,11 @@ namespace Popcorn.Player.Windows;
 /// Interaction logic for MainWindow.xaml
 /// </summary>
 [SupportedOSPlatform("windows")]
-public partial class MainWindow : MetroWindow
+public partial class MainWindow : Window
 {
     private readonly WebEventHandler _webEventHandler;
+    private WindowChrome _currentChrome;
+
     public MainWindow()
     {
         _webEventHandler = App.Services.GetService<WebEventHandler>();
@@ -49,8 +51,9 @@ public partial class MainWindow : MetroWindow
          InitializeComponent();*/
     }
     
-    public async void MetroWindow_Loaded(object sender, RoutedEventArgs e)
+    public async void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        _currentChrome = WindowChrome.GetWindowChrome(this);
         Task.Run(async () => await App.Services.GetService<ClientPipeManager>().Initialize()); //TODO this is ugly
 
         GpuScanner.ScanHardware();
@@ -135,11 +138,21 @@ public partial class MainWindow : MetroWindow
     // Currently player (debug) loads in 2.4 seconds total, pipe init takes ~1 second, so can load media item earlier
     private bool PlayerInitialized()
     {
-        var envPaths = Environment.GetCommandLineArgs().Where(Path.IsPathFullyQualified).ToList();
-        if (envPaths.Any())
+        var envPaths = Environment.GetCommandLineArgs().Skip(1).ToList();
+        if(!envPaths.Any())
         {
-            envPaths.RemoveAt(0); //DLL path
-            App.Services.GetService<PlayerCore>().LoadFilesFromInput(envPaths.Where(arg => !arg.StartsWith("-")).ToList());
+            return true;
+        }
+
+        var playerCore = App.Services.GetService<PlayerCore>();
+        if (Guid.TryParse(envPaths.First(), out Guid parsedFileId))
+        {
+            playerCore.LoadFileId(parsedFileId);
+        }
+        else
+        {
+            envPaths = envPaths.Where(p => Path.IsPathFullyQualified(p) && !p.StartsWith("-")).ToList();
+            playerCore.LoadFilesFromInput(envPaths);
         }
         return true;
     }
@@ -165,30 +178,43 @@ public partial class MainWindow : MetroWindow
         });
     }
 
+
+    // Frontend 
+    private static bool _fullscreenRequested = false;
+
     public bool ChangeFullscreen(bool fullscreen)
     {
         try
         {
+            var handle = new WindowInteropHelper(this).Handle;
+
             if (fullscreen)
             {
-                ShowTitleBar = false;
-                IgnoreTaskbarOnMaximize = true;
-                ShowMinButton = false;
-                ShowMaxRestoreButton = false;
-                ShowCloseButton = false;
-                WindowStyle = WindowStyle.None;
+                TitleBar.Visibility = Visibility.Hidden;
+                TitleBarRow.Height = new GridLength(0);
+                WindowChrome.SetWindowChrome(this, null);
+
+                Topmost = true;
+
+                _fullscreenRequested = true;
                 WindowState = WindowState.Maximized;
+                SetWindowPopupStyle(fullscreen, handle);
+
+                Topmost = false;
             }
             else
             {
-                ShowTitleBar = true;
-                IgnoreTaskbarOnMaximize = false;
-                ShowMinButton = true;
-                ShowMaxRestoreButton = true;
-                ShowCloseButton = true;
-                WindowStyle = WindowStyle.SingleBorderWindow;
+                TitleBar.Visibility = Visibility.Visible;
+                TitleBarRow.Height = GridLength.Auto;
+                SetWindowPopupStyle(fullscreen, handle);
+
                 WindowState = WindowState.Normal;
+                WindowChrome.SetWindowChrome(this, _currentChrome);
+
+                SetDefaultSize(GetScreenWorkingArea(this));
             }
+
+            _webEventHandler.PostEvent("fullscreen", fullscreen);
         }
         catch (Exception e)
         {
@@ -198,20 +224,68 @@ public partial class MainWindow : MetroWindow
         return true;
     }
 
-    private string ShowSubtitleFileDialog()
+    public void SoftFullscreen(bool force = false)
     {
-        string result = null;
-        Dispatcher.Invoke(() =>
-        {
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = "Subtitle files (*.srt, *.sub, *.ssa, *.ass, *.vtt, *.idx, *.rt, *.smil, *.smi)|*.srt;*.sub;*.ssa;*.ass;*.vtt;*.idx;*.rt;*.smil;*.smi";
+        var workArea = WindowUtils.GetScreenWorkingArea(this);
+        var currentSize = WindowUtils.GetCurrentWindowRect(this);
 
-            if (openFileDialog.ShowDialog() == true)
+        if(force || workArea != currentSize)
+        {
+            Width = workArea.Width;
+            Height = workArea.Height;
+            Top = workArea.Top;
+            Left = workArea.Left;
+        } else
+        {
+            SetDefaultSize(workArea);
+        }
+    }
+
+    public void SetDefaultSize(WindowRect workArea)
+    {
+        Width = 1000;
+        Height = 650;
+        Top = workArea.Top + (workArea.Height - Height) / 2;
+        Left = workArea.Left + (workArea.Width - Width) / 2;
+    }
+
+    private void Window_StateChanged(object sender, EventArgs e)
+    {
+        if (!_fullscreenRequested && WindowState == WindowState.Maximized)
+        {
+            WindowState = WindowState.Normal;
+            SoftFullscreen(true);
+        }
+        _fullscreenRequested = false;
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left)
+        {
+            if (e.ClickCount == 2)
             {
-                result = openFileDialog.FileName;
+                SoftFullscreen();
+            } else
+            {
+                DragMove();
             }
-        });
-        return result;
+        }
+    }
+
+    private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+    }
+
+    private void MaximizeRestoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        ChangeFullscreen(WindowState != WindowState.Maximized);
     }
 
     protected override void OnClosed(EventArgs e)

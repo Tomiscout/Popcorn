@@ -37,12 +37,12 @@ const PlaybackControls = () => {
   }
   const toggleFullscreen = () => {
     const newFullscreenValue = !fullscreen;
-    setFullscreen(newFullscreenValue);
+    //setFullscreen(newFullscreenValue);
     postMessage('fullscreen', newFullscreenValue);
   }
   const exitFullscreen = () => {
     if (fullscreen) {
-      setFullscreen(false);
+      //setFullscreen(false);
       postMessage('fullscreen', false);
     }
   }
@@ -58,6 +58,9 @@ const PlaybackControls = () => {
   useEffect(() => {
     registerWebviewEventHandler('track_loaded', (data) => {
       setPlaying(true);
+    });
+    registerWebviewEventHandler('fullscreen', (data) => {
+      setFullscreen(data);
     });
   }, []);
 

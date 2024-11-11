@@ -93,13 +93,6 @@ public class PlayerCore
 
         _player.LoadMedia(file.Path);
 
-        //Sending media info to frontend
-        _webSocket.Value.PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
-        {
-            FileName = CurrentMediaFile.Path,
-            Title = CurrentMediaFile.Title,
-            ShortTitle = CurrentMediaFile.GetDisplayTitle(),
-        });
         OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
 
         // On initial run from media player due to fast startup dummy media item is created, and will have no data for segments and other extra options
@@ -179,9 +172,8 @@ public class PlayerCore
         OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
         _audioSubtitlesService.AutoSelectAudioAndSubtitles();
         _audioSubtitlesService.SendAudioAndSubtitles();
-
-        // On initial run from media player due to fast startup dummy media item is created, and will have no data for segments and other extra options
         _audioSubtitlesService.SendAudioSegments(CurrentMediaFile);
+
         _isLoadingTrack = false;
     }
 
@@ -190,8 +182,10 @@ public class PlayerCore
         _webSocket.Value.PostEvent("playback_ended", null);
     }
 
-    public bool OpenFolder(string path)
+    public bool OpenFolder(string? path)
     {
+        if(string.IsNullOrWhiteSpace(path)) return false;
+
         if (_mediaItemManager.CurrentMediaItem is null)
         {
             _webSocket.Value.PostEvent("folder_loaded", new FolderLoadedEvent()

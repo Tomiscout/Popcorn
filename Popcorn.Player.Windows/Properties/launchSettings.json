@@ -2,10 +2,10 @@
   "profiles": {
     "PopcornPlayer": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\Tomas\\Desktop\\korra.mkv\"\r\n\"C:\\Users\\Tomas\\Desktop\\naruto.mkv\"\r\n\"C:\\Users\\Tomas\\Desktop\\vita_LRT.mp4\"\r\n\"C:\\Users\\Tomas\\Downloads\\Video samples\\Redwoods 4K 60p HDR [d_xyD3nNQuo].webm\"\r\n",
+      "commandLineArgs": "\"8fc4b5c1-68d6-455e-a783-87b5a497a02b\"\r\n",
       "environmentVariables": {
         "LANG": "en_US.UTF-8",
-        "UseLocalWeb": "True"
+        "UseLocalWeb": "False"
       }
     }
   }

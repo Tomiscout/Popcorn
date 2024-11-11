@@ -98,7 +98,7 @@ public class WindowsPlayerService : IPlayerService
     private string GetPlayerExePath()
     {
         var binLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        var installedExe = Path.Join(binLocation, @"\Player\PopcornPlayer.exe");
+        var installedExe = Path.Join(binLocation, @"\Popcorn.Player.Windows.exe");
         if (File.Exists(installedExe))
         {
             return installedExe;
@@ -122,9 +122,9 @@ public class WindowsPlayerService : IPlayerService
 
         if (Debugger.IsAttached)
         {
-            return Path.Join(binLocation, @"\PopcornPlayer\bin\Debug\net8.0-windows7.0\PopcornPlayer.exe");
+            return Path.Join(binLocation, @"\Popcorn.Player.Windows\bin\Debug\net8.0-windows7.0\Popcorn.Player.Windows.exe");
         }
-        return Path.Join(binLocation, @"\PopcornPlayer\bin\Release\net8.0-windows7.0\PopcornPlayer.exe");
+        return Path.Join(binLocation, @"\Popcorn.Player.Windows\bin\Release\net8.0-windows7.0\Popcorn.Player.Windows.exe");
     }
 
     public void Dispose()
