@@ -13,7 +13,7 @@ export function initEvents() {
 
   if (webviewContext) {
     webviewContext.addEventListener('message', eventHandlerChromium);
-    //webviewContext.addEventListener('sharedbufferreceived', bufferEventHandlerWindows);
+    webviewContext.addEventListener('sharedbufferreceived', bufferEventHandlerWindows);
 
     postMessage('initialized');
     isInitialized = true;
@@ -127,17 +127,11 @@ function localEventHandler(name, data) {
   }
 }
 
-// export function bufferEventHandlerWindows(event) {
-//   const currentArrayBufferHandlers = sharedBufferHandlers[event.additionalData.name]; // Assuming this array exists
-//   if (currentArrayBufferHandlers) {
-//     const arrayBuffer = event.getBuffer();
-//     for (let i = 0; i < currentArrayBufferHandlers.length; i++) {
-//       currentArrayBufferHandlers[i](arrayBuffer, event.additionalData);
-//     }
-//   } else {
-//     console.log('No handler found for event:', event.additionalData.name);
-//   }
-// }
+export function bufferEventHandlerWindows(event) {
+  const buffer = event.getBuffer();
+  const blobUrl = URL.createObjectURL(new Blob([buffer], { type: 'image/jpeg' }));
+  bufferEventHandler(blobUrl);
+}
 
 export function bufferEventHandler(blobUrl) {
   for(const handler of sharedBufferHandlers) {

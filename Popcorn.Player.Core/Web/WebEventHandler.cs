@@ -44,7 +44,7 @@ public class WebEventHandler
         {
             case "play_status_changed":
                 _player.Play(message.Data!.GetJsonBoolean()); break;
-            case "fullscreen":
+            case "request_fullscreen":
                 OnFullscreen?.Invoke(this, message.Data!.GetJsonBoolean()); break;
             case "set_playback_time":
                 _player.SetPlaybackTime(message.Data!.GetJsonInt64()); break;

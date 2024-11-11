@@ -38,17 +38,8 @@ public partial class MainWindow : Window
         _webEventHandler = App.Services.GetService<WebEventHandler>();
         InitializeComponent();
 
-        // Create the MpvPlayerHwndHost and add it to the WPF layout
         var mpvPlayerHost = new MpvPlayerHwndHost();
         MpvPlayerHostBorder.Child = mpvPlayerHost;
-
-        /* PlayerCore.Initialize();
-         PlayerCore.PostWebMessage = PostWebMessageToWebView;
-         PlayerCore.PostStreamMessage = PostStreamToWebView;
-         PlayerCore.ChangeFullscreen = ChangeFullscreen;
-         PlayerCore.PlayerInitialized = PlayerInitialized;
-         AudioAndSubtitles.SubtitleFileSelect = ShowSubtitleFileDialog;
-         InitializeComponent();*/
     }
     
     public async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -134,8 +125,6 @@ public partial class MainWindow : Window
         });
     }
 
-    // TODO could potentially optimize startup time, since it wont load file until ui is 
-    // Currently player (debug) loads in 2.4 seconds total, pipe init takes ~1 second, so can load media item earlier
     private bool PlayerInitialized()
     {
         var envPaths = Environment.GetCommandLineArgs().Skip(1).ToList();
@@ -157,31 +146,7 @@ public partial class MainWindow : Window
         return true;
     }
 
-    private void PostStreamToWebView(string message, byte[] bytes)
-    {
-        if (bytes == null)
-        {
-            Log.Warning("Thumb bytes are null");
-            return;
-        }
-        WebView?.Dispatcher?.Invoke(() =>
-        {
-            using (CoreWebView2SharedBuffer buffer = WebView.CoreWebView2.Environment.CreateSharedBuffer((ulong)bytes.Length))
-            {
-                using (Stream stream = buffer.OpenStream())
-                {
-                    stream.Write(bytes, 0, bytes.Length);
-                }
-                // Notify JS side to read the buffer
-                WebView.CoreWebView2.PostSharedBufferToScript(buffer, CoreWebView2SharedBufferAccess.ReadOnly, message);
-            }
-        });
-    }
-
-
-    // Frontend 
     private static bool _fullscreenRequested = false;
-
     public bool ChangeFullscreen(bool fullscreen)
     {
         try
