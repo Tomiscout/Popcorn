@@ -25,7 +25,7 @@ public class MediaItemManager
     {
         CurrentMediaItem.History = history;
         var lastPlayed = CurrentMediaItem.History.LastOrDefault();
-        CurrentMediaItem.RecalculatePlayedFiles(CurrentMediaItem.Files.Where(f => f.Path == lastPlayed.Filename).ToList());
+        CurrentMediaItem.RecalculatePlayedFiles(CurrentMediaItem.Files.Where(f => f.Id == lastPlayed.FileId).ToList());
     }
 
     public void LoadMediaInfo(Guid fileId)

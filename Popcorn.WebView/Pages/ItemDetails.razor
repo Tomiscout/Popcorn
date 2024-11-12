@@ -186,7 +186,7 @@
     public MediaItem item;
     public List<MediaFile> currentFiles = new List<MediaFile>();
     public List<MediaFile> navigation = new List<MediaFile>();
-    public List<ItemHistory> playbackHistory = new();
+    public List<ItemHistoryDto> playbackHistory = new();
     public MediaFile nextTrack = null;
 
     private SettingsModel _settings;
@@ -223,7 +223,8 @@
         {
             item.Image = await _imageRepository.LoadImage(item.ImagePath);
         }
-        playbackHistory = await MediaItemRepository.GetHistoryItems(item.Id);
+
+        playbackHistory = MediaItemRepository.GetItemHistoryDtos(item!) ?? new List<ItemHistoryDto>();
     }
 
     private async Task RefreshLoadMediaItem(Guid itemId)
@@ -281,7 +282,6 @@
             await MediaItemRepository.AddHistoryItem(item.Id, new ItemHistory
             {
                 FileId = historyItem.FileId,
-                Title = historyItem.Title,
                 PlaybackTime = DateTime.Now
             });
             await LaunchFile(item.Files.First(f => f.Id == historyItem.FileId));
@@ -290,6 +290,8 @@
     }
     private async Task OpenFile(MediaFile file)
     {
+        if (file.Id == null) return;
+
         await _openFileDebouncer.Debounce(async () =>
         {
             if (!_settings.UseInternalPlayer)
@@ -297,7 +299,6 @@
                 await MediaItemRepository.AddHistoryItem(item.Id, new ItemHistory
                     {
                         FileId = file.Id.Value,
-                        Title = file.Title,
                         PlaybackTime = DateTime.Now
                     });
             }
@@ -440,8 +441,8 @@
     public async void OnCleanHistory()
     {
         await MediaItemRepository.DeleteHistoryAll(item.Id);
-        playbackHistory = await MediaItemRepository.GetHistoryItems(item.Id);
-        item.History = playbackHistory;
+        playbackHistory = new List<ItemHistoryDto>();
+        item.History = new List<ItemHistory>();
         item.RecalculatePlayedFiles(item.Files, false);
         RefreshNextTrack();
         StateHasChanged();

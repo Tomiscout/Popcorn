@@ -29,8 +29,10 @@ const ProgressBar = () => {
     const [popupX, setPopupX] = useState(0);
     const [lineX, setLineX] = useState(0);
     const progressBarRef = useRef(null);
+
     const [thumbnail, setThumbnail] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [blobUrlMap, setBlobUrlMap] = useState(new Map());
 
     const [currentTime, setCurrentTime] = useState(0);
     const [totalTime, setTotalTime] = useState(10000);
@@ -51,6 +53,7 @@ const ProgressBar = () => {
         registerWebviewEventHandler('duration_update', (data) => setTotalTime(data * 1000));
         registerWebviewEventHandler('segments_update', (data) => setSegments(data));
 
+        registerWebviewEventHandler('track_loaded', (data) => clearThumbCache());
         registerSharedBufferHandler('thumb', thumbnailCallback);
     }, []);
 
@@ -77,12 +80,12 @@ const ProgressBar = () => {
     const handleCurrentTime = (newTime) => {
         setCurrentTime(newTime);
 
-        if(introButtonVisibleRef.current || outroButtonVisibleRef.current) {
+        if (introButtonVisibleRef.current || outroButtonVisibleRef.current) {
             // Finds current segment and check if still in range
-            for(const segment of timeSegmentsRef.current) {
-                if(segment.end !== currentSkipTimeEndRef.current) continue;
-                
-                if(newTime < segment.start || newTime > segment.end) {
+            for (const segment of timeSegmentsRef.current) {
+                if (segment.end !== currentSkipTimeEndRef.current) continue;
+
+                if (newTime < segment.start || newTime > segment.end) {
                     setOutroButtonVisible(false);
                     setIntroButtonVisible(false);
                 }
@@ -91,14 +94,14 @@ const ProgressBar = () => {
             return;
         }
 
-        for(const segment of timeSegmentsRef.current) {
-            if(segment.start < 0) {
-                if(segment.start + totalTimeRef.current <= newTime && segment.end > newTime){
+        for (const segment of timeSegmentsRef.current) {
+            if (segment.start < 0) {
+                if (segment.start + totalTimeRef.current <= newTime && segment.end > newTime) {
                     setOutroButtonVisible(true);
                     setCurrentSkipTimeEnd(segment.end);
                     return;
                 }
-            } else if(segment.start <= newTime && segment.end > newTime) {
+            } else if (segment.start <= newTime && segment.end > newTime) {
                 setIntroButtonVisible(true);
                 setCurrentSkipTimeEnd(segment.end);
                 return;
@@ -157,6 +160,10 @@ const ProgressBar = () => {
         thumbnailRequest(hoveredTime);
     };
 
+    const handleMouseLeave = () => {
+        setPopupVisible(false);
+    };
+
     const getThumbnailTime = (hoveredTime) => {
         return Math.floor(hoveredTime / 10000) * 10000; // Round down to nearest 10-second multiple
     };
@@ -175,8 +182,14 @@ const ProgressBar = () => {
         setIsLoading(true);
         lastRequestedTime.current = currentThumbTime;
 
-        console.log('Requesting thumb:', currentThumbTime);
+        if (blobUrlMap.has(currentThumbTime)) {
+            setThumbnail(blobUrlMap.get(currentThumbTime));
+            setIsLoading(false);
+            console.log('Grabbing thumb from cache:', currentThumbTime);
+            return;
+        }
 
+        console.log('Requesting thumb:', currentThumbTime);
         debouncedPostMessage(currentThumbTime);
 
         if (latestRequestId.current !== requestId) {
@@ -189,14 +202,22 @@ const ProgressBar = () => {
     }, 100)).current; //Debounced 100ms
 
     const thumbnailCallback = (blobUrl) => {
-        //TODO do revoke afterwards. URL.revokeObjectURL(blobUrl);
+        setBlobUrlMap((prevMap) => {
+            const newMap = new Map(prevMap);
+            newMap.set(lastRequestedTime.current, blobUrl);
+            return newMap;
+        });
+
         setThumbnail(blobUrl);
         setIsLoading(false);
     }
 
-    const handleMouseLeave = () => {
-        setPopupVisible(false);
-    };
+    const clearThumbCache = () => {
+        if (blobUrlMap?.size > 0) {
+            blobUrlMap.forEach((url) => URL.revokeObjectURL(url));
+        }
+        setBlobUrlMap(new Map());
+    }
 
     const getSegmentStyle = (segment) => {
         let startPercent, endPercent;

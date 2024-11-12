@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
     <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="SoundFingerprinting" Version="8.23.0" />
+    <PackageReference Include="SoundFingerprinting" Version="11.1.0" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.8" />
   </ItemGroup>
 

@@ -8,7 +8,6 @@ public class ItemHistoryMap : EntityMap<ItemHistory>
     {
         Map(m => m.ItemId).ToColumn("item_id");
         Map(m => m.FileId).ToColumn("file_id");
-        Map(m => m.Title).ToColumn("title");
         Map(m => m.PlaybackTime).ToColumn("playback_time");
     }
 }

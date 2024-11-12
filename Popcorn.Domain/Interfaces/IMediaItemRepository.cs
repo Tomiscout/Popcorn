@@ -13,6 +13,7 @@ public interface IMediaItemRepository
     Task DeleteMediaItem(Guid id);
     Task AddHistoryItem(Guid id, ItemHistory item);
     Task<List<ItemHistory>> GetHistoryItems(Guid itemId);
+    List<ItemHistoryDto>? GetItemHistoryDtos(MediaItem item);
     Task DeleteHistoryAll(Guid itemId);
     Task AddSegmentLocation(SegmentLocation segmentLocation);
     Task DeleteAllSegments(Guid id);

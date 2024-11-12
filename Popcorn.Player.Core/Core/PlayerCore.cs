@@ -199,16 +199,6 @@ public class PlayerCore
         return true;
     }
 
-    #region Events from main program
-
-    internal void SavePlayerHistory(TrackPlayedEvent e) //Backup save when main client has exited
-    {
-        Log.Information("Main app is missing, saving progress from player");
-        _mediaItemManager.SendCurrentMediaFolderLoaded(e.HistoryItem.Filename);
-        //TODO save info. Need to reference persistence and pass item folder.
-    }
-    #endregion
-
     #region Utility
     public void Dispose()
     {

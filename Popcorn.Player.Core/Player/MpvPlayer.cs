@@ -71,7 +71,7 @@ public class MpvPlayer : IPlayer
 
     public void LoadMedia(string path)
     {
-        _player.Command($"loadfile '{path}' append-play");
+        _player.Command($"loadfile '{path}'");
         MediaPlaying?.Invoke(this, EventArgs.Empty); //TODO this feels kinda nasty, should review the event system
     }
 

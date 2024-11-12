@@ -196,6 +196,21 @@ public class MediaItemRepository : IMediaItemRepository
         return item;
     }
 
+    public List<ItemHistoryDto>? GetItemHistoryDtos(MediaItem item)
+    {
+        return item.History?.Select(h =>
+        {
+            var file = item.Files.First(f => f.Id == h.FileId);
+            return new ItemHistoryDto
+            {
+                ItemId = h.ItemId,
+                FileId = h.FileId,
+                PlaybackTime = h.PlaybackTime,
+                Title = !string.IsNullOrWhiteSpace(file.ShortTitle) ? file.ShortTitle : file.Title,
+            };
+        }).ToList();
+    }
+
     public async Task<List<string>> GetMediaItemFolders()
     {
         using var connection = _dbContext.CreateConnection();
