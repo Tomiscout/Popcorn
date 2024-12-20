@@ -41,6 +41,8 @@ public class ThumbnailService
                 FfmpegCts ??= new CancellationTokenSource();
 
                 var currentFile = _playerCore.Value.CurrentMediaFile;
+                if (currentFile == null) return Task.CompletedTask;
+
                 var bytes = GetThumbnailBytes(currentFile.Path, _playerCore.Value.CurrentMediaProbe, currentFile.Id.ToString(), time, FfmpegCts.Token);
                 if (!bytes.Any()) return Task.CompletedTask;
 

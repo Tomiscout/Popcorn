@@ -8,13 +8,9 @@ Auto select subtitles regression
 
 Popcorn settings not saving
 Investigate gpu-next
-Use callback instead of polling in mpv messaging
+Update MpvSharp to some other version, as upstream is archived and has high cpu usage, compared to forked version
 
 Subtitle box adjusting
-
-
-Packaging for windows
-Investigate gtk for windows and if possible to reuse the player
 
 # Development environment #
 

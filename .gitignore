@@ -15,3 +15,4 @@
 Popcorn.Player.Linux/old/**/*.*
 Tomiscout.MPVSharp2/**/*.*
 /build
+/node_modules

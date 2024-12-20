@@ -5,24 +5,6 @@ import debounce from 'lodash.debounce';
 import Slider from '@mui/material/Slider';
 import SkipButton from './SkipButton';
 
-function timeFormat(duration) {
-    duration = duration / 1000;
-    // Hours, minutes and seconds
-    const hrs = ~~(duration / 3600);
-    const mins = ~~((duration % 3600) / 60);
-    const secs = ~~duration % 60;
-
-    // Output like "1:01" or "4:03:59" or "123:03:59"
-    let ret = "";
-    if (hrs > 0) {
-        ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
-    }
-    ret += "" + mins + ":" + (secs < 10 ? "0" : "");
-    ret += "" + secs;
-
-    return ret;
-}
-
 const ProgressBar = () => {
     const [popupVisible, setPopupVisible] = useState(false);
     const [popupTime, setPopupTime] = useState('');
@@ -35,7 +17,7 @@ const ProgressBar = () => {
     const [blobUrlMap, setBlobUrlMap] = useState(new Map());
 
     const [currentTime, setCurrentTime] = useState(0);
-    const [totalTime, setTotalTime] = useState(10000);
+    const [totalTime, setTotalTime] = useState(0);
     const totalTimeRef = useRef(totalTime); //Needed for segments calculation and immediate access to value. could be avoided with precalculated end from backend
     const [timeSegments, setTimeSegments] = useState([]);
     const timeSegmentsRef = useRef(timeSegments); //withou using ref - handleCurrentTime closure cant access newest segments, just default []
@@ -48,14 +30,34 @@ const ProgressBar = () => {
     const [currentSkipTimeEnd, setCurrentSkipTimeEnd] = useState(0);
     const currentSkipTimeEndRef = useRef(currentSkipTimeEnd);
 
+    const playbackReset = () => {
+        setThumbnail(null);
+        clearThumbCache();
+        setCurrentTime(0);
+        setTotalTime(0);
+        setTimeSegments([]);
+        setIntroButtonVisible(false);
+        setOutroButtonVisible(false);
+        setSkipRequested(false);
+        setCurrentSkipTimeEnd(0);
+    }
+
     useEffect(() => {
         registerWebviewEventHandler('current_time', (data) => handleCurrentTime(data * 1000)); //TODO vlc uses ms, while mpv returns seconds double. Should convert logic to mpv
-        registerWebviewEventHandler('duration_update', (data) => setTotalTime(data * 1000));
         registerWebviewEventHandler('segments_update', (data) => setSegments(data));
+        registerWebviewEventHandler('duration_update', (data) => {
+            if(data === -1) {
+                setTotalTime(0);
+                //TODO handle this better
+            } else {
+                setTotalTime(data * 1000);
+            }
+        });
 
         registerWebviewEventHandler('track_loaded', (data) => clearThumbCache());
+        registerWebviewEventHandler('playback_reset', playbackReset);
         registerSharedBufferHandler('thumb', thumbnailCallback);
-    }, []);
+    });
 
     useEffect(() => {
         totalTimeRef.current = totalTime;
@@ -167,6 +169,26 @@ const ProgressBar = () => {
     const getThumbnailTime = (hoveredTime) => {
         return Math.floor(hoveredTime / 10000) * 10000; // Round down to nearest 10-second multiple
     };
+
+    function timeFormat() {
+        if(totalTime <= 0) return '?';
+        
+        const duration = (totalTime - currentTime) / 1000;
+        // Hours, minutes and seconds
+        const hrs = ~~(duration / 3600);
+        const mins = ~~((duration % 3600) / 60);
+        const secs = ~~duration % 60;
+    
+        // Output like "1:01" or "4:03:59" or "123:03:59"
+        let ret = "";
+        if (hrs > 0) {
+            ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
+        }
+        ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+        ret += "" + secs;
+    
+        return ret;
+    }
 
     const lastRequestedTime = useRef(null);
     const latestRequestId = useRef(null);
@@ -312,7 +334,7 @@ const ProgressBar = () => {
 
                 </div>
                 <div id="time-remaining">
-                    {timeFormat(totalTime - currentTime)}
+                    {timeFormat()}
                 </div>
             </div>
         </div>

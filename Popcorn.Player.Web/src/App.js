@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import './App.css';
 import ControlBar from './Components/ControlBar';
-import { eventHandler, bufferEventHandler, initEvents } from './events';
+import ErrorOverlay from './Components/ErrorOverlay';
+import { initEvents } from './events';
 import { disableDefaultListeners } from './Utlis/helpers';
-import NotificationControl from './Components/NotificationControl';
+import PlaybackNotificationControl from './Components/PlaybackNotificationControl';
 
 const App = () => {
   const videoContainerRef = useRef(null);
@@ -25,7 +26,8 @@ const App = () => {
       ref={videoContainerRef}
     >
       <ControlBar />
-      <NotificationControl />
+      <PlaybackNotificationControl />
+      <ErrorOverlay />
     </div>
   );
 };

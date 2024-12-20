@@ -72,20 +72,25 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        Log.Logger.Information("Program exiting...");
+
         GracefulShutdown();
         base.OnExit(e);
     }
  
     public static void GracefulShutdown()
     {
-        lock (_shutdownLock) // This could be executed from multiple locations, but ran only once
+        lock (_shutdownLock) // This could be executed from multiple locations, but should run only once
         {
             if (_isShuttingDown) return;
             _isShuttingDown = true;
         }
 
-        Services.GetService<ClientPipeManager>().Dispose();
-        Services.GetService<PlayerCore>().Dispose();
+        ((MainWindow)Current.MainWindow)?.Destroy();
+        Services.GetService<ClientPipeManager>()?.Dispose();
+        Services.GetService<PlayerCore>()?.Dispose();
+
+        Log.Logger.Information("All services disposed");
         Log.CloseAndFlush();
     }
 
@@ -98,7 +103,7 @@ public partial class App : Application
     {
         Services.GetService<WebEventHandler>().OnFullscreen += (object sender, bool isFullscreen) =>
         {
-            ((MainWindow)Application.Current.MainWindow).ChangeFullscreen(isFullscreen);
+            ((MainWindow)Current.MainWindow).ChangeFullscreen(isFullscreen);
         };
     }
 }

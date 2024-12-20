@@ -69,10 +69,8 @@ export function postMessage(name, data = null) {
     webviewContext.postMessage(message);
   } else if(socket) {
     socket.send(JSON.stringify(message));
-  } else {
-    console.log('No event transport for postMessage', name);
-    return;
   }
+  
   localEventHandler(name, data);
 }
 

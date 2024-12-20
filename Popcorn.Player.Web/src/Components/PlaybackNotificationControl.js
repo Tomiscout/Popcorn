@@ -6,9 +6,9 @@ import { ReactComponent as ForwardButton } from '../assets/icons/10-forward.svg'
 import { ReactComponent as PlayButton } from '../assets/icons/play.svg';
 import { ReactComponent as StopButton } from '../assets/icons/stop.svg';
 import { ReactComponent as NextTrack } from '../assets/icons/next.svg';
-import '../Styles/NotificationControl.css';
+import '../Styles/PlaybackNotificationControl.css';
 
-const NotificationControl = () => {
+const PlaybackNotificationControl = () => {
     const [showNotification, setShowNotification] = useState(false);
     const [message, setMessage] = useState('');
     const [currentIcon, setCurrentIcon] = useState(null);
@@ -66,4 +66,4 @@ const NotificationControl = () => {
     );
 };
 
-export default NotificationControl;
+export default PlaybackNotificationControl;

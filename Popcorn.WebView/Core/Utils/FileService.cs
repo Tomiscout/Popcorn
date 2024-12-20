@@ -4,6 +4,7 @@ using Popcorn.Core.Exceptions;
 using Popcorn.Domain;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Shared.Utils;
+using Popcorn.Shared.Interfaces;
 using Popcorn.WebView.Core.Exceptions;
 
 namespace Popcorn.Core.Utils;

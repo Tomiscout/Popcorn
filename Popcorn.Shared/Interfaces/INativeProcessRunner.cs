@@ -1,7 +1,7 @@
+namespace Popcorn.Shared.Interfaces;
 
-namespace Popcorn.Domain.Interfaces;
-
-public interface INativeProcessRunner {
+public interface INativeProcessRunner
+{
     public string? ExecuteCommandRead(string command, string args = "");
     public void ExecuteCommandDetached(string command, string args = "");
 }

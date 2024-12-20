@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Popcorn.Domain.Interfaces;
+using Popcorn.Shared.Interfaces;
 
 namespace Popcorn.Linux;
 

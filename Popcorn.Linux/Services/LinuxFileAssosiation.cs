@@ -1,8 +1,8 @@
 
 using System.IO;
 using Microsoft.Extensions.Logging;
-using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Utils;
+using Popcorn.Shared.Interfaces;
 
 namespace Popcorn.Linux;
 

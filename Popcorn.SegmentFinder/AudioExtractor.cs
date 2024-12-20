@@ -11,6 +11,8 @@ using PopcornPlayer.Shared;
 namespace Popcorn.SegmentFinder;
 internal static class AudioExtractor
 {
+
+    //TODO should use ffmpegcore, but works for now
     private const string AudioTrackDetailsTemplate = "-i \"{0}\" -hide_banner 2>&1 | findstr \"Audio Duration\"";
 
     //For now intro only

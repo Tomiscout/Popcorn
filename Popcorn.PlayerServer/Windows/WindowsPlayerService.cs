@@ -98,7 +98,7 @@ public class WindowsPlayerService : IPlayerService
     private string GetPlayerExePath()
     {
         var binLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        var installedExe = Path.Join(binLocation, @"\Popcorn.Player.Windows.exe");
+        var installedExe = Path.Join(binLocation, @"\Player\Popcorn.Player.Windows.exe");
         if (File.Exists(installedExe))
         {
             return installedExe;

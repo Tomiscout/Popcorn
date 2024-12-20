@@ -34,23 +34,23 @@ public class PlayerCore
         _thumbnailService.Initialize();
     }
 
-    public MediaFile CurrentMediaFile = null;
-    public IMediaAnalysis CurrentMediaProbe = null;
+    public MediaFile? CurrentMediaFile = null;
+    public IMediaAnalysis? CurrentMediaProbe = null;
 
     private List<MediaFile> _inputFilePaths { get; set; }
     private bool _isLoadedFromArgs = false;
 
     private bool _isLoadingTrack = false;
 
-    public void LoadFileId(Guid fileId)
+    public async Task LoadFileId(Guid fileId)
     {
         _mediaItemManager.LoadMediaInfo(fileId);
         var file = _mediaItemManager.CurrentMediaItem.Files.First(f => f.Id == fileId);
 
-        LoadMedia(file);
+        await LoadMedia(file);
     }
 
-    public void LoadFilesFromInput(List<string> paths)
+    public async Task LoadFilesFromInput(List<string> paths)
     {
         _isLoadedFromArgs = true;
         _inputFilePaths = paths.Select(p => new MediaFile
@@ -64,10 +64,10 @@ public class PlayerCore
             file.ParseTitle();
         }
         var media = _inputFilePaths.FirstOrDefault();
-        LoadMedia(media);
+        await LoadMedia(media);
     }
 
-    public void LoadMedia(MediaFile file)
+    public async Task LoadMedia(MediaFile file)
     {
         _isLoadingTrack = true;
         if (!File.Exists(file.Path))
@@ -91,7 +91,15 @@ public class PlayerCore
         file.Played = true;
         CurrentMediaFile = file;
 
-        _player.LoadMedia(file.Path);
+        var hasLoaded = await _player.LoadMedia(file.Path, CurrentMediaProbe);
+        if(!hasLoaded)
+        {
+            CurrentMediaProbe = null;
+            CurrentMediaFile = null;
+            _player.Stop();
+            _webSocket.Value.PostEvent("playback_reset", null);
+            return;
+        }
 
         OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
 
@@ -146,7 +154,7 @@ public class PlayerCore
         return true;
     }
 
-    private IMediaAnalysis ProbeMetadata(string path)
+    private IMediaAnalysis? ProbeMetadata(string path)
     {
         try
         {

@@ -59,7 +59,7 @@ internal class VideoDecoders
         }
 
         var videoFilter = GetCudaDefaultFilterArguments(pixelFormat);
-        // if (videoStream.ColorPrimaries == "bt2020") TODO use patched ffmpegcore
+        // if (videoStream.ColorPrimaries == "bt2020") TODO use updated ffmpegcore, upstream got updated!
         // {
         //     videoFilter += $",{HdrFilterArguments}";
         // }

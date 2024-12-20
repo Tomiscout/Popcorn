@@ -111,6 +111,17 @@ public class WebEventHandler
         }
     }
 
+    public void PostError(string messageString, Exception ex)
+    {
+        PostEvent("error", new ErrorEvent() {
+            Message = messageString,
+            ExceptionMessage = ex.Message,
+            Stacktrace = ex.StackTrace ?? string.Empty,
+            InnerMessage = ex.InnerException != null ? ex.InnerException.Message : null,
+            InnerStacktrace = ex.InnerException != null ? ex.InnerException.StackTrace : null,
+        });
+    }
+
     /// <summary>
     /// Post binary data to websocket. Only used for thumbnails
     /// </summary>

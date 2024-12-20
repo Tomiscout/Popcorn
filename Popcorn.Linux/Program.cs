@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Photino.Blazor;
 using System;
 using Blazored.Modal;
-using Popcorn.Core;
+using Popcorn.Shared.Linux;
 using PopcornPlayer.Shared;
 using FluentMigrator.Runner;
 using MudBlazor.Services;
@@ -11,11 +11,10 @@ using Popcorn.Shared.Utils;
 using Popcorn.Persistence;
 using Serilog;
 using Popcorn.WebView;
-using MathNet.Numerics;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Linux;
 using Popcorn.PlayerServer;
-using Popcorn.WebView.Linux;
+using Popcorn.Shared.Interfaces;
 
 namespace Popcorn.Photino;
 

@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows7.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <OutputType>WinExe</OutputType>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <UseWPF>true</UseWPF>
@@ -10,14 +10,12 @@
     <PackageIcon>popcorn.ico</PackageIcon>
     <ApplicationIcon>popcorn.ico</ApplicationIcon>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <StartupObject></StartupObject>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <WarningLevel>7</WarningLevel>
     <DebugType>full</DebugType>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <WarningLevel>7</WarningLevel>
-    <DebugType>None</DebugType>
+    <IsPublishable>False</IsPublishable>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Models\**" />
@@ -32,17 +30,15 @@
   
   <ItemGroup>
     <PackageReference Include="FFMpegCore" Version="5.1.0" />
-    <PackageReference Include="LibVLCSharp.WPF" Version="3.8.2" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
-    <PackageReference Include="PipeMethodCalls" Version="4.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.1661.34" />
+    <PackageReference Include="PipeMethodCalls" Version="4.0.2" />
     <PackageReference Include="PipeMethodCalls.NetJson" Version="3.0.0" />
-    <PackageReference Include="Serilog" Version="4.0.2" />
-    <PackageReference Include="Serilog.Sinks.Console" Version="4.1.0" />
-    <PackageReference Include="Serilog.Sinks.Debug" Version="2.0.0" />
-    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
-    <PackageReference Include="SharpVectors.Wpf" Version="1.8.1" />
+    <PackageReference Include="Serilog" Version="4.1.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="Nickvision.MPVSharp.Bundled" Version="2023.9.0" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.8" />
   </ItemGroup>
@@ -59,29 +55,29 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Popcorn.Player.Core\Popcorn.Player.Core.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="Resources\popcorn.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Resources\popcorn.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Resources\" />
+    <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="popcorn.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy /e /i /y &quot;$(SolutionDir)Popcorn.Player.Web\build&quot; &quot;$(TargetDir)\web-player&quot;" />
-    <Exec Condition=" '$(Configuration)' == 'Release' " Command="mkdir &quot;$(SolutionDir)Bundle\Player&quot; &amp; xcopy /y /r /e /I &quot;$(TargetDir)*.*&quot; &quot;$(SolutionDir)Bundle\Player\&quot;" />
+	<Target Name="PostBuild" AfterTargets="Build">
+    <Exec Command="xcopy /e /i /y &quot;$(ProjectDir)..\Popcorn.Player.Web\build&quot; &quot;$(TargetDir)\web-player&quot;" />
   </Target>
 
 </Project>

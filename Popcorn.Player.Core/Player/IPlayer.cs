@@ -1,10 +1,12 @@
+using FFMpegCore;
 using Popcorn.Player.Core.Contracts;
 
 namespace Popcorn.Player.Core.Player;
 
 public interface IPlayer : IDisposable
 {
-    void LoadMedia(string path);
+
+    Task<bool> LoadMedia(string path, IMediaAnalysis mediaAnalysis);
     void Play(bool play = true);
     void Stop();
     void SetPlaybackTime(long time);

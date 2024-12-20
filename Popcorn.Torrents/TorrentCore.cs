@@ -6,7 +6,7 @@ using MonoTorrent.Client.PiecePicking;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
 using Popcorn.Domain.Models.Torrent;
-using Popcorn.Shared;
+using Popcorn.Shared.Interfaces;
 using Popcorn.Shared.Models;
 using Popcorn.Shared.Utils;
 

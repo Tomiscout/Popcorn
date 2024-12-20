@@ -1,44 +1,47 @@
+using System.Diagnostics;
+using FFMpegCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Nickvision.MPVSharp;
 using Nickvision.MPVSharp.Internal;
 using Popcorn.Player.Core.Contracts;
+using Popcorn.Player.Core.Services;
 using Popcorn.Player.Core.WebSocket;
+using Popcorn.Shared.Interfaces;
 
 namespace Popcorn.Player.Core.Player;
 
 public class MpvPlayer : IPlayer
 {
     private readonly Lazy<WebEventHandler> _webSocket;
+    private readonly FFmpegService _ffmpegService;
+    private readonly ILogger<MpvPlayer> _logger;
+
     public Client _player { get; }
 
-    public MpvPlayer(Lazy<WebEventHandler> webSocket)
+    public MpvPlayer(Lazy<WebEventHandler> webSocket, ILogger<MpvPlayer> logger, FFmpegService ffmpegService)
     {
         _webSocket = webSocket;
+        _ffmpegService = ffmpegService;
         _player = new Client();
         _player.SetProperty("vo", "libmpv");
         _player.SetProperty("hwdec", "auto");
         _player.SetProperty("osd-level", "0");
+        //_player.SetOption("deinterlace", "auto"); // Should find a way to enable this by updating MPV to 0.38. Nickvision.MPVSharp is archived.
         _player.SetOption("sub-border-size", "1");
+        _logger = logger;
         //_player.SetProperty("log-file", "mpv_log.log");
 
         //_player.RequestLogMessages("debug");
         _player.LogMessageReceived += (sender, e) =>
         {
-            Console.Write($"[{e.Prefix}] {e.Text}"); // Log messages (e.Text) end with newline char
+            logger.LogInformation($"[{e.Prefix}] {e.Text}"); // Log messages (e.Text) end with newline char
         };
-        _player.PropertyChanged += (sender, e) =>
-        {
-            switch (e.Name)
-            {
-                //case "time-pos": _currentTimePos = e.Node.Value.ToString(); return;
-                case "media-title": /*Program.SetTitle((string)e.Node!);*/ return; //TODO
-            }
-        };
-        _player.ObserveProperty("time-pos");
-        _player.ObserveProperty("duration");
 
         _player.PropertyChanged += (sender, e) =>
         {
+            logger.LogInformation($"PropertyChanged {e.Name}: {e.Node?.ToString()}");
+
             if (e.Node == null) return;
 
             switch (e.Name)
@@ -46,12 +49,8 @@ public class MpvPlayer : IPlayer
                 case "time-pos":
                     _webSocket.Value.PostEvent("current_time", (double)e.Node.Value!);
                     return;
-                case "duration":
-                    _webSocket.Value.PostEvent("duration_update", (double)e.Node.Value!);
-                    return;
+                //case "media-title":
             }
-
-            Console.WriteLine($"{e.Name}: {e.Node.ToString()}");
         };
     }
 
@@ -69,10 +68,55 @@ public class MpvPlayer : IPlayer
         Initialize();
     }
 
-    public void LoadMedia(string path)
+    public async Task<bool> LoadMedia(string path, IMediaAnalysis mediaAnalysis)
     {
-        _player.Command($"loadfile '{path}'");
+        try
+        {
+            Stop();
+            _player.Command(new string[] { "loadfile", path });
+        } catch (Exception ex)
+        {
+            var message = "Failed to open file: " + path;
+            _logger.LogError(ex, message);
+            _webSocket.Value.PostError(message, ex);
+            return false;
+        }
+        _player.ObserveProperty("time-pos");
+        _player.ObserveProperty("duration");
+
+        LoadFileDuration(path, mediaAnalysis);
+
         MediaPlaying?.Invoke(this, EventArgs.Empty); //TODO this feels kinda nasty, should review the event system
+        return true;
+    }
+
+    private void LoadFileDuration(string path, IMediaAnalysis mediaAnalysis)
+    {
+        double duration = -1;
+
+        try
+        {
+            _player.GetProperty("duration", out duration);
+        } catch(Exception ex)
+        {
+            _logger.LogWarning(ex, "No duration field in the file {path}", path);
+        }
+        if (duration < 10) //When Mpv can't parse duration - it's always the current time
+        {
+            if (mediaAnalysis.PrimaryVideoStream?.Duration.TotalSeconds > 0)
+            {
+                duration = mediaAnalysis.PrimaryVideoStream?.Duration.TotalSeconds ?? mediaAnalysis.Duration.TotalSeconds;
+            } else
+            {
+                var fileSize = new FileInfo(path).Length;
+                if(fileSize <= 1024 * 1024 * 100) //Clamp to small file sizes
+                {
+                    duration = _ffmpegService.GetFileDurationFullDecode(path) ?? -1;
+                }
+            }
+        }
+
+        _webSocket.Value.PostEvent("duration_update", duration);
     }
 
     public void Play(bool play = true)

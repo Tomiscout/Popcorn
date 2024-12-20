@@ -19,6 +19,7 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
+	  <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -37,7 +37,7 @@ const PlaybackControls = () => {
   }
   const toggleFullscreen = () => {
     const newFullscreenValue = !fullscreen;
-    postMessage('fullscreen', newFullscreenValue);
+    postMessage('request_fullscreen', newFullscreenValue);
   }
   const exitFullscreen = () => {
     if (fullscreen) {

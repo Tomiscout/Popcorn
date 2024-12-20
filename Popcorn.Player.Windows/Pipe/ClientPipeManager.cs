@@ -27,23 +27,60 @@ public class ClientPipeManager
 
     public async Task Initialize() //TODO should use some kind of bus here instead
     {
-        var pipeName = await GetPipeName();
+        try
+        {
+            var pipeName = await GetPipeName();
+            if(pipeName == null)
+            {
+                return;
+            }
 
-        // Initialize the pipe client. Note that the type parameters are exactly
-        // the same passed in the server example, but in reverse order.
-        // The first type parameters indicates what the other process can do,
-        // while the second one indicates the functionality this process exposes.
-        _pipeClient = new PipeClientWithCallback<PopcornPlayer.Shared.IPipeServer, IPipeClient>(
-            new NetJsonPipeSerializer(), pipeName, () => new PipeClient(_playerCore));
+            // Initialize the pipe client. Note that the type parameters are exactly
+            // the same passed in the server example, but in reverse order.
+            // The first type parameters indicates what the other process can do,
+            // while the second one indicates the functionality this process exposes.
+            _pipeClient = new PipeClientWithCallback<PopcornPlayer.Shared.IPipeServer, IPipeClient>(
+                new NetJsonPipeSerializer(), pipeName, () => new PipeClient(_playerCore));
 
-        // We wait until the connection is established
-        await _pipeClient.ConnectAsync();
+            await ConnectWithTimeout();
 
-        await PingServerOnInit();
+            await PingServerOnInit();
 
-        await _pipeClient.WaitForRemotePipeCloseAsync();
-
-        _pipeClient.Dispose();
+            // Run in the background
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _pipeClient.WaitForRemotePipeCloseAsync();
+                    _pipeClient.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error while waiting for remote pipe to close");
+                }
+            });
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(ex, "Pipe client initialization failed due to timeout");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Pipe client initialization failed");
+            throw; // Optional: rethrow if you want the caller to handle it
+        }
+    }
+    private async Task ConnectWithTimeout()
+    {
+        var connectTask = _pipeClient.ConnectAsync();
+        if (await Task.WhenAny(connectTask, Task.Delay(TimeSpan.FromSeconds(10))) == connectTask)
+        {
+            await connectTask; // Connection successful
+        }
+        else
+        {
+            throw new TimeoutException("Pipe client connection timed out");
+        }
     }
 
     private async Task<string> GetPipeName()
@@ -57,8 +94,8 @@ public class ClientPipeManager
 #if DEBUG
             return $"DEBUG_PIPE-{Guid.NewGuid()}";
 #endif
-            Console.WriteLine("No pipe name found! Exiting...");
-            Environment.Exit(0);
+            _logger.LogInformation("No pipe name found, running standalone.");
+            return null;
         }
 
         return await File.ReadAllTextAsync(_pipeFileName);

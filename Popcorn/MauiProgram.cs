@@ -14,6 +14,8 @@ using Popcorn.PlayerServer.Windows;
 using Popcorn.PlayerServer;
 using Popcorn.Shared;
 using Popcorn.Services;
+using Popcorn.Shared.Interfaces;
+using Popcorn.Shared.Windows;
 
 namespace Popcorn;
 

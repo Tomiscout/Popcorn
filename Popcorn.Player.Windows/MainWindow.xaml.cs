@@ -14,6 +14,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Versioning;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -32,25 +33,42 @@ public partial class MainWindow : Window
 {
     private readonly WebEventHandler _webEventHandler;
     private WindowChrome _currentChrome;
+    private MpvPlayerHwndHost _currentMpvHost;
 
     public MainWindow()
     {
         _webEventHandler = App.Services.GetService<WebEventHandler>();
         InitializeComponent();
 
-        var mpvPlayerHost = new MpvPlayerHwndHost();
-        MpvPlayerHostBorder.Child = mpvPlayerHost;
+        _currentMpvHost = new MpvPlayerHwndHost();
+        MpvPlayerHostBorder.Child = _currentMpvHost;
     }
     
     public async void Window_Loaded(object sender, RoutedEventArgs e)
     {
         _currentChrome = WindowChrome.GetWindowChrome(this);
-        Task.Run(async () => await App.Services.GetService<ClientPipeManager>().Initialize()); //TODO this is ugly
+        _ = InitializeClientPipeManager();
+        _ = InitializeWebView2();
 
         GpuScanner.ScanHardware();
-        await InitializeWebView2();
 
         Log.Information("MetroWindow initialized");
+    }
+
+    private async Task InitializeClientPipeManager()
+    {
+        try
+        {
+            await App.Services.GetService<ClientPipeManager>().Initialize();
+        }
+        catch (TaskCanceledException ex)
+        {
+            Log.Warning(ex, "ClientPipeManager.Initialize was canceled");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in ClientPipeManager.Initialize");
+        }
     }
 
     private static string AssemblyFolder = Directory.GetParent(Assembly.GetExecutingAssembly().Location).FullName;
@@ -67,6 +85,9 @@ public partial class MainWindow : Window
             var env = await CoreWebView2Environment.CreateAsync(options: op);
             await WebView.EnsureCoreWebView2Async(env);
 
+            Log.Information("EnsureCoreWebView2Async"); //this is never executed
+
+
             bool useLocalWeb = Environment.GetEnvironmentVariable("UseLocalWeb")?.ToLower() == "true";
             if (useLocalWeb)
             {
@@ -80,11 +101,12 @@ public partial class MainWindow : Window
                 WebView.Source = new Uri($"file:///{WebPath.Replace(@"\", "/")}index.html");
             }
             WebView.Focus();
-            PlayerInitialized();
+            await PlayerInitialized();
         }
         catch (Exception e)
         {
             Log.Error(e, "Failed to initialize webview");
+            Log.CloseAndFlush();
         }
     }
 
@@ -125,7 +147,7 @@ public partial class MainWindow : Window
         });
     }
 
-    private bool PlayerInitialized()
+    private async Task<bool> PlayerInitialized()
     {
         var envPaths = Environment.GetCommandLineArgs().Skip(1).ToList();
         if(!envPaths.Any())
@@ -136,12 +158,12 @@ public partial class MainWindow : Window
         var playerCore = App.Services.GetService<PlayerCore>();
         if (Guid.TryParse(envPaths.First(), out Guid parsedFileId))
         {
-            playerCore.LoadFileId(parsedFileId);
+            await playerCore.LoadFileId(parsedFileId);
         }
         else
         {
             envPaths = envPaths.Where(p => Path.IsPathFullyQualified(p) && !p.StartsWith("-")).ToList();
-            playerCore.LoadFilesFromInput(envPaths);
+            await playerCore.LoadFilesFromInput(envPaths);
         }
         return true;
     }
@@ -255,6 +277,14 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        Log.Information("MainWindow closed");
         App.GracefulShutdown();
+    }
+
+    public void Destroy()
+    {
+        WebView?.Dispose();
+        _currentMpvHost?.Dispose();
+        Close();
     }
 }

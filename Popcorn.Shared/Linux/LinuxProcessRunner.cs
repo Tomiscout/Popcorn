@@ -1,10 +1,9 @@
 
-using System;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
-using Popcorn.Domain.Interfaces;
+using Popcorn.Shared.Interfaces;
 
-namespace Popcorn.WebView.Linux;
+namespace Popcorn.Shared.Linux;
 
 public class LinuxProcessRunner : INativeProcessRunner
 {
@@ -46,7 +45,7 @@ public class LinuxProcessRunner : INativeProcessRunner
             StartInfo = new ProcessStartInfo
             {
                 FileName = "/bin/sh",
-                Arguments = $"-c \"{command}\"",
+                Arguments = $"-c \"{command}\" {args}",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -66,6 +65,11 @@ public class LinuxProcessRunner : INativeProcessRunner
             return string.Empty;
         }
 
-        return output.Trim();
+        string result = output.Trim();
+        if(string.IsNullOrWhiteSpace(result))
+        {
+            result = error.Trim();
+        }
+        return result;
     }
 }
