@@ -32,6 +32,8 @@ namespace Popcorn.Shared.Utils
         private static readonly string[] TagsToRemove = { "bluray", "blu-ray", "dts-hd", "aac", "dsr" };
         public static (string, List<string>) SanitizeFilename(string filename, List<string> tags)
         {
+            if(tags == null) tags = new List<string>();
+
             var name = filename.Trim();
             var containsHyphen = name.Contains("-") && name.Count(c => c == '-') > 2;
             var containsUnderscore = name.Contains("_") && name.Count(c => c == '_') > 2;

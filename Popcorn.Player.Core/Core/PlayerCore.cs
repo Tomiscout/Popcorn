@@ -47,6 +47,7 @@ public class PlayerCore
     {
         _mediaItemManager.LoadMediaInfo(fileId);
         var file = _mediaItemManager.CurrentMediaItem.Files.First(f => f.Id == fileId);
+        file.ParseTitle();
 
         await LoadMedia(file);
     }

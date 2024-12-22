@@ -42,11 +42,11 @@ public class MediaFile
         {
             Title = System.IO.Path.GetFileName(Path); //Could be implemented in getter setter
         }
-        if(FormatTags is null)
+        /*if(FormatTags is null)
         {
             ShortTitle = Title;
             return;
-        }
+        }*/
         var (parsed, tags) = StringUtils.SanitizeFilename(Title, FormatTags);
         ShortTitle = parsed;
         FormatTags = tags;
