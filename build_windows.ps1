@@ -56,8 +56,23 @@ function Bundle-Windows {
     Write-Output "Copied Popcorn Player build files to $BundleDir"
 }
 
+function Clean-Directory {
+    param (
+        [string]$dir
+    )
+    if (Test-Path -Path $dir) {
+        Remove-Item -Recurse -Force -Path $dir
+        Write-Output "Cleaned directory: $dir"
+    }
+    # Ensure the directory exists after cleaning
+    Ensure-Directory -dir $dir
+}
+
 # Main script to build all
 Write-Output "Starting build process..."
+
+Clean-Directory -dir $BundleDir
+
 Build-Player-Web
 Build-Popcorn-Windows
 Build-Popcorn-Player-Windows

@@ -61,6 +61,9 @@ export function initEvents() {
   }
 }
 
+export function postLocalMessage(name, data = null) {
+  localEventHandler(name, data);
+}
 
 export function postMessage(name, data = null) {
   console.log('Posting event:', name, data);
@@ -137,3 +140,22 @@ export function bufferEventHandler(blobUrl) {
   }
 }
 
+export function unregisterEventHandler(name, handler) {
+  if (!localHandlers[name]) return;
+
+  localHandlers[name] = localHandlers[name].filter((h) => h !== handler);
+
+  if (!localHandlers[name].length) {
+    delete localHandlers[name];
+  }
+}
+
+export function unregisterWebviewEventHandler(name, handler) {
+  if (!webviewHandlers[name]) return;
+
+  webviewHandlers[name] = webviewHandlers[name].filter((h) => h !== handler);
+
+  if (!webviewHandlers[name].length) {
+    delete webviewHandlers[name];
+  }
+}

@@ -27,7 +27,13 @@ public class PopcornPipeEventHandler
             {
                 case nameof(LoadMediaEvent):
                     var loadEvent = JsonSerializer.Deserialize<LoadMediaEvent>(message);
-                    _playerCore.LoadFileId(loadEvent!.FileId);
+                    if(loadEvent?.FileId != null)
+                    {
+                        _playerCore.LoadFileId(loadEvent!.FileId.Value);
+                    } else if(loadEvent!.FilePath != null)
+                    {
+                        _playerCore.LoadFilesFromInput(new List<string> { loadEvent!.FilePath });
+                    }
                     break;
             }
         }

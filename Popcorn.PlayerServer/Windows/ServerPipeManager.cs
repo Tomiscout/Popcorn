@@ -69,6 +69,7 @@ public static class ServerPipeManager
     }
 
     public static async Task LoadMediaEvent(Guid fileId) => await _pipeServer.InvokeAsync(x => x.LoadMedia(new LoadMediaEvent() { FileId = fileId }));
+    public static async Task LoadMediaEventPath(string filePath) => await _pipeServer.InvokeAsync(x => x.LoadMedia(new LoadMediaEvent() { FilePath = filePath }));
 
     public static async Task UpdateMediaItemHistory(List<ItemHistory> item) => await _pipeServer.InvokeAsync(x => x.UpdateMediaItemHistory(item));
 

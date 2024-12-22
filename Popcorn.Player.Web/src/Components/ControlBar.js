@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import ProgressBar from './ProgressBar';
 import PlaybackControls from './PlaybackControls';
 import { useEventListeners } from '../Utlis/helpers';
+import '../Styles/ControlBar.css';
 
 const ControlBar = () => {
     const controlsTimeoutRef = useRef(null);
@@ -25,9 +26,12 @@ const ControlBar = () => {
     useEventListeners('mousemove', { 'default': displayControls });
 
     return (
-        <div ref={controlsContainerRef} className="controls-container">
-            <ProgressBar />
-            <PlaybackControls />
+        <div ref={controlsContainerRef} className='controls-root' style={{display: 'contents'}}>
+            <div className="fading-background" />
+            <div className="controls-container">
+                <ProgressBar />
+                <PlaybackControls />
+            </div>
         </div>
     );
 };

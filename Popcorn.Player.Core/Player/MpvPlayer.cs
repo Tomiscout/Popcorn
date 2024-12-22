@@ -1,10 +1,12 @@
 using System.Diagnostics;
+using System.IO;
 using FFMpegCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nickvision.MPVSharp;
 using Nickvision.MPVSharp.Internal;
 using Popcorn.Player.Core.Contracts;
+using Popcorn.Player.Core.Core;
 using Popcorn.Player.Core.Services;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Shared.Interfaces;
@@ -14,14 +16,19 @@ namespace Popcorn.Player.Core.Player;
 public class MpvPlayer : IPlayer
 {
     private readonly Lazy<WebEventHandler> _webSocket;
+    private readonly Lazy<AudioSubtitlesService> _audioSubtitlesService;
     private readonly FFmpegService _ffmpegService;
     private readonly ILogger<MpvPlayer> _logger;
+    private IMediaAnalysis? _currentMediaAnalysis;
+    private string? _currentFilePath;
+    private List<MediaTrack>? _mediaTracks;
 
     public Client _player { get; }
 
-    public MpvPlayer(Lazy<WebEventHandler> webSocket, ILogger<MpvPlayer> logger, FFmpegService ffmpegService)
+    public MpvPlayer(Lazy<WebEventHandler> webSocket, ILogger<MpvPlayer> logger, FFmpegService ffmpegService, Lazy<AudioSubtitlesService> audioSubtitlesService)
     {
         _webSocket = webSocket;
+        _audioSubtitlesService = audioSubtitlesService;
         _ffmpegService = ffmpegService;
         _player = new Client();
         _player.SetProperty("vo", "libmpv");
@@ -52,6 +59,7 @@ public class MpvPlayer : IPlayer
                 //case "media-title":
             }
         };
+        _player.FileLoaded += PlayerFileLoaded;
     }
 
     public Client Client => _player;
@@ -84,34 +92,47 @@ public class MpvPlayer : IPlayer
         _player.ObserveProperty("time-pos");
         _player.ObserveProperty("duration");
 
-        LoadFileDuration(path, mediaAnalysis);
-
-        MediaPlaying?.Invoke(this, EventArgs.Empty); //TODO this feels kinda nasty, should review the event system
+        _currentMediaAnalysis = mediaAnalysis;
+        _currentFilePath = path;
         return true;
     }
 
-    private void LoadFileDuration(string path, IMediaAnalysis mediaAnalysis)
+    private void PlayerFileLoaded()
+    {
+        LoadFileDuration();
+        LoadMediaTracks();
+
+        _currentMediaAnalysis = null; //Cleanup as its no longer needed.
+        MediaPlaying?.Invoke(this, EventArgs.Empty); //TODO this feels kinda nasty, should review the event system
+    }
+
+    private void LoadFileDuration()
     {
         double duration = -1;
+        if (_currentFilePath == null)
+        {
+            _webSocket.Value.PostEvent("duration_update", duration);
+            return;
+        }
 
         try
         {
             _player.GetProperty("duration", out duration);
         } catch(Exception ex)
         {
-            _logger.LogWarning(ex, "No duration field in the file {path}", path);
+            _logger.LogWarning(ex, "No duration field in the file {path}", _currentFilePath);
         }
         if (duration < 10) //When Mpv can't parse duration - it's always the current time
         {
-            if (mediaAnalysis.PrimaryVideoStream?.Duration.TotalSeconds > 0)
+            if (_currentMediaAnalysis != null && _currentMediaAnalysis.PrimaryVideoStream?.Duration.TotalSeconds > 0)
             {
-                duration = mediaAnalysis.PrimaryVideoStream?.Duration.TotalSeconds ?? mediaAnalysis.Duration.TotalSeconds;
+                duration = _currentMediaAnalysis.PrimaryVideoStream?.Duration.TotalSeconds ?? _currentMediaAnalysis.Duration.TotalSeconds;
             } else
             {
-                var fileSize = new FileInfo(path).Length;
+                var fileSize = new FileInfo(_currentFilePath).Length;
                 if(fileSize <= 1024 * 1024 * 100) //Clamp to small file sizes
                 {
-                    duration = _ffmpegService.GetFileDurationFullDecode(path) ?? -1;
+                    duration = _ffmpegService.GetFileDurationFullDecode(_currentFilePath) ?? -1;
                 }
             }
         }
@@ -126,6 +147,9 @@ public class MpvPlayer : IPlayer
 
     public void Stop()
     {
+        _currentMediaAnalysis = null;
+        _currentFilePath = null;
+        _mediaTracks = null;
         _player.Command("stop");
     }
 
@@ -148,7 +172,7 @@ public class MpvPlayer : IPlayer
     public event EventHandler<long>? TimeChanged;
     public event EventHandler<long>? LengthChanged;
     public event EventHandler? MediaPlaying;
-    public MediaTrack[] GetMediaTracks()
+    private void LoadMediaTracks()
     {
         _player.GetProperty("track-list", out MPVNode trackListNode);
 
@@ -166,13 +190,16 @@ public class MpvPlayer : IPlayer
             var trackDict = MPVNodeList.ToDictionary(trackNodeList);
             if (trackDict == null) continue;
 
-            var type = trackDict.ContainsKey("type") ? (string)trackDict["type"] : "";
-            if (type != "audio" && type != "video" && type != "sub") continue;
+            var type = trackDict.ContainsKey("type") ? MediaTrack.ParseTrackType((string)trackDict["type"]) : MediaTrackType.Unknown;
+            if ( type == MediaTrackType.Unknown)
+            {
+                _logger.LogWarning("Unknown media type for file {path}", _currentFilePath);
+            }
 
             var mediaTrack = new MediaTrack
             {
                 Id = trackDict.ContainsKey("id") ? (int)trackDict["id"] : 0,
-                Type = trackDict.ContainsKey("type") ? (string?)trackDict["type"] : string.Empty,
+                Type = type,
                 Language = trackDict.ContainsKey("lang") ? (string)trackDict["lang"] : string.Empty,
                 Description = trackDict.ContainsKey("title") ? (string)trackDict["title"] : string.Empty,
                 Selected = trackDict.ContainsKey("selected") && (bool)trackDict["selected"]
@@ -181,7 +208,7 @@ public class MpvPlayer : IPlayer
             mediaTracks.Add(mediaTrack);
         }
 
-        return mediaTracks.ToArray();
+        _mediaTracks = mediaTracks;
     }
 
     public void AudioTrackSelected(int track)
@@ -199,9 +226,21 @@ public class MpvPlayer : IPlayer
         _player.SetProperty("sub-delay", delay);
     }
 
-    public MediaTrack[] GetSubtitleTracks()
+    public List<MediaTrack> GetSubtitleTracks()
     {
-        throw new NotImplementedException();
+        return _mediaTracks?.Where(t => t.Type == MediaTrackType.Subtitle).ToList() ?? new List<MediaTrack>();
+    }
+    public List<MediaTrack> GetAudioTracks()
+    {
+        return _mediaTracks?.Where(t => t.Type == MediaTrackType.Audio).ToList() ?? new List<MediaTrack>();
+    }
+
+    public void AddSubtitleTrack(string path)
+    {
+        _player.Command(new string[] { "sub-add", path });
+
+        LoadMediaTracks();
+        _audioSubtitlesService.Value.SendAudioAndSubtitles();
     }
 
     public void Dispose()

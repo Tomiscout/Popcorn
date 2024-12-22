@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Web.WebView2.Core;
+using Microsoft.Win32;
 using Popcorn.Player.Core.Contracts;
 using Popcorn.Player.Core.Core;
 using Popcorn.Player.Core.WebSocket;
@@ -9,6 +10,7 @@ using Popcorn.Player.Windows.Pipe;
 using Popcorn.Player.Windows.Utils;
 using Serilog;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -17,6 +19,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Shell;
@@ -77,6 +80,7 @@ public partial class MainWindow : Window
     private async Task InitializeWebView2()
     {
         WebView.CoreWebView2InitializationCompleted += WebViewInitialized;
+        WebView.AllowDrop = true;
 
         Log.Information("Player web bundle path: {path}", WebPath);
         try
@@ -84,8 +88,6 @@ public partial class MainWindow : Window
             var op = new CoreWebView2EnvironmentOptions("--disable-web-security");
             var env = await CoreWebView2Environment.CreateAsync(options: op);
             await WebView.EnsureCoreWebView2Async(env);
-
-            Log.Information("EnsureCoreWebView2Async"); //this is never executed
 
 
             bool useLocalWeb = Environment.GetEnvironmentVariable("UseLocalWeb")?.ToLower() == "true";
@@ -109,12 +111,25 @@ public partial class MainWindow : Window
             Log.CloseAndFlush();
         }
     }
-
+  
     private void WebViewInitialized(object sender, CoreWebView2InitializationCompletedEventArgs e)
     {
         WebView.CoreWebView2.WebMessageReceived += WebMessageReceived;
+        WebView.CoreWebView2.NewWindowRequested += CoreWebView2_NewWindowRequested;
+
         _webEventHandler.RegisterWindowsMethods(PostWebMessageToWebView, PostStreamToWebView);
     }
+
+    private void CoreWebView2_NewWindowRequested(object sender, CoreWebView2NewWindowRequestedEventArgs e)
+    {
+        if (e.Uri.StartsWith("file://"))
+        {
+            var uri = new Uri(e.Uri);
+            App.Services.GetService<PlayerCore>().HandleFileDrop(uri.LocalPath);
+        }
+        e.Handled = true;
+    }
+
     private void WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
         var message = e.WebMessageAsJson;
@@ -149,6 +164,8 @@ public partial class MainWindow : Window
 
     private async Task<bool> PlayerInitialized()
     {
+        App.Services.GetService<AudioSubtitlesService>().SubtitleFileSelect = ShowSubtitleFileDialog;
+
         var envPaths = Environment.GetCommandLineArgs().Skip(1).ToList();
         if(!envPaths.Any())
         {
@@ -273,6 +290,25 @@ public partial class MainWindow : Window
     private void MaximizeRestoreButton_Click(object sender, RoutedEventArgs e)
     {
         ChangeFullscreen(WindowState != WindowState.Maximized);
+    }
+
+    private async Task<string> ShowSubtitleFileDialog()
+    {
+        string result = null;
+        await Task.Run(() =>
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                OpenFileDialog openFileDialog = new OpenFileDialog();
+                openFileDialog.Filter = $"Subtitle files (*.srt, *.sub, *.ssa, *.ass, *.vtt, *.idx, *.rt, *.smil, *.smi)|*.srt;*.sub;*.ssa;*.ass;*.vtt;*.idx;*.rt;*.smil;*.smi";
+
+                if (openFileDialog.ShowDialog() == true)
+                {
+                    result = openFileDialog.FileName;
+                }
+            });
+        });
+        return result;
     }
 
     protected override void OnClosed(EventArgs e)

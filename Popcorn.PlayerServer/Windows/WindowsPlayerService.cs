@@ -34,7 +34,7 @@ public class WindowsPlayerService : IPlayerService
             }
 
             Task.Run(async () => await ServerPipeManager.StartServer(_mediaItemRepository, _mediaItemRefreshService)).ConfigureAwait(false); //TODO is this okay?
-            LaunchPlayer(fileId);
+            LaunchPlayer(fileId.ToString());
         }
         catch (Exception e)
         {
@@ -42,7 +42,26 @@ public class WindowsPlayerService : IPlayerService
         }
     }
 
-    private void LaunchPlayer(Guid fileId)
+    public async Task OpenFile(string filePath)
+    {
+        try
+        {
+            if (ServerPipeManager.IsConnected())
+            {
+                await ServerPipeManager.LoadMediaEventPath(filePath);
+                return;
+            }
+
+            Task.Run(async () => await ServerPipeManager.StartServer(_mediaItemRepository, _mediaItemRefreshService)).ConfigureAwait(false); //TODO is this okay?
+            LaunchPlayer(filePath);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Failed to open file with internal player");
+        }
+    }
+
+    private void LaunchPlayer(string launchParam)
     {
         var path = GetPlayerExePath();
         if (!File.Exists(path))
@@ -53,7 +72,7 @@ public class WindowsPlayerService : IPlayerService
         var startInfo = new ProcessStartInfo
         {
             FileName = path,
-            Arguments = $"\"{fileId}\"",
+            Arguments = $"\"{launchParam}\"",
             UseShellExecute = false,
             RedirectStandardOutput = true,  // Redirect the standard output
             RedirectStandardError = true,  // Redirect the error output
@@ -122,9 +141,9 @@ public class WindowsPlayerService : IPlayerService
 
         if (Debugger.IsAttached)
         {
-            return Path.Join(binLocation, @"\Popcorn.Player.Windows\bin\Debug\net8.0-windows7.0\Popcorn.Player.Windows.exe");
+            return Path.Join(binLocation, @"\Popcorn.Player.Windows\bin\Debug\net8.0-windows10.0.19041.0\Popcorn.Player.Windows.exe");
         }
-        return Path.Join(binLocation, @"\Popcorn.Player.Windows\bin\Release\net8.0-windows7.0\Popcorn.Player.Windows.exe");
+        return Path.Join(binLocation, @"\Popcorn.Player.Windows\bin\Release\net8.0-windows10.0.19041.0\Popcorn.Player.Windows.exe");
     }
 
     public void Dispose()

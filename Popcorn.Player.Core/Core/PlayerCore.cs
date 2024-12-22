@@ -7,6 +7,7 @@ using Popcorn.Player.Core.Contracts;
 using PopcornPlayer.Domain.Extensions;
 using PopcornPlayer.Shared.PipeEvents.Server;
 using Serilog;
+using Popcorn.Domain;
 
 namespace Popcorn.Player.Core.Core;
 
@@ -102,25 +103,6 @@ public class PlayerCore
         }
 
         OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
-
-        // On initial run from media player due to fast startup dummy media item is created, and will have no data for segments and other extra options
-
-        //Update history in main app
-        // if (MediaItemManager.CurrentMediaItem is not null)
-        // {
-        //     PipeManager.SendTrackPlayedEvent(new TrackPlayedEvent
-        //     {
-        //         ItemId = MediaItemManager.CurrentMediaItem.Id,
-        //         HistoryItem = new ItemHistory
-        //         {
-        //             ItemId = MediaItemManager.CurrentMediaItem.Id,
-        //             Filename = file.Path,
-        //             FileId = file.Id.Value,
-        //             Title = file.Title,
-        //             PlaybackTime = DateTime.Now
-        //         }
-        //     }).ConfigureAwait(false);
-        // }
     }
     public bool LoadMedia(string path)
     {
@@ -219,6 +201,29 @@ public class PlayerCore
         _thumbnailService.FfmpegCts?.Dispose();
 
         _player.Dispose();
+    }
+
+    public void HandleFileDrop(string localPath)
+    {
+        if(string.IsNullOrWhiteSpace(localPath)) return;
+
+        foreach(var format in MediaLoader.VideoFormats)
+        {
+            if (localPath.EndsWith(format))
+            {
+                LoadMedia(localPath);
+                return;
+            }
+        }
+        
+        foreach(var format in MediaLoader.SubtitleFormats)
+        {
+            if (localPath.EndsWith(format))
+            {
+                _player.AddSubtitleTrack(localPath);
+                return;
+            }
+        }
     }
 
     #endregion

@@ -31,6 +31,10 @@ public class ThumbnailService
     public CancellationTokenSource FfmpegCts;
     public bool OnThumbnailRequest(long time)
     {
+        if(time < 0) {
+            return false;
+        }
+        
         FfmpegCts?.Cancel();
         FfmpegCts = new CancellationTokenSource();
 

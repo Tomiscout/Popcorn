@@ -11,7 +11,7 @@ public class AudioSubtitlesService
 {
     private readonly IPlayer _player;
     private readonly Lazy<WebEventHandler> _webSocket;
-    public Func<string> SubtitleFileSelect { get; set; }
+    public Func<Task<string>> SubtitleFileSelect { get; set; }
 
     public AudioSubtitlesService(IPlayer player, Lazy<WebEventHandler> webSocket)
     {
@@ -21,12 +21,10 @@ public class AudioSubtitlesService
 
     public void SendAudioAndSubtitles()
     {
-        var mediaTracks = _player.GetMediaTracks();
-
         var @event = new AudioAndSubtitlesLoadedEvent
         {
-            AudioTracks = mediaTracks.Where(track => track.Type == MediaTrackType.Audio).ToList(),
-            SubtitleTracks = mediaTracks.Where(track => track.Type == MediaTrackType.Subtitle).ToList(),
+            AudioTracks = _player.GetAudioTracks(),
+            SubtitleTracks = _player.GetSubtitleTracks(),
         };
         _webSocket.Value.PostEvent("audio_subtitles_loaded", @event);
     }
@@ -49,10 +47,16 @@ public class AudioSubtitlesService
 
     public bool SubtitleFileAdd()
     {
-        /*var filePath = SubtitleFileSelect();
-        if (string.IsNullOrWhiteSpace(filePath)) return true;
+        var filePath = SubtitleFileSelect().ContinueWith(result =>
+        {
+            var filePath = result.Result;
+            if (string.IsNullOrWhiteSpace(filePath)) return;
 
-        var currentCount = PlayerCore.MediaPlayer.SpuCount;
+            _player.AddSubtitleTrack(filePath);
+        });
+        return true;
+
+       /* var currentCount = PlayerCore.MediaPlayer.SpuCount;
         ThreadPool.QueueUserWorkItem(_ => PlayerCore.MediaPlayer.AddSlave(MediaSlaveType.Subtitle, $"file:///{filePath}", true));
 
         //This could be avoided if 'media_subitem_added' event support was added.
@@ -73,19 +77,16 @@ public class AudioSubtitlesService
         if (isSubtitleLoaded)
         {
             SendAudioAndSubtitles();
-        }
-*/
-        return true;
+        }*/
     }
 
     public void AutoSelectAudioAndSubtitles()
     {
-        var mediaTracks = _player.GetMediaTracks();
-        var audioTracks = mediaTracks.Where(track => track.Type == MediaTrackType.Audio).ToList();
-        var subtitleTracks = mediaTracks.Where(track => track.Type == MediaTrackType.Subtitle).ToList();
+        var audioTracks = _player.GetAudioTracks();
+        var subtitleTracks = _player.GetSubtitleTracks();
 
         //Prefers japaneese audio, for anime. TODO needs to be a setting
-        var jpAudioTracks = audioTracks.Where(track => track.Language == "ja").ToList();
+        var jpAudioTracks = audioTracks.Where(track => track.Language == "jpn").ToList();
 
         if (audioTracks.Count > 1)
         {
@@ -93,11 +94,11 @@ public class AudioSubtitlesService
 
             if (jpAudioTracks.Any())
             {
-                id = audioTracks.FirstOrDefault(track => track.Language == "ja")?.Id;
+                id = audioTracks.FirstOrDefault(track => track.Language == "jpn")?.Id;
             }
             else
             {
-                var englishTracks = audioTracks.Where(t => t.Language == "en").ToList();
+                var englishTracks = audioTracks.Where(t => t.Language == "eng").ToList();
                 if (englishTracks.Any())
                 {
                     id = englishTracks.FirstOrDefault()?.Id;
@@ -110,41 +111,12 @@ public class AudioSubtitlesService
 
         if (subtitleTracks.Count > 1)
         {
-            var englishTracks = subtitleTracks.Where(t => t.Language == "en").ToList();
+            var englishTracks = subtitleTracks.Where(t => t.Language == "eng").ToList();
             if (englishTracks.Any())
             {
                 _player.SubtitleTrackSelected(englishTracks.First().Id);
             }
         }
-    }
-
-    public bool SetVolume(object data)
-    {
-        // try
-        // {
-        //     var volume = ((JsonElement)data).GetDouble();
-        //     ThreadPool.QueueUserWorkItem(_ => PlayerCore.MediaPlayer.Volume = (int)Math.Floor(volume * 100));
-        // }
-        // catch (Exception e)
-        // {
-        //     Log.Error(e, "Failed to set volume");
-        //     return false;
-        // }
-        return true;
-    }
-
-    public bool AudioTrackSelected(object data)
-    {
-        // var trackId = ((JsonElement)data).GetInt32();
-        // return PlayerCore.MediaPlayer.SetAudioTrack(trackId); //TODO threadpool
-        return true;
-    }
-
-    public bool SubtitleTrackSelected(object data)
-    {
-        // var trackId = ((JsonElement)data).GetInt32();
-        // return PlayerCore.MediaPlayer.SetSpu(trackId); //TODO threadpool
-        return true;
     }
 
     // private VlcTrack MapToVlcTrack(TrackDescription track, bool isSelected)

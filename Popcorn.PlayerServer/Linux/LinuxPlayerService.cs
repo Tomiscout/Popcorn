@@ -40,8 +40,29 @@ public class LinuxPlayerService : IPlayerService
             {
                 StartPlayerServer();
             }
-            LaunchPlayer(fileId);
+            LaunchPlayer(fileId.ToString());
         } catch(Exception e)
+        {
+            _logger.LogError(e, "Failed to open file with internal player");
+        }
+    }
+    public async Task OpenFile(string filePath)
+    {
+        try
+        {
+            if (_server?.ConnectedSessions > 0)
+            {
+                _server.Multicast(JsonSerializer.Serialize(new LoadMediaEvent { FilePath = filePath }));
+                return;
+            }
+
+            if (_server == null)
+            {
+                StartPlayerServer();
+            }
+            LaunchPlayer(filePath);
+        }
+        catch (Exception e)
         {
             _logger.LogError(e, "Failed to open file with internal player");
         }
@@ -57,7 +78,7 @@ public class LinuxPlayerService : IPlayerService
         _server.Start();
     }
 
-    private void LaunchPlayer(Guid fileId)
+    private void LaunchPlayer(string launchParam)
     {
         var path = GetPlayerElfPath();
         if (string.IsNullOrEmpty(path) || !File.Exists(path))
@@ -68,7 +89,7 @@ public class LinuxPlayerService : IPlayerService
         var startInfo = new ProcessStartInfo
         {
             FileName = path,
-            Arguments = $"\"{fileId.ToString()}\"",
+            Arguments = $"\"{launchParam}\"",
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true

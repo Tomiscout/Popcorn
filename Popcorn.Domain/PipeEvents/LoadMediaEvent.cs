@@ -6,5 +6,7 @@ public class LoadMediaEvent : PipeEvent
     {
         EventName = nameof(LoadMediaEvent);
     }
-    public Guid FileId { get; set; }
+    public Guid? FileId { get; set; }
+
+    public string? FilePath { get; set; }
 }

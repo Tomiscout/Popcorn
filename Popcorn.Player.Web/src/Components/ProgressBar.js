@@ -170,10 +170,10 @@ const ProgressBar = () => {
         return Math.floor(hoveredTime / 10000) * 10000; // Round down to nearest 10-second multiple
     };
 
-    function timeFormat() {
-        if(totalTime <= 0) return '?';
+    function timeFormat(durationMs) {
+        if(durationMs <= 0) return '?';
         
-        const duration = (totalTime - currentTime) / 1000;
+        const duration = (durationMs) / 1000;
         // Hours, minutes and seconds
         const hrs = ~~(duration / 3600);
         const mins = ~~((duration % 3600) / 60);
@@ -334,7 +334,7 @@ const ProgressBar = () => {
 
                 </div>
                 <div id="time-remaining">
-                    {timeFormat()}
+                    {timeFormat(totalTime - currentTime)}
                 </div>
             </div>
         </div>

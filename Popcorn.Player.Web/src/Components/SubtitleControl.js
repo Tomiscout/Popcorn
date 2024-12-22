@@ -18,9 +18,7 @@ const SubtitleControl = () => {
   const subtitlePopupRef = useRef(null);
 
   useEffect(() => {
-    console.log('SUB CONTROL');
     registerWebviewEventHandler('audio_subtitles_loaded', (data) => {
-      console.log('Settings subs', data.subtitleTracks );
       setAudioTracks(data.audioTracks || []);
       setSubtitleTracks(data.subtitleTracks || []);
     });
@@ -33,6 +31,7 @@ const SubtitleControl = () => {
     if (subtitleTracks.length) {
       setSelectedSubtitle(subtitleTracks.find(t => t.selected)?.id || subtitleTracks[0].id);
     }
+    console.log("Updated tracks", audioTracks, subtitleTracks)
   }, [audioTracks, subtitleTracks]);
 
   const handleAudioChange = (value) => {

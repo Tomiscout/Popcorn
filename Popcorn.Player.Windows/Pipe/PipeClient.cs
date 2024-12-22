@@ -19,7 +19,14 @@ internal class PipeClient : IPipeClient
     public void LoadMedia(LoadMediaEvent loadEvent)
     {
         Log.Information("Load media received from server " + loadEvent.FileId);
-        _playerCore.LoadFileId(loadEvent.FileId);
+        if (loadEvent?.FileId != null)
+        {
+            _playerCore.LoadFileId(loadEvent!.FileId.Value);
+        }
+        else if (loadEvent!.FilePath != null)
+        {
+            _playerCore.LoadFilesFromInput(new List<string> { loadEvent!.FilePath });
+        }
     }
 
     public void UpdateMediaItemHistory(List<ItemHistory> history)

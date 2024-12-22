@@ -34,6 +34,7 @@ public static class ServiceRegister
         }
 
         // Since the app was all static classes at start, sadly we have to deal with circular dependencies
+        services.AddTransient(provider => new Lazy<AudioSubtitlesService>(() => provider.GetRequiredService<AudioSubtitlesService>()));
         services.AddTransient(provider => new Lazy<WebEventHandler>(() => provider.GetRequiredService<WebEventHandler>()));
         services.AddTransient(provider => new Lazy<PlayerCore>(() => provider.GetRequiredService<PlayerCore>()));
     }

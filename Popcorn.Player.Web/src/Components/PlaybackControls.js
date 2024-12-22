@@ -10,7 +10,7 @@ import VolumeControl from './VolumeControl';
 import EpisodesControl from './EpisodesControl';
 import SubtitleControl from './SubtitleControl';
 import TrackTitle from './TrackTitle';
-import { postMessage, registerWebviewEventHandler } from '../events';
+import { postMessage, registerWebviewEventHandler, registerEventHandler, unregisterWebviewEventHandler, unregisterEventHandler } from '../events';
 import { useEventListeners } from '../Utlis/helpers';
 
 
@@ -22,9 +22,11 @@ const PlaybackControls = () => {
   const getFullscreenButton = () => fullscreen ? <ExitFullscreen /> : <Fullscreen />;
 
   const playPause = () => {
-    const newPlayingStatus = !playing;
-    setPlaying(newPlayingStatus);
-    postMessage('play_status_changed', newPlayingStatus);
+    setPlaying((prevPlaying) => {
+      const newPlayingStatus = !prevPlaying;
+      postMessage('play_status_changed', newPlayingStatus);
+      return newPlayingStatus;
+    });
   }
   const skipBackward = () => {
     postMessage('skip_seconds', -10);
@@ -36,8 +38,10 @@ const PlaybackControls = () => {
     postMessage('play_next_title', 10);
   }
   const toggleFullscreen = () => {
-    const newFullscreenValue = !fullscreen;
-    postMessage('request_fullscreen', newFullscreenValue);
+    setFullscreen((prevFullscreen) => {
+      postMessage('request_fullscreen', !prevFullscreen);
+      return prevFullscreen;
+    })
   }
   const exitFullscreen = () => {
     if (fullscreen) {
@@ -53,13 +57,26 @@ const PlaybackControls = () => {
     'KeyF': toggleFullscreen,
   });
 
+  const trackLoadedHandler = (data) => {
+    setPlaying(true);
+  };
+
+  const fullscreenHandler = (data) => {
+    setFullscreen(data);
+  };
+
   useEffect(() => {
-    registerWebviewEventHandler('track_loaded', (data) => {
-      setPlaying(true);
-    });
-    registerWebviewEventHandler('fullscreen', (data) => {
-      setFullscreen(data);
-    });
+    registerWebviewEventHandler('track_loaded', trackLoadedHandler);
+    registerWebviewEventHandler('fullscreen', fullscreenHandler);
+    registerEventHandler('playback_toggle', playPause);
+    registerEventHandler('request_fullscreen_click', toggleFullscreen);
+
+    return () => {
+      unregisterWebviewEventHandler('track_loaded', trackLoadedHandler);
+      unregisterWebviewEventHandler('fullscreen', fullscreenHandler);
+      unregisterEventHandler('playback_toggle', playPause);
+      unregisterEventHandler('request_fullscreen_click', toggleFullscreen);
+    };
   }, []);
 
   return (
