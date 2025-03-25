@@ -69,6 +69,6 @@ public static class MpvGtk
     private static void OnUnrealizeGLArea(Widget sender, EventArgs e)
     {
         _ctx?.Dispose();
-        Program.Services.GetService<IPlayer>()!.Dispose();
+        Program.Services.GetService<IPlayer>()?.Dispose();
     }
 }

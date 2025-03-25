@@ -7,12 +7,14 @@ using Popcorn.Player.Linux.Gtk;
 using Popcorn.Player.Core.Player;
 using Serilog;
 using Popcorn.Player.Core.WebSocket;
+using WebKit;
 
 namespace Popcorn.Player.Linux;
 
 public class Program
 {
     private static ApplicationWindow _window;
+    private static WebView _webView;
     public static IServiceProvider Services { get; private set; }
     
     public static int Main(string[] args)
@@ -50,8 +52,8 @@ public class Program
         
         overlay.SetChild(MpvGtk.CreateGlArea());
   
-        var webView = WebviewGtk.CreateWebView();
-        overlay.AddOverlay(webView);
+        _webView = WebviewGtk.CreateWebView();
+        overlay.AddOverlay(_webView);
         
         _window.Show();
         
@@ -74,8 +76,9 @@ public class Program
         else
         {
             Log.Logger.Information("Loading default file");
-            //PlayerCore.LoadMedia(@"/mnt/data/Downloads/JoJo no Kimyou na Bouken Part 5 Ougon no Kaze [Dual]/[Cleo]JoJo_no_Kimyou_na_Bouken_Part_5_Ougon_no_Kaze_-_37_(Dual Audio_10bit_BD1080p_x265).mkv");
-            player.LoadMedia(@"/mnt/data/Downloads/Sex.Education.S04.COMPLETE.1080p.NF.WEB-DL.DDP5.1.H.264-Archie[TGx]/Sex.Education.S04E01.Episode.1.1080p.NF.WEB-DL.DDP5.1.H.264-Archie.mkv");
+            player.LoadMedia(@"/home/tom/Downloads/Torrent/[GST] JoJo no Kimyou na Bouken Part 6 Stone Ocean - (01-12) [1080p]/[GST] JoJo Part 6 - S05E07 [1080p].mkv");
+            //player.LoadMedia(@"/mnt/data/Downloads/Sex.Education.S04.COMPLETE.1080p.NF.WEB-DL.DDP5.1.H.264-Archie[TGx]/Sex.Education.S04E01.Episode.1.1080p.NF.WEB-DL.DDP5.1.H.264-Archie.mkv");
+            //player.LoadMedia(@"/home/tom/Videos/4K60p.mov");
         }
     }
 
@@ -101,6 +104,7 @@ public class Program
 
     private static void OnShutdown(Gio.Application app, EventArgs args)
     {
+        _webView.Dispose();
         Services.GetService<PlayerCore>()?.Dispose();
     }
 

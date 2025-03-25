@@ -1,0 +1,3 @@
+[submodule "MPVSharp/src"]
+	path = MPVSharp/src
+	url = https://github.com/Tomiscout/MPVSharp.git

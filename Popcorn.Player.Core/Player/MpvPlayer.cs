@@ -67,6 +67,8 @@ public class MpvPlayer : IPlayer
     public void Initialize()
     {
         _player.Initialize();
+        // _player.SetProperty("osd-level", "3");
+        // _player.Command(new string[] { "script-binding", "stats/display-stats-toggle"});
     }
 
     public void InitializeWindows(string wid)
@@ -245,7 +247,8 @@ public class MpvPlayer : IPlayer
 
     public void Dispose()
     {
-        _player.Dispose();
+        _player.CommandString("quit"); // Quits in async way, sends MPV_EVENT_SHUTDOWN event
+        //_player.Dispose();  mpv deadlocks when using dispose on linux
     }
 
     private static string YesNo(bool val) => val ? "yes" : "no";

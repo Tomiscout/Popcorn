@@ -13,6 +13,8 @@
 !/Bundle/AppManifest.xml
 /Installer/**/*.*
 Popcorn.Player.Linux/old/**/*.*
-Tomiscout.MPVSharp2/**/*.*
+Popcorn.Player.Linux/web-player/build/**/*.*
 /build
 /node_modules
+/MPVSharp/bin
+/MPVSharp/Nickvision.MPVSharp*.*
