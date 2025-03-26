@@ -1,30 +1,50 @@
 {
-    "files.associations": {
-        "ostream": "cpp",
-        "*.tcc": "cpp",
-        "gtk.h": "c",
-        "gl.h": "c",
-        "egl.h": "c",
-        "gio.h": "c",
-        "client.h": "c",
-        "render_gl.h": "c",
-        "array": "c",
-        "string": "c",
-        "string_view": "c",
-        "span": "c",
-        "gtkglarea.h": "c",
-        "utils.h": "c",
-        "gdkwayland.h": "c",
-        "app_data.h": "c",
-        "gtypes.h": "c",
-        "unistd.h": "c",
-        "stddef.h": "c",
-        "gdkx.h": "c",
-        "webkit.h": "c",
-        "webkitwebview.h": "c",
-        "casilda-compositor.h": "c",
-        "fstream": "c",
-        "sstream": "c",
-        "streambuf": "c"
-    }
+  "files.associations": {
+    "ostream": "cpp",
+    "*.tcc": "cpp",
+    "gtk.h": "c",
+    "gl.h": "c",
+    "egl.h": "c",
+    "gio.h": "c",
+    "client.h": "c",
+    "render_gl.h": "c",
+    "array": "c",
+    "string": "c",
+    "string_view": "c",
+    "span": "c",
+    "gtkglarea.h": "c",
+    "utils.h": "c",
+    "gdkwayland.h": "c",
+    "app_data.h": "c",
+    "gtypes.h": "c",
+    "unistd.h": "c",
+    "stddef.h": "c",
+    "gdkx.h": "c",
+    "webkit.h": "c",
+    "webkitwebview.h": "c",
+    "casilda-compositor.h": "c",
+    "fstream": "c",
+    "sstream": "c",
+    "streambuf": "c"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always"
+  },
+  "eslint.run": "onSave",
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+  "cssVariables.lookupFiles": [
+    "**/*.css",
+    "**/*.scss",
+    "**/*.sass",
+    "**/*.less",
+    "node_modules/@mantine/core/styles.css"
+  ]
 }
