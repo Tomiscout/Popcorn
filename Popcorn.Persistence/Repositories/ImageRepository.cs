@@ -1,15 +1,18 @@
-﻿using Popcorn.Shared.Utils;
+﻿using Microsoft.Extensions.Logging;
+using Popcorn.Shared.Utils;
 
-namespace Popcorn.Persistence
+namespace Popcorn.Persistence.Repositories
 {
     public class ImageRepository
     {
         private Dictionary<string, string> _imageCache = new Dictionary<string, string>();
         private readonly string _imageFolder = Path.Join(DirUtils.DataFolder, "images/");
 
-        public ImageRepository()
+        private readonly ILogger<ImageRepository> _logger;
+        public ImageRepository(ILogger<ImageRepository> logger)
         {
-            EnsureImageFolder();
+            _logger = logger;
+            EnsureImageFolder(); //TODO move this and convert to primary constructor
         }
 
         public string GetImageFolder()
@@ -28,6 +31,7 @@ namespace Popcorn.Persistence
             return newFilePath;
         }
 
+        [Obsolete("Because returns base64 and caches")]
         public async Task<string?> LoadImage(string fileName, bool saveCache = true)
         {
             var appPath = Path.Join(_imageFolder, fileName);
@@ -54,6 +58,25 @@ namespace Popcorn.Persistence
             }
 
             return imageData;
+        }
+
+        public async Task<byte[]?> LoadImageBlob(string fileName)
+        {
+            var appPath = Path.Join(_imageFolder, fileName);
+            if (!File.Exists(fileName) && File.Exists(appPath))
+            {
+                fileName = appPath;
+            }
+
+            try
+            {
+                return await File.ReadAllBytesAsync(fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading image {fileName}", fileName);
+                return null;
+            }
         }
 
         private string GetWebImageFormat(string format) => format.ToLower() switch

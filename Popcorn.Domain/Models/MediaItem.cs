@@ -8,6 +8,8 @@ public class MediaItem
     public Guid Id { get; set; }
     public string Title { get; set; }
     public string ShortTitle { get; set; }
+    
+    [Obsolete("Used in blazor form only")]
     public string? Image { get; set; }
     public string? ImagePath { get; set; }
     public string FolderDirectory { get; set; }

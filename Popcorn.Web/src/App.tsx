@@ -5,15 +5,7 @@ import IconSearch from '@tabler/icons-react/dist/esm/icons/IconSearch';
 import IconSettings from '@tabler/icons-react/dist/esm/icons/IconSettings';
 
 import './App.css';
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  Link,
-  Navigate,
-  useLocation,
-  useNavigate,
-} from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { AppShell, createTheme, MantineProvider, NavLink } from '@mantine/core';
 import WatchPage from './pages/watch/watch.page';
 import MediaSearchPage from './pages/search/media-search.page';
@@ -21,6 +13,8 @@ import TorrentSearchPage from './pages/search/torrent-search.page';
 import FoldersPage from './pages/folders/folders.page';
 import DownloadsPage from './pages/downloads/downloads.page';
 import SettingsPage from './pages/settings/settings.page';
+import ItemDetailsPage from './pages/item-details/item-details.page';
+import { WebSocketProvider } from './socket/websocket-context';
 
 const theme = createTheme({
   primaryColor: 'red',
@@ -86,6 +80,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Navigate to={'/watch'} replace />} />
           <Route path="/watch" element={<WatchPage />} />
+          <Route path="/watch/:id" element={<ItemDetailsPage />} />
           <Route path="/media-search" element={<MediaSearchPage />} />
           <Route path="/torrent-search" element={<TorrentSearchPage />} />
           <Route path="/folders" element={<FoldersPage />} />
@@ -102,7 +97,9 @@ function App() {
   return (
     <BrowserRouter>
       <MantineProvider theme={theme} forceColorScheme="dark">
-        <AppContent />
+        <WebSocketProvider>
+          <AppContent />
+        </WebSocketProvider>
       </MantineProvider>
     </BrowserRouter>
   );

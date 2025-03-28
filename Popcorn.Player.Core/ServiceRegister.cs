@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Popcorn.Persistence;
+using Popcorn.Persistence.Repositories;
 using Popcorn.Player.Core.Core;
 using Popcorn.Player.Core.Player;
 using Popcorn.Player.Core.Services;

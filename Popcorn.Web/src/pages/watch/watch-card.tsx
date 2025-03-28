@@ -13,7 +13,7 @@ const WatchCard: React.FC<WatchCardProps> = ({ item }) => {
   const navigate = useNavigate();
 
   const onItemClick = (item: MediaItem) => {
-    navigate(`/itemDetails/${item.id}`);
+    navigate(`/watch/${item.id}`);
   };
 
   useEffect(() => {

@@ -1,7 +1,4 @@
-﻿using System.Diagnostics;
-using System.Net;
-using Popcorn.Shared;
-using Popcorn.Shared.Models;
+﻿using System.Net;
 using Popcorn.Shared.Utils;
 using Popcorn.Torrents;
 

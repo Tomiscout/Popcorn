@@ -5,6 +5,7 @@ using Popcorn.Core.Utils;
 using Popcorn.Domain;
 using Popcorn.Domain.Services;
 using Popcorn.Persistence;
+using Popcorn.Persistence.Repositories;
 using Popcorn.SearchProviders.MovieDb;
 using Popcorn.SearchProviders.Utils;
 using Popcorn.SegmentFinder;
