@@ -10,7 +10,7 @@ export interface MediaItem {
   imagePath?: string;
   folderDirectory: string;
   //files: MediaFile[];
-  //history: ItemHistory[];
+  history: MediaItemHistory[];
 }
 
 export interface MediaFile {
@@ -24,9 +24,15 @@ export interface MediaFile {
 }
 
 export interface MediaItemHistory {
-  itemId: string;
+  name: string;
   fileId: string;
   playbackTime: string;
+}
+
+export interface MediaListResponse {
+  recentItems: MediaItem[];
+  newItems: MediaItem[];
+  removedItems: MediaItem[];
 }
 
 export enum FileType {

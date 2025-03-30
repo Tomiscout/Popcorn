@@ -14,7 +14,10 @@ import FoldersPage from './pages/folders/folders.page';
 import DownloadsPage from './pages/downloads/downloads.page';
 import SettingsPage from './pages/settings/settings.page';
 import ItemDetailsPage from './pages/item-details/item-details.page';
-import { WebSocketProvider } from './socket/websocket-context';
+import { SocketRequests } from './socket/socket-requests';
+import { useEffect, useState } from 'react';
+import { useWebSocket, WebSocketProvider } from './state/websocket-context';
+import { FileProvider, useFileContext } from './state/file-context';
 
 const theme = createTheme({
   primaryColor: 'red',
@@ -22,6 +25,37 @@ const theme = createTheme({
 
 function AppContent() {
   const location = useLocation();
+  const { client, isClientReady } = useWebSocket();
+  const { addOrUpdateFileUrl } = useFileContext();
+
+  const [hasPageLoaded, setHasPageLoaded] = useState(false);
+
+  // Ignore hasPageLoaded for paths other than /watch
+  useEffect(() => {
+    if (!hasPageLoaded && location.pathname !== '/watch') {
+      setHasPageLoaded(true);
+    }
+  }, [location.pathname, hasPageLoaded]);
+
+  // Global image handler
+  useEffect(() => {
+    const handler = (payload: any, metadata: string[]) => {
+      const imageName = metadata[0];
+      try {
+        const imageFile = new File([payload as Uint8Array], imageName);
+        const objectURL = URL.createObjectURL(imageFile);
+        addOrUpdateFileUrl(imageName, objectURL);
+      } catch (error) {
+        console.error(`Error processing image blob for ${imageName}:`, error);
+      }
+    };
+
+    client.onBlobEvent(SocketRequests.ImageFile, handler);
+
+    return () => {
+      client.onBlobEventUnregiser(SocketRequests.ImageFile);
+    };
+  }, [isClientReady]);
 
   return (
     <AppShell
@@ -31,55 +65,57 @@ function AppContent() {
       }}
       padding="md"
     >
-      <AppShell.Navbar>
-        <NavLink
-          to="/watch"
-          component={Link}
-          active={location.pathname === '/watch'}
-          label="Watch"
-          leftSection={<IconDeviceTv size={24} stroke={1.5} />}
-        />
-        <NavLink
-          to="/media-search"
-          component={Link}
-          active={location.pathname === '/media-search'}
-          label="Media search"
-          leftSection={<IconSearch size={24} stroke={1.5} />}
-        />
-        <NavLink
-          to="/torrent-search"
-          component={Link}
-          active={location.pathname === '/torrent-search'}
-          label="Torrent search"
-          leftSection={<IconSearch size={24} stroke={1.5} />}
-        />
-        <NavLink
-          to="/folders"
-          component={Link}
-          active={location.pathname === '/folders'}
-          label="Folders"
-          leftSection={<IconFolderOpen size={24} stroke={1.5} />}
-        />
-        <NavLink
-          to="/torrent-client"
-          component={Link}
-          active={location.pathname === '/torrent-client'}
-          label="Downloads"
-          leftSection={<IconDownload size={24} stroke={1.5} />}
-        />
-        <NavLink
-          to="/settings"
-          component={Link}
-          active={location.pathname === '/settings'}
-          label="Settings"
-          leftSection={<IconSettings size={24} stroke={1.5} />}
-        />
-      </AppShell.Navbar>
+      {hasPageLoaded && (
+        <AppShell.Navbar>
+          <NavLink
+            to="/watch"
+            component={Link}
+            active={location.pathname === '/watch'}
+            label="Watch"
+            leftSection={<IconDeviceTv size={24} stroke={1.5} />}
+          />
+          <NavLink
+            to="/media-search"
+            component={Link}
+            active={location.pathname === '/media-search'}
+            label="Media search"
+            leftSection={<IconSearch size={24} stroke={1.5} />}
+          />
+          <NavLink
+            to="/torrent-search"
+            component={Link}
+            active={location.pathname === '/torrent-search'}
+            label="Torrent search"
+            leftSection={<IconSearch size={24} stroke={1.5} />}
+          />
+          <NavLink
+            to="/folders"
+            component={Link}
+            active={location.pathname === '/folders'}
+            label="Folders"
+            leftSection={<IconFolderOpen size={24} stroke={1.5} />}
+          />
+          <NavLink
+            to="/torrent-client"
+            component={Link}
+            active={location.pathname === '/torrent-client'}
+            label="Downloads"
+            leftSection={<IconDownload size={24} stroke={1.5} />}
+          />
+          <NavLink
+            to="/settings"
+            component={Link}
+            active={location.pathname === '/settings'}
+            label="Settings"
+            leftSection={<IconSettings size={24} stroke={1.5} />}
+          />
+        </AppShell.Navbar>
+      )}
 
       <AppShell.Main>
         <Routes>
           <Route path="/" element={<Navigate to={'/watch'} replace />} />
-          <Route path="/watch" element={<WatchPage />} />
+          <Route path="/watch" element={<WatchPage pageLoaded={() => setHasPageLoaded(true)} />} />
           <Route path="/watch/:id" element={<ItemDetailsPage />} />
           <Route path="/media-search" element={<MediaSearchPage />} />
           <Route path="/torrent-search" element={<TorrentSearchPage />} />
@@ -95,13 +131,15 @@ function AppContent() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <MantineProvider theme={theme} forceColorScheme="dark">
-        <WebSocketProvider>
-          <AppContent />
-        </WebSocketProvider>
-      </MantineProvider>
-    </BrowserRouter>
+    <FileProvider>
+      <BrowserRouter>
+        <MantineProvider theme={theme} forceColorScheme="dark">
+          <WebSocketProvider>
+            <AppContent />
+          </WebSocketProvider>
+        </MantineProvider>
+      </BrowserRouter>
+    </FileProvider>
   );
 }
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Button, Flex, Title } from '@mantine/core';
 import WatchCard from './watch-card';
-import { MediaItem } from '../../model/media-item';
+import { MediaItem } from '../../model/media.contract';
 
 type ItemsGridProps = {
   items: MediaItem[];
@@ -10,12 +10,7 @@ type ItemsGridProps = {
   onButtonClick?: () => void;
 };
 
-const ItemsGrid: React.FC<ItemsGridProps> = ({
-  items,
-  headerTitle,
-  buttonText,
-  onButtonClick,
-}) => {
+const ItemsGrid: React.FC<ItemsGridProps> = ({ items, headerTitle, buttonText, onButtonClick }) => {
   return (
     <Box>
       <Flex justify={'space-between'} align={'center'} mb={'md'}>
@@ -23,12 +18,7 @@ const ItemsGrid: React.FC<ItemsGridProps> = ({
 
         <Flex justify={'flex-end'}>
           {buttonText && onButtonClick && (
-            <Button
-              style={{ marginRight: '8px' }}
-              color="red"
-              variant="filled"
-              onClick={onButtonClick}
-            >
+            <Button style={{ marginRight: '8px' }} color="red" variant="filled" onClick={onButtonClick}>
               {buttonText}
             </Button>
           )}

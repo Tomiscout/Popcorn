@@ -1,30 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MediaItem } from '../../model/media-item';
 import './watch-card.css';
+import { useFileUrls } from '../../state/file-context';
+import { MediaItem } from '../../model/media.contract';
 
 type WatchCardProps = {
   item: MediaItem;
 };
 
 const WatchCard: React.FC<WatchCardProps> = ({ item }) => {
-  const [itemImageData, setItemImageData] = useState('');
+  const [itemImageUrl, setItemImageUrl] = useState('');
   const [showOptions, setShowOptions] = useState(false);
   const navigate = useNavigate();
+
+  const requestedFilenames = useMemo(() => (item.imagePath ? [item.imagePath] : []), [item.imagePath]);
+  const availableUrls = useFileUrls(requestedFilenames);
 
   const onItemClick = (item: MediaItem) => {
     navigate(`/watch/${item.id}`);
   };
 
   useEffect(() => {
-    async function loadImage() {
-      if (item.imagePath) {
-        // Replace this with actual image loading logic if needed
-        setItemImageData(item.imagePath);
-      }
-    }
-    loadImage();
-  }, [item.imagePath]);
+    if (!item.imagePath) return;
+
+    const imageUrl = availableUrls[item.imagePath];
+    if (!imageUrl) return;
+
+    setItemImageUrl(imageUrl);
+    console.log('setting imae');
+  }, [availableUrls]);
 
   return (
     <div className="watch-card">
@@ -35,16 +39,12 @@ const WatchCard: React.FC<WatchCardProps> = ({ item }) => {
         </div>
       )}
       <div className="image-container" onClick={() => onItemClick(item)}>
-        {itemImageData === '' ? (
-          <img
-            className="rounded-image"
-            src="/images/default-media.jpg"
-            alt="default media"
-          />
+        {!itemImageUrl ? (
+          <img className="rounded-image" src="/images/default-media.jpg" alt="default media" />
         ) : (
-          <img src={itemImageData} className="rounded-image" alt={item.title} />
+          <img src={itemImageUrl} className="rounded-image" alt={item.title} />
         )}
-        <span className="display-title">{item.displayTitle || item.title}</span>
+        <span className="display-title">{item.shortTitle || item.title}</span>
       </div>
     </div>
   );

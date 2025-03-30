@@ -33,7 +33,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Popcorn.Player.Core", "Popc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Popcorn.Shared", "Popcorn.Shared\Popcorn.Shared.csproj", "{625E548E-84C9-4D04-BFD5-A4F8D032AD4D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Popcorn.Server", "..\Popcorn.Server\Popcorn.Server\Popcorn.Server.csproj", "{B4F6EDF8-BAE2-4E2B-9113-D0BBD3B4C4E8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Popcorn.Server", "Popcorn.Server\Popcorn.Server.csproj", "{B4F6EDF8-BAE2-4E2B-9113-D0BBD3B4C4E8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Popcorn.Application", "Popcorn.Application\Popcorn.Application.csproj", "{CC467E27-3B30-490B-ABDB-884BBA48F3F4}"
 EndProject
