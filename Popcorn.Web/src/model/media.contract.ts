@@ -14,7 +14,7 @@ export interface MediaItem {
 }
 
 export interface MediaFile {
-  id?: string;
+  id: string;
   itemId: string;
   path: string;
   title: string;
@@ -24,7 +24,7 @@ export interface MediaFile {
 }
 
 export interface MediaItemHistory {
-  name: string;
+  title: string;
   fileId: string;
   playbackTime: string;
 }
@@ -35,7 +35,12 @@ export interface MediaListResponse {
   removedItems: MediaItem[];
 }
 
+export interface NextFileResponse {
+  fileId: string;
+  title: string;
+}
+
 export enum FileType {
-  File = 'File',
-  Folder = 'Folder',
+  File = 0,
+  Folder = 1,
 }

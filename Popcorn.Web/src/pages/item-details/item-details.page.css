@@ -1,0 +1,7 @@
+.rounded-image-header {
+  height: 256px;
+  width: auto;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 8px;
+}

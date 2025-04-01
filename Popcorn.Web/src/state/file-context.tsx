@@ -8,6 +8,8 @@ import React, {
   useMemo,
   PropsWithChildren,
 } from 'react';
+import { SocketRequests } from '../socket/socket-requests';
+import { useWebSocket } from './websocket-context';
 
 interface FileContextState {
   fileUrlsMap: Map<string, string>;
@@ -68,25 +70,24 @@ export const FileProvider: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   return <FileContext.Provider value={contextValue}>{children}</FileContext.Provider>;
 };
 
-export const useFileUrls = (requestedFilenames: string[]): Record<string, string | undefined> => {
-  const { fileUrlsMap } = useFileContext();
-  const previous = useRef<Record<string, string | undefined>>({});
+export const useFileUrl = (filename: string | undefined): string | undefined => {
+  const { fileUrlsMap, getFilesToLoad } = useFileContext();
+  const { client, isClientReady } = useWebSocket();
+  const previous = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!filename || !isClientReady) return;
+
+    client.sendEvent(SocketRequests.ImageFile, { files: [filename] });
+  }, [filename, isClientReady]);
 
   return useMemo(() => {
-    const result: Record<string, string | undefined> = {};
-    let hasChanged = false;
-
-    for (const name of requestedFilenames) {
-      const current = fileUrlsMap.get(name);
-      result[name] = current;
-      if (previous.current[name] !== current) hasChanged = true;
-    }
-
-    if (!hasChanged) return previous.current;
-
-    previous.current = result;
-    return result;
-  }, [fileUrlsMap, requestedFilenames.join(',')]);
+    if (!filename) return undefined;
+    const current = fileUrlsMap.get(filename);
+    if (previous.current === current) return previous.current;
+    previous.current = current;
+    return current;
+  }, [fileUrlsMap, filename]);
 };
 
 export const useFileContext = () => {
