@@ -3,48 +3,40 @@ using Popcorn.Domain.Enum;
 using Popcorn.Domain;
 using Popcorn.Domain.Interfaces;
 
-namespace Popcorn.Core.Services
+namespace Popcorn.Core.Services;
+
+public class MediaItemService(IMediaItemRepository mediaItemRepository, IMediaFileRepository mediaFileRepository)
 {
-	public class MediaItemService
-	{
-        private readonly IMediaItemRepository _mediaItemRepository;
+    public async Task CreateMediaItemFromScan(MediaItem item, MediaScanResult scanResult)
+    {
+        await mediaItemRepository.CreateMediaItem(item);
+        await mediaFileRepository.UpsertMediaFiles(item.Id, GetFilesFromScanResult(scanResult));
+    }
 
-        public MediaItemService(IMediaItemRepository mediaItemRepository)
+    private List<MediaFile> GetFilesFromScanResult(MediaScanResult scanResult)
+    {
+        var files = new List<MediaFile>();
+        foreach (var path in scanResult.Files)
         {
-            _mediaItemRepository = mediaItemRepository;
-        }
-
-        public async Task CreateMediaItemFromScan(MediaItem item, MediaScanResult scanResult)
-        {
-            await _mediaItemRepository.CreateMediaItem(item);
-            await _mediaItemRepository.UpsertMediaFiles(item.Id, GetFilesFromScanResult(scanResult));
-        }
-
-        public List<MediaFile> GetFilesFromScanResult(MediaScanResult scanResult)
-        {
-            var files = new List<MediaFile>();
-            foreach (var path in scanResult.Files)
+            files.Add(new MediaFile
             {
-                files.Add(new MediaFile
-                {
-                    Id = Guid.NewGuid(),
-                    Path = path,
-                    Title = Path.GetFileName(path),
-                    Type = FileType.File
-                });
-            }
-            return files;
+                Id = Guid.NewGuid(),
+                Path = path,
+                Title = Path.GetFileName(path),
+                Type = FileType.File
+            });
         }
+        return files;
+    }
 
-        public async Task<MediaItem> RescanItem(MediaItem item)
-        {
-            var scanResult = await MediaLoader.ScanFolder(item.FolderDirectory);
+    public async Task<MediaItem> RescanItem(MediaItem item)
+    {
+        var scanResult = await MediaLoader.ScanFolder(item.FolderDirectory);
             
-            var files = scanResult.SelectMany(GetFilesFromScanResult).ToList();
-            await _mediaItemRepository.UpsertMediaFiles(item.Id, files);
-            item.Files = files;
+        var files = scanResult.SelectMany(GetFilesFromScanResult).ToList();
+        await mediaFileRepository.UpsertMediaFiles(item.Id, files);
+        item.Files = files;
 
-            return item;
-        }
+        return item;
     }
 }

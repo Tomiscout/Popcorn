@@ -20,14 +20,16 @@ public class SegmentFinderService
     private int maxConcurrentTasks = 5; // Adjust as needed
 
     private readonly IMediaItemRepository _mediaItemRepository;
+    private readonly IMediaFileRepository _mediaFileRepository;
     private readonly MediaItemRefreshService _mediaItemRefreshService;
     private readonly ILogger<SegmentFinderService> _logger;
 
-    public SegmentFinderService(IMediaItemRepository mediaItemRepository, MediaItemRefreshService mediaItemRefreshService, ILogger<SegmentFinderService> logger)
+    public SegmentFinderService(IMediaItemRepository mediaItemRepository, MediaItemRefreshService mediaItemRefreshService, ILogger<SegmentFinderService> logger, IMediaFileRepository mediaFileRepository)
     {
         _mediaItemRefreshService = mediaItemRefreshService;
         _mediaItemRepository = mediaItemRepository;
         _logger = logger;
+        _mediaFileRepository = mediaFileRepository;
 
         Directory.CreateDirectory(WorkDirectory);
         semaphore = new SemaphoreSlim(maxConcurrentTasks);
@@ -170,7 +172,7 @@ public class SegmentFinderService
             {
                 await _mediaItemRepository.AddSegmentLocation(introTime);
             }
-            await _mediaItemRepository.UpdateMediaFileIntroProcessed(file.Id.Value, true);
+            await _mediaFileRepository.UpdateMediaFileIntroProcessed(file.Id.Value, true);
         }
         introSession?.Dispose();
     }
@@ -203,7 +205,7 @@ public class SegmentFinderService
             {
                 await _mediaItemRepository.AddSegmentLocation(introTime);
             }
-            await _mediaItemRepository.UpdateMediaFileOutroProcessed(file.Id.Value, true);
+            await _mediaFileRepository.UpdateMediaFileOutroProcessed(file.Id.Value, true);
         }
         outroSession?.Dispose();
     }

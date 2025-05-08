@@ -15,5 +15,10 @@ public class MediaFileMap : EntityMap<MediaFile>
         Map(m => m.Played).ToColumn("played");
         Map(m => m.IntroProcessed).ToColumn("intro_processed");
         Map(m => m.OutroProcessed).ToColumn("outro_processed");
+        Map(m => m.TagsProcessed).ToColumn("tags_processed");
+        Map(m => m.Episodes).ToColumn("episode");
+        Map(m => m.Seasons).ToColumn("season");
+        Map(m => m.FormatTags).ToColumn("format_tags");
+        Map(m => m.OtherTags).ToColumn("other_tags");
     }
 }

@@ -5,6 +5,9 @@ import { MediaItem, MediaListResponse } from '../../model/media.contract';
 import { useWebSocket } from '../../state/websocket-context';
 import { useFileContext } from '../../state/file-context';
 import LoadingPage from '../loading/loading.page';
+import { Box, Flex, TextInput } from '@mantine/core';
+import IconSearch from '@tabler/icons-react/dist/esm/icons/IconSearch';
+import classes from './watch.page.module.css';
 
 export interface WatchPageProps {
   pageLoaded: () => void;
@@ -18,6 +21,7 @@ const WatchPage: React.FC<WatchPageProps> = ({ pageLoaded }) => {
   const [recentItems, setRecentItems] = useState<MediaItem[]>([]);
   const [newItems, setNewItems] = useState<MediaItem[]>([]);
   const [removedItems, setRemovedItems] = useState<MediaItem[]>([]);
+  const [searchValue, setSearchValue] = useState('');
 
   const pageHasLoaded = () => {
     setTimeout(() => {
@@ -62,14 +66,31 @@ const WatchPage: React.FC<WatchPageProps> = ({ pageLoaded }) => {
 
   return (
     <>
-      <ItemsGrid
-        headerTitle="Continue watching"
-        items={recentItems}
-        buttonText="Do something"
-        onButtonClick={() => ''}
-      />
-      <ItemsGrid headerTitle="Not yet watched" items={newItems} />
-      <ItemsGrid headerTitle="No longer on disk" items={removedItems} />
+      <Flex direction="column" gap="lg">
+        <TextInput
+          value={searchValue}
+          onChange={(event) => setSearchValue(event.currentTarget.value)}
+          variant="filled"
+          radius="xl"
+          leftSectionPointerEvents="none"
+          leftSection={<IconSearch size="16px" />}
+          placeholder="Search"
+          classNames={{
+            input: classes.searchInput,
+          }}
+        />
+
+        <Box>
+          <ItemsGrid
+            headerTitle="Continue watching"
+            items={recentItems}
+            buttonText="Do something"
+            searchQuery={searchValue}
+          />
+          <ItemsGrid headerTitle="Not yet watched" items={newItems} searchQuery={searchValue} />
+          <ItemsGrid headerTitle="No longer on disk" items={removedItems} searchQuery={searchValue} />
+        </Box>
+      </Flex>
 
       {!hasPageLoaded && <LoadingPage />}
     </>

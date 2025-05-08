@@ -1,6 +1,7 @@
 ﻿@page "/folders"
 @using Blazored.Modal.Services
 @using FluentMigrator.Runner
+@using Popcorn.Application.Exceptions
 @using Popcorn.Core
 @using Popcorn.Core.Services
 @using Popcorn.Core.Model
@@ -9,7 +10,6 @@
 @using Popcorn.Domain;
 @using Popcorn.Persistence
 @using Popcorn.PlayerServer
-@using Popcorn.WebView.Core.Exceptions
 @using Popcorn.WebView.Shared
 @inject FolderService FolderService
 @inject INativeFolderService _nativeFolderService

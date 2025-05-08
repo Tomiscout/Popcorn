@@ -50,7 +50,7 @@ const ItemDetailsPage: React.FC = () => {
   }, [isClientReady]);
 
   const fileRowClicked = (fileId: string) => {
-    client.sendEvent(SocketRequests.FileOpen, { id: fileId });
+    client.sendEvent(SocketRequests.FileOpen, fileId);
   };
 
   const renderFiles = () => {
@@ -72,7 +72,8 @@ const ItemDetailsPage: React.FC = () => {
                 </Flex>
               </Table.Td>
               <Table.Td pl="0" pr="0">
-                <Pill>Some tag</Pill>
+                {file.formatTags?.map((t) => <Pill>{t}</Pill>)}
+                {file.otherTags?.map((t) => <Pill>{t}</Pill>)}
               </Table.Td>
             </Table.Tr>
           ))}
@@ -108,7 +109,9 @@ const ItemDetailsPage: React.FC = () => {
         <img src={imageUrl ? imageUrl : '/images/default-media.jpg'} className="rounded-image-header"></img>
 
         <Flex direction="column" align="flex-start" ml="sm" gap="sm">
-          <ManText size="xl">{mediaItem?.shortTitle || mediaItem?.title}</ManText>
+          <ManText fw={700} size="xl">
+            {mediaItem?.shortTitle || mediaItem?.title}
+          </ManText>
           <ManText size="md">Description</ManText>
           <Flex mt="auto" gap="sm">
             <Button variant="filled" leftSection={<IconPlayerPlayFilled size={14} />}>

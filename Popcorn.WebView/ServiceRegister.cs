@@ -1,5 +1,6 @@
 ﻿using Blazored.Modal;
 using Microsoft.Extensions.DependencyInjection;
+using Popcorn.Application.Services;
 using Popcorn.Core.Services;
 using Popcorn.Core.Utils;
 using Popcorn.Domain;

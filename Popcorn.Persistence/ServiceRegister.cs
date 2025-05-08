@@ -10,6 +10,7 @@ public static class ServiceRegister
     public static void AddPopcornDatabase(this IServiceCollection services)
     {
         services.AddSingleton<IMediaItemRepository, MediaItemRepository>();
+        services.AddSingleton<IMediaFileRepository, MediaFileRepository>();
         services.AddSingleton<DapperContext>();
         DapperContext.RegisterMappings();
         

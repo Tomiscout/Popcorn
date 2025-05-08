@@ -18,9 +18,12 @@ public class MediaFile
 
     public List<SegmentLocation> SegmentLocations { get; set; } = new ();
 
-    public List<string> EpisodeTags { get; set; }
-    public List<string> FormatTags { get; set; }
-    public List<string> OtherTags { get; set; }
+    public bool TagsProcessed { get; set; } = false;
+    
+    public List<string>? Seasons { get; set; } = null;
+    public List<string>? Episodes { get; set; } = null;
+    public List<string>? FormatTags { get; set; }
+    public List<string>? OtherTags { get; set; }
 
     public string GetDisplayTitle()
     {
@@ -47,7 +50,16 @@ public class MediaFile
             ShortTitle = Title;
             return;
         }*/
-        var (parsed, tags) = StringUtils.SanitizeFilename(Title, FormatTags);
+        var tagsToRemove = new List<string>();
+        if (FormatTags != null)
+        {
+            tagsToRemove.AddRange(FormatTags);
+        }
+        if (OtherTags != null)
+        {
+            tagsToRemove.AddRange(OtherTags);
+        }
+        var (parsed, tags) = StringUtils.SanitizeFilename(Title, tagsToRemove);
         ShortTitle = parsed;
         FormatTags = tags;
     }

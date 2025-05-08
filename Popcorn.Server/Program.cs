@@ -1,3 +1,4 @@
+using FluentMigrator.Runner;
 using Popcorn.Persistence;
 using Popcorn.Server;
 using Popcorn.Server.Handlers;
@@ -19,6 +20,9 @@ builder.Services.AddPopcornDatabase();
 builder.Services.AddSerilog();
 
 var app = builder.Build();
+
+var runner = app.Services.GetRequiredService<IMigrationRunner>();
+runner.MigrateUp();
 
 app.UseWebSockets();
 app.Map("/ws", HandleWebSocket);

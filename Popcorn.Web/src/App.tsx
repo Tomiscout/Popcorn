@@ -6,7 +6,7 @@ import IconSettings from '@tabler/icons-react/dist/esm/icons/IconSettings';
 
 import './App.css';
 import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import { AppShell, createTheme, MantineProvider, NavLink } from '@mantine/core';
+import { AppShell, createTheme, InputWrapper, MantineProvider, NavLink } from '@mantine/core';
 import WatchPage from './pages/watch/watch.page';
 import MediaSearchPage from './pages/search/media-search.page';
 import TorrentSearchPage from './pages/search/torrent-search.page';
@@ -18,9 +18,24 @@ import { SocketRequests } from './socket/socket-requests';
 import { useEffect, useState } from 'react';
 import { useWebSocket, WebSocketProvider } from './state/websocket-context';
 import { FileProvider, useFileContext } from './state/file-context';
+import { parseFilenames } from './utils/tags.parser';
 
 const theme = createTheme({
-  primaryColor: 'red',
+  primaryColor: 'primaryRed',
+  colors: {
+    primaryRed: [
+      '#f0d7d7',
+      '#e9c3c3',
+      '#e1afaf',
+      '#da9b9b',
+      '#d28686',
+      '#cb7272',
+      '#c35e5e',
+      '#bc4a4a',
+      '#b43636', //Main
+      '#a23131',
+    ],
+  },
 });
 
 function AppContent() {
@@ -39,7 +54,7 @@ function AppContent() {
 
   // Global image handler
   useEffect(() => {
-    const handler = (payload: any, metadata: string[]) => {
+    const imageHandler = (payload: any, metadata: string[]) => {
       const imageName = metadata[0];
       try {
         const imageFile = new File([payload as Uint8Array], imageName);
@@ -50,15 +65,23 @@ function AppContent() {
       }
     };
 
-    client.onBlobEvent(SocketRequests.ImageFile, handler);
+    const tagsHandler = (fileNames: Record<string, string>) => {
+      const tags = parseFilenames(fileNames);
+      client.sendEvent(SocketRequests.ParseTags, tags);
+    };
+
+    client.onBlobEvent(SocketRequests.ImageFile, imageHandler);
+    client.onEvent(SocketRequests.ParseTags, tagsHandler);
 
     return () => {
       client.onBlobEventUnregiser(SocketRequests.ImageFile);
+      client.onEventUnregiser(SocketRequests.ParseTags);
     };
   }, [isClientReady]);
 
   return (
     <AppShell
+      className="app-root"
       navbar={{
         width: 180,
         breakpoint: 'off',
@@ -66,7 +89,7 @@ function AppContent() {
       padding="md"
     >
       {hasPageLoaded && (
-        <AppShell.Navbar>
+        <AppShell.Navbar bg="#201919" withBorder={false}>
           <NavLink
             to="/watch"
             component={Link}
@@ -112,7 +135,7 @@ function AppContent() {
         </AppShell.Navbar>
       )}
 
-      <AppShell.Main>
+      <AppShell.Main className="app-content">
         <Routes>
           <Route path="/" element={<Navigate to={'/watch'} replace />} />
           <Route path="/watch" element={<WatchPage pageLoaded={() => setHasPageLoaded(true)} />} />

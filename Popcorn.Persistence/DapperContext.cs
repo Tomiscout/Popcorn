@@ -14,6 +14,7 @@ public class DapperContext
     public DapperContext()
     {
         SqlMapper.AddTypeHandler(new GuidTypeHandler());
+        SqlMapper.AddTypeHandler(new SemiColonTypeHandler());
     }
 
     public IDbConnection CreateConnection()

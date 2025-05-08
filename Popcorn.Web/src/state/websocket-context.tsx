@@ -28,7 +28,7 @@ export const WebSocketProvider = ({ children }: React.PropsWithChildren) => {
 
     setIsClientReady(client.isReady); // in case it connects immediately
     client.onReadyChange(handleReadyChange);
-    return () => client.offReadyChange(handleReadyChange);
+    return () => client.onReadyChangeDelete(handleReadyChange);
   }, []);
 
   return (

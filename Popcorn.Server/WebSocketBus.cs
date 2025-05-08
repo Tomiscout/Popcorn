@@ -72,8 +72,21 @@ public class WebSocketBus(WebSocket webSocket)
 
             if (result.MessageType == WebSocketMessageType.Text)
             {
-                var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                using var ms = new MemoryStream();
+                ms.Write(buffer, 0, result.Count);
+                while (!result.EndOfMessage)
+                {
+                    result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                    if (result.CloseStatus.HasValue) break;
+                    
+                    ms.Write(buffer, 0, result.Count);
+                }
+                if (result.CloseStatus.HasValue) break;
+                
+                var message = Encoding.UTF8.GetString(ms.ToArray(), 0, (int)ms.Length);
                 var json = JsonDocument.Parse(message).RootElement;
+                
+                
                 if (json.TryGetProperty("type", out var typeProp) &&
                     json.TryGetProperty("payload", out var payload))
                 {
@@ -89,7 +102,14 @@ public class WebSocketBus(WebSocket webSocket)
                     var handlerType = handler.GetType();
                     var argType = handlerType.GenericTypeArguments[0];
                     var deserialized = payload.Deserialize(argType, JsonSerializerOptions);
-                    handler.DynamicInvoke(deserialized);
+                    try
+                    {
+                        handler.DynamicInvoke(deserialized);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Failed to process event: {type}", type);
+                    }
                 }
             } else if (result.MessageType == WebSocketMessageType.Binary)
             {

@@ -19,7 +19,4 @@ public interface IMediaItemRepository
     Task DeleteAllSegments(Guid id);
     Task AddSegmentInfo(Guid itemId, SegmentInfo segment);
     Task DeleteSegmentInfo(Guid segmentId);
-    Task UpsertMediaFiles(Guid itemId, List<MediaFile> mediaFiles);
-    Task UpdateMediaFileIntroProcessed(Guid fileId, bool introProcessed);
-    Task UpdateMediaFileOutroProcessed(Guid fileId, bool outroProcessed);
 }

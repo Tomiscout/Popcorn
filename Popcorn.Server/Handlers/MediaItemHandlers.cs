@@ -1,3 +1,4 @@
+using Popcorn.Domain.Enum;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
 using Popcorn.Persistence.Repositories;
@@ -15,10 +16,20 @@ public static class MediaItemHandlers
         {
             using var scope = scopeFactory.CreateScope();
             var mediaItemRepository = scope.ServiceProvider.GetRequiredService<IMediaItemRepository>();
-            var imageRepository = scope.ServiceProvider.GetRequiredService<ImageRepository>();
             
             var mediaItem = await mediaItemRepository.GetMediaItemFull(item.Id);
             if (mediaItem == null) return;
+
+            mediaItem.GetDisplayTitle();
+
+            // This is wonky way to process tags, since library is JS only. Would need to port it to c# or use somthing else
+            var unprocessedFiles = mediaItem.Files
+                .Where(f => f is { Type: FileType.File, TagsProcessed: false })
+                .ToDictionary(f => f.Id!.Value, f => f.Title);
+            if (unprocessedFiles.Count > 0)
+            {
+                await bus.SendEventAsync(SocketRequests.ParseTags, unprocessedFiles);
+            }
             
             var currentFiles = mediaItem.Files.GetFilesForDirectory(mediaItem.FolderDirectory)
                 .OrderBy(f => f.Title)

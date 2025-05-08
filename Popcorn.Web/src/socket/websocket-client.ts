@@ -98,7 +98,7 @@ export class WebSocketClient {
     this.readyListeners.add(cb);
   }
 
-  offReadyChange(cb: (ready: boolean) => void) {
+  onReadyChangeDelete(cb: (ready: boolean) => void) {
     this.readyListeners.delete(cb);
   }
 }

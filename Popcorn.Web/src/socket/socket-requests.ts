@@ -7,4 +7,5 @@ export enum SocketRequests {
   ImageFilesBatchSent = 'ImageFilesBatchSent',
   NextFile = 'NextFile',
   FileOpen = 'FileOpen',
+  ParseTags = 'ParseTags',
 }

@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ctrl/video-filename-parser": "^5.2.2",
     "@mantine/core": "^7.17.2",
     "@mantine/dropzone": "^7.17.2",
     "@mantine/hooks": "^7.17.2",

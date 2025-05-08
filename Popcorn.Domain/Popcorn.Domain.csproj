@@ -20,5 +20,15 @@
     <ItemGroup>
       <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
     </ItemGroup>
+  
+    <ItemGroup>
+      <Reference Include="Dapper">
+        <HintPath>..\..\..\.nuget\packages\dapper\2.1.35\lib\net7.0\Dapper.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+  
+    <ItemGroup>
+      <Folder Include="TypeHandlers\" />
+    </ItemGroup>
 
 </Project>

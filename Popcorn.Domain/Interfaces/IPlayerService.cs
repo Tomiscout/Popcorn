@@ -1,6 +1,4 @@
-using Popcorn.Domain.Models;
-
-namespace Popcorn.PlayerServer;
+namespace Popcorn.Domain.Interfaces;
 
 public interface IPlayerService
 {

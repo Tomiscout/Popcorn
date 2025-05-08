@@ -21,6 +21,10 @@ export interface MediaFile {
   shortTitle?: string;
   type?: FileType;
   played?: boolean;
+  otherTags?: string[];
+  formatTags: string[];
+  episodes?: string[];
+  seasons?: string[];
 }
 
 export interface MediaItemHistory {

@@ -54,96 +54,12 @@ public class MediaItemRepository : IMediaItemRepository
         });
     }
 
-    public async Task DeleteMediaFile(Guid fileId)
-    {
-        using var connection = _dbContext.CreateConnection();
-        string deleteSql = @"DELETE FROM MediaFile WHERE id = @Id";
-
-        await connection.ExecuteAsync(deleteSql, new { Id = fileId.SqliteId() });
-    }
-
     public async Task DeleteMediaItem(Guid id)
     {
         using var connection = _dbContext.CreateConnection();
         string deleteSql = @"DELETE FROM MediaItem WHERE id = @Id";
 
         await connection.ExecuteAsync(deleteSql, new { Id = id.SqliteId() });
-    }
-
-    public async Task UpdateMediaFile(MediaFile file)
-    {
-        using var connection = _dbContext.CreateConnection();
-        string updateSql = @"
-            UPDATE MediaFile 
-            SET title = @Title, 
-                short_title = @ShortTitle, 
-                type = @Type, 
-                played = @Played, 
-                intro_processed = @IntroProcessed, 
-                outro_processed = @OutroProcessed
-            WHERE id = @Id";
-
-        await connection.ExecuteAsync(updateSql, new
-        {
-            file.Title,
-            file.ShortTitle,
-            file.Type,
-            file.Played,
-            file.IntroProcessed,
-            file.OutroProcessed,
-            Id = file.Id.SqliteId()
-        });
-    }
-
-    public async Task UpsertMediaFiles(Guid itemId, List<MediaFile> mediaFiles)
-    {
-        using var connection = _dbContext.CreateConnection();
-
-        var existingFiles = (await connection.QueryAsync<MediaFile>("SELECT * FROM MediaFile WHERE item_id = @ItemId", new { ItemId = itemId.SqliteId() })).ToList();
-
-        if (existingFiles is null || !existingFiles.Any())
-        {
-            foreach (var file in mediaFiles)
-            {
-                file.ItemId = itemId;
-                await InsertMediaFile(file);
-            }
-            return;
-        }
-
-        var filesToInsert = mediaFiles.Where(mf => !existingFiles.Any(ef => ef.Path == mf.Path)).ToList();
-        var filesToUpdate = mediaFiles.Where(mf => existingFiles.Any(ef => ef.Path == mf.Path)).ToList();
-        var filesToDelete = existingFiles.Where(ef => !mediaFiles.Any(mf => mf.Path == ef.Path)).ToList();
-
-        foreach (var file in filesToInsert)
-        {
-            file.ItemId = itemId;
-            await InsertMediaFile(file);
-        }
-
-        foreach (var file in filesToUpdate)
-        {
-            await UpdateMediaFile(file);
-        }
-
-        foreach (var file in filesToDelete)
-        {
-            await DeleteMediaFile(file.Id.Value);
-        }
-    }
-
-    public async Task UpdateMediaFileIntroProcessed(Guid fileId, bool introProcessed)
-    {
-        using var connection = _dbContext.CreateConnection();
-        string updateSql = @"UPDATE MediaFile SET intro_processed = @IntroProcessed WHERE file_id = @Id";
-        await connection.ExecuteAsync(updateSql, new { IntroProcessed = introProcessed, Id = fileId });
-    }
-
-    public async Task UpdateMediaFileOutroProcessed(Guid fileId, bool outroProcessed)
-    {
-        using var connection = _dbContext.CreateConnection();
-        string updateSql = @"UPDATE MediaFile SET outro_processed = @OutroProcessed WHERE file_id = @Id";
-        await connection.ExecuteAsync(updateSql, new { OutroProcessed = outroProcessed, Id = fileId });
     }
 
     public async Task<List<MediaItem>> GetMediaItemsWithHistory()
