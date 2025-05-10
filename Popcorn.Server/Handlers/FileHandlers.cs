@@ -1,11 +1,15 @@
 using System.Diagnostics;
 using Popcorn.Application.Exceptions;
+using Popcorn.Application.Services;
+using Popcorn.Core.Model;
 using Popcorn.Domain;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
+using Popcorn.Persistence;
 using Popcorn.Persistence.Repositories;
 using Popcorn.Server.Models;
 using Popcorn.Server.Models.Requests;
+using PopcornPlayer.Domain.Extensions;
 using Serilog;
 
 namespace Popcorn.Server.Handlers;
@@ -22,12 +26,14 @@ public static class FileHandlers
             var mediaFileRepository = scope.ServiceProvider.GetRequiredService<IMediaFileRepository>();
             var playerService = scope.ServiceProvider.GetRequiredService<IPlayerService>();
             var fileService = scope.ServiceProvider.GetRequiredService<IFileService>();
+            var settingsRepository = scope.ServiceProvider.GetRequiredService<SettingsRepository>();
+            var itemHistoryService = scope.ServiceProvider.GetRequiredService<ItemHistoryService>();
 
-            var mediaFile = await mediaFileRepository.GetFileById(fileId.ToString());
+            var mediaFile = await mediaFileRepository.GetFileById(fileId);
             if (mediaFile == null) return;
-            
-            var useInternalPlayer = true;
-            if (!useInternalPlayer)
+
+            var settings = await settingsRepository.GetSettings();
+            if (!settings.UseInternalPlayer)
             {
                 await mediaItemRepository.AddHistoryItem(mediaFile.ItemId, new ItemHistory
                 {
@@ -44,7 +50,7 @@ public static class FileHandlers
                 return;
             }
 
-            if(useInternalPlayer)
+            if(settings.UseInternalPlayer)
             {
                 await playerService.OpenFile(mediaFile.Id!.Value);
             } else
@@ -64,6 +70,39 @@ public static class FileHandlers
                     //Snackbar.Add($"Unable to open file: {e.Message}", Severity.Error);
                 }
             }
+            
+            var historyItems = await itemHistoryService.GetItemHistoryAsync(mediaFile.ItemId);
+            await bus.SendEventAsync(SocketRequests.MediaItemHistory, historyItems);
+        });
+        
+        bus.RegisterHandler<Guid>(SocketRequests.FolderOpen, async fileId =>
+        {
+            using var scope = scopeFactory.CreateScope();
+            var mediaFileRepository = scope.ServiceProvider.GetRequiredService<IMediaFileRepository>();
+            var mediaItemRepository = scope.ServiceProvider.GetRequiredService<IMediaItemRepository>();
+
+            Guid mediaItemId;
+            string? rootPath = null;
+            
+            var mediaFile = await mediaFileRepository.GetFileById(fileId);
+            if (mediaFile == null)
+            {
+                mediaItemId = fileId; //Media item id comes when clicking on root. I'm lazy
+                var mediaItem = await mediaItemRepository.GetMediaItem(mediaItemId);
+                if (mediaItem == null) return;
+                
+                rootPath = mediaItem.FolderDirectory;
+            }
+            else
+            {
+                mediaItemId = mediaFile.ItemId;
+                rootPath = mediaFile.Path;
+            }
+            
+            var allFiles = await mediaFileRepository.GetFilesForItemId(mediaItemId);
+            var directoryFiles = allFiles.GetFilesForDirectory(rootPath);
+            
+            await bus.SendEventAsync(SocketRequests.MediaItemFileList, directoryFiles);
         });
         
         bus.RegisterHandler<FilesRequest>(SocketRequests.ImageFile, async request =>

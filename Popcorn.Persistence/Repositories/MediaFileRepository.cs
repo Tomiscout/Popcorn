@@ -136,13 +136,50 @@ public class MediaFileRepository(ImageRepository imageRepository, DapperContext 
         )).ToList();
     }
     
-    public async Task<MediaFile?> GetFileById(string fileId)
+    public async Task<MediaFile?> GetFileById(Guid fileId)
     {
         using var connection = dbContext.CreateConnection();
         
         return (await connection.QueryAsync<MediaFile>(
             "SELECT * FROM MediaFile WHERE id = @FileId",
-            new { FileId = fileId }
+            new { FileId = fileId.SqliteId() }
         )).FirstOrDefault();
+    }
+    
+    public async Task<List<MediaFile>> GetFilesForItemId(Guid itemId, bool loadSegmentLocations = false, IDbConnection? connection = null)
+    {
+        var conn = connection ?? dbContext.CreateConnection();
+        var disposeConn = connection == null;
+
+        try
+        {
+            var files = (await conn.QueryAsync<MediaFile>("SELECT * FROM MediaFile WHERE item_id = @Id", new { Id = itemId.SqliteId() })).ToList();
+
+            if(loadSegmentLocations)
+            {
+                var allSegments = await LoadMediaItemSegmentLocations(conn, itemId);
+                foreach(var file in files)
+                {
+                    file.SegmentLocations = allSegments.Where(s => s.FileId == file.Id).ToList();
+                }
+            }
+
+            return files;
+        }
+        finally
+        {
+            if (disposeConn)
+                conn.Dispose();
+        }
+    }
+    
+    private async Task<List<SegmentLocation>> LoadMediaItemSegmentLocations(IDbConnection connection, Guid itemId)
+    {
+        return (await connection.QueryAsync<SegmentLocation>(@"
+            SELECT si.* FROM SegmentLocation si
+            JOIN MediaFile mf
+            ON si.file_id = mf.id
+            WHERE mf.item_id = @Id",
+            new { Id = itemId.SqliteId() })).ToList();
     }
 }

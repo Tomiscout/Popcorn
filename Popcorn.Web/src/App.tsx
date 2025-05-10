@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { useWebSocket, WebSocketProvider } from './state/websocket-context';
 import { FileProvider, useFileContext } from './state/file-context';
 import { parseFilenames } from './utils/tags.parser';
+import { ModalsProvider } from '@mantine/modals';
 
 const theme = createTheme({
   primaryColor: 'primaryRed',
@@ -157,9 +158,11 @@ function App() {
     <FileProvider>
       <BrowserRouter>
         <MantineProvider theme={theme} forceColorScheme="dark">
-          <WebSocketProvider>
-            <AppContent />
-          </WebSocketProvider>
+          <ModalsProvider>
+            <WebSocketProvider>
+              <AppContent />
+            </WebSocketProvider>
+          </ModalsProvider>
         </MantineProvider>
       </BrowserRouter>
     </FileProvider>

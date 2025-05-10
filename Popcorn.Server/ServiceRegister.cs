@@ -1,6 +1,5 @@
 ﻿using System.Runtime.InteropServices;
 using Popcorn.Application.Services;
-using Popcorn.Core.Services;
 using Popcorn.Domain;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Services;
@@ -17,8 +16,9 @@ public static class ServiceRegister
 {
     public static void AddPopcornServices(this IServiceCollection services)
     {
-        // services.AddSingleton<FolderService>();
+        services.AddSingleton<FolderService>();
         services.AddSingleton<MediaItemService>();
+        services.AddSingleton<ItemHistoryService>();
         // services.AddSingleton<TorrentCore>();
         // services.AddSingleton<TorrentUtils>();
         services.AddSingleton<ImageRepository>();

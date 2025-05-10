@@ -1,3 +1,5 @@
+using Popcorn.Application.Services;
+using Popcorn.Domain;
 using Popcorn.Domain.Enum;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
@@ -16,6 +18,7 @@ public static class MediaItemHandlers
         {
             using var scope = scopeFactory.CreateScope();
             var mediaItemRepository = scope.ServiceProvider.GetRequiredService<IMediaItemRepository>();
+            var itemHistoryService = scope.ServiceProvider.GetRequiredService<ItemHistoryService>();
             
             var mediaItem = await mediaItemRepository.GetMediaItemFull(item.Id);
             if (mediaItem == null) return;
@@ -36,16 +39,7 @@ public static class MediaItemHandlers
                 .ToList();
             await bus.SendEventAsync(SocketRequests.MediaItemFileList, currentFiles);
 
-            var historyItems = mediaItem.History.Select(h =>
-            {
-                var file = mediaItem.Files.FirstOrDefault();
-                return new ItemHistoryDto
-                {
-                    Title = file?.ShortTitle ?? file?.Title ?? string.Empty,
-                    PlaybackTime = h.PlaybackTime,
-                    FileId = h.FileId,
-                };
-            });
+            var historyItems = await itemHistoryService.GetItemHistoryAsync(mediaItem.Id, mediaItem.History);
             await bus.SendEventAsync(SocketRequests.MediaItemHistory, historyItems);
 
             mediaItem.Files = null!;
@@ -60,6 +54,43 @@ public static class MediaItemHandlers
             
             // TODO load directories
             service.GetMediaItem(item.Id);
+        });
+        
+        bus.RegisterBinaryHandler(SocketRequests.CreateMediaItem, async (metadata, fileBytes) =>
+        {
+            using var scope = scopeFactory.CreateScope();
+            var mediaItemService = scope.ServiceProvider.GetRequiredService<MediaItemService>();
+            var mediaFilesRepository = scope.ServiceProvider.GetRequiredService<IMediaFileRepository>();
+
+            var newItem = new MediaItem
+            {
+                FolderDirectory = metadata[0],
+                Title = metadata[1],
+                Files = new ()
+            };
+            
+            var mediaScanResult = await MediaLoader.ScanDirectorySingle(newItem.FolderDirectory);
+            if (mediaScanResult == null) return;
+
+            var newItemId = await mediaItemService.CreateMediaItemFromScan(newItem, mediaScanResult);
+            var mediaFiles = await mediaFilesRepository.GetFilesForItemId(newItemId);
+            
+            // This is wonky way to process tags, since library is JS only. Would need to port it to c# or use somthing else
+            var unprocessedFiles = mediaFiles
+                .Where(f => f is { Type: FileType.File, TagsProcessed: false })
+                .ToDictionary(f => f.Id!.Value, f => f.Title);
+            if (unprocessedFiles.Count > 0)
+            {
+                await bus.SendEventAsync(SocketRequests.ParseTags, unprocessedFiles);
+            }
+        });
+        
+        bus.RegisterHandler<Guid>(SocketRequests.RemoveMediaItem, async (mediaItemId) =>
+        {
+            using var scope = scopeFactory.CreateScope();
+            var mediaItemRepository = scope.ServiceProvider.GetRequiredService<IMediaItemRepository>();
+
+            await mediaItemRepository.DeleteMediaItem(mediaItemId);
         });
     }
 }

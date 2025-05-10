@@ -1,3 +1,4 @@
+using System.Data;
 using Popcorn.Domain.Models;
 
 namespace Popcorn.Domain.Interfaces;
@@ -10,5 +11,8 @@ public interface IMediaFileRepository
     Task UpdateMediaFileOutroProcessed(Guid fileId, bool outroProcessed);
     Task UpdateMediaFile(MediaFile file);
     Task<List<MediaFile>> GetFilesByIds(string[] fileIds);
-    Task<MediaFile?> GetFileById(string fileId);
+    Task<MediaFile?> GetFileById(Guid fileId);
+
+    Task<List<MediaFile>> GetFilesForItemId(Guid itemId, bool loadSegmentLocations = false,
+        IDbConnection? connection = null);
 }

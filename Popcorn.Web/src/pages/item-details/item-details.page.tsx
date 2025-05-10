@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { SocketRequests } from '../../socket/socket-requests';
 import {
   FileType,
@@ -11,25 +11,37 @@ import {
   NextFileResponse,
 } from '../../model/media.contract';
 import { useWebSocket } from '../../state/websocket-context';
-import { Button, Flex, Table, Tabs, Text as ManText, Pill } from '@mantine/core';
+import { Button, Flex, Table, Tabs, Text, Pill, Breadcrumbs, Anchor } from '@mantine/core';
 import IconFile from '@tabler/icons-react/dist/esm/icons/IconFile';
 import IconHistory from '@tabler/icons-react/dist/esm/icons/IconHistory';
 import IconPlayerPlayFilled from '@tabler/icons-react/dist/esm/icons/IconPlayerPlayFilled';
 import IconFolder from '@tabler/icons-react/dist/esm/icons/IconFolder';
 import IconMovie from '@tabler/icons-react/dist/esm/icons/IconMovie';
+import IconTrash from '@tabler/icons-react/dist/esm/icons/IconTrash';
 import { useFileUrl } from '../../state/file-context';
 import './item-details.page.css';
+import { useModals } from '@mantine/modals';
 
 const ItemDetailsPage: React.FC = () => {
   const { id } = useParams();
+  const modals = useModals();
+  const navigate = useNavigate();
   const { client, isClientReady } = useWebSocket();
 
   const [mediaItem, setMediaItem] = useState<MediaItem>();
   const [currentMediaFiles, setCurrentMediaFiles] = useState<MediaFile[]>();
   const [mediaHistory, setMediaHistory] = useState<MediaItemHistory[]>();
   const [nextFile, setNextFile] = useState<NextFileResponse>();
+  const [isOpeningFolder, setIsOpeningFolder] = useState(false);
+  const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; title: string }[]>([]);
 
   const imageUrl = useFileUrl(mediaItem?.imagePath);
+
+  useEffect(() => {
+    if (mediaItem) {
+      setBreadcrumbs([{ id: mediaItem.id, title: 'Root' }]);
+    }
+  }, [mediaItem]);
 
   useEffect(() => {
     if (!id) return;
@@ -41,16 +53,53 @@ const ItemDetailsPage: React.FC = () => {
   }, [id]);
 
   useEffect(() => {
+    if (!isClientReady) return;
+
     client.onEvent<MediaItem>(SocketRequests.MediaItem, (msg) => {
       setMediaItem(msg);
     });
-    client.onEvent<MediaFile[]>(SocketRequests.MediaItemFileList, setCurrentMediaFiles);
+    client.onEvent<MediaFile[]>(SocketRequests.MediaItemFileList, mediaFilesReceived);
     client.onEvent<MediaItemHistory[]>(SocketRequests.MediaItemHistory, setMediaHistory);
     client.onEvent<NextFileResponse>(SocketRequests.NextFile, setNextFile);
   }, [isClientReady]);
 
   const fileRowClicked = (fileId: string) => {
-    client.sendEvent(SocketRequests.FileOpen, fileId);
+    if (isOpeningFolder) return; //Need to also debounce file open
+
+    const file = currentMediaFiles?.find((c) => c.id === fileId);
+    if (file?.type === FileType.Folder) {
+      setIsOpeningFolder(true);
+      setBreadcrumbs((prev) => [...prev, { id: file.id, title: file.title }]);
+      client.sendEvent(SocketRequests.FolderOpen, fileId);
+    } else {
+      client.sendEvent(SocketRequests.FileOpen, fileId);
+    }
+  };
+
+  const mediaFilesReceived = (newFiles: MediaFile[]) => {
+    setIsOpeningFolder(false);
+    setCurrentMediaFiles(newFiles);
+  };
+
+  const onBreadcrumbClick = (id: string | null, index: number) => {
+    setIsOpeningFolder(true);
+    setBreadcrumbs(breadcrumbs.slice(0, index + 1));
+    client.sendEvent(SocketRequests.FolderOpen, id);
+  };
+
+  const removeMediaItem = () => {
+    modals.openConfirmModal({
+      title: 'Confirm Deletion',
+      children: <Text size="sm">Are you sure you want to delete this item?</Text>,
+      labels: { confirm: 'Delete', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: () => {
+        client.sendEvent(SocketRequests.RemoveMediaItem, mediaItem?.id);
+        setTimeout(() => {
+          navigate('/watch');
+        }, 100);
+      },
+    });
   };
 
   const renderFiles = () => {
@@ -68,7 +117,7 @@ const ItemDetailsPage: React.FC = () => {
               <Table.Td>
                 <Flex gap="xs">
                   {file.type === FileType.File ? <IconMovie /> : <IconFolder />}
-                  <ManText>{file.shortTitle || file.title}</ManText>
+                  <Text>{file.shortTitle || file.title}</Text>
                 </Flex>
               </Table.Td>
               <Table.Td pl="0" pr="0">
@@ -109,15 +158,18 @@ const ItemDetailsPage: React.FC = () => {
         <img src={imageUrl ? imageUrl : '/images/default-media.jpg'} className="rounded-image-header"></img>
 
         <Flex direction="column" align="flex-start" ml="sm" gap="sm">
-          <ManText fw={700} size="xl">
+          <Text fw={700} size="xl">
             {mediaItem?.shortTitle || mediaItem?.title}
-          </ManText>
-          <ManText size="md">Description</ManText>
+          </Text>
+          <Text size="md">Description</Text>
           <Flex mt="auto" gap="sm">
             <Button variant="filled" leftSection={<IconPlayerPlayFilled size={14} />}>
               Play {nextFile?.title}
             </Button>
             <Button variant="default">Setup Intro Skipping</Button>
+            <Button variant="default" leftSection={<IconTrash size={14} />} onClick={removeMediaItem}>
+              Remove
+            </Button>
           </Flex>
         </Flex>
       </Flex>
@@ -133,6 +185,13 @@ const ItemDetailsPage: React.FC = () => {
         </Tabs.List>
 
         <Tabs.Panel value="files" mt="xs">
+          <Breadcrumbs separator=">" m="sm">
+            {breadcrumbs.map((crumb, idx) => (
+              <Anchor key={crumb.id} component="button" size="sm" onClick={() => onBreadcrumbClick(crumb.id, idx)}>
+                {crumb.title}
+              </Anchor>
+            ))}
+          </Breadcrumbs>
           {renderFiles()}
         </Tabs.Panel>
         <Tabs.Panel value="history" mt="xs">

@@ -7,5 +7,7 @@ public static class WebSocketHandlers
         MediaItemHandlers.Register(bus, scopeFactory);
         MediaListHandlers.Register(bus, scopeFactory);
         FileHandlers.Register(bus, scopeFactory);
+        LibraryHandlers.Register(bus, scopeFactory);
+        SettingsHandlers.Register(bus, scopeFactory);
     }
 }

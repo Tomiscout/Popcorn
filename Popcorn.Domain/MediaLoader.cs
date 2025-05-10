@@ -74,4 +74,34 @@ public static class MediaLoader
 
         return resultList.OrderBy(r => r.Files.Count).Reverse().ToList();
     }
+    
+    public static async Task<MediaScanResult?> ScanDirectorySingle(string folder)
+    {
+        if (!Directory.Exists(folder)) 
+            return null;
+
+        var allEntries = Directory
+            .EnumerateFileSystemEntries(folder, "*", SearchOption.AllDirectories)
+            .ToList();
+
+        var folderEntries = allEntries
+            .Where(Directory.Exists)
+            .ToList();
+        
+        var mediaFiles = allEntries
+            .Where(p => VideoFormats.Any(ext => p.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
+            .Where(p => folderEntries.Any(f => f != p)) // Removes folders with extension names 
+            .ToList();
+
+        if (mediaFiles.Count == 0) 
+            return null;
+
+        return new MediaScanResult
+        {
+            FolderPath = folder,
+            Title      = Path.GetFileName(folder),
+            Files      = mediaFiles,
+            Folders    = folderEntries
+        };
+    }
 }

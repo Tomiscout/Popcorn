@@ -1,32 +1,39 @@
-﻿using Popcorn.Domain.Models;
+﻿using Popcorn.Domain;
 using Popcorn.Domain.Enum;
-using Popcorn.Domain;
 using Popcorn.Domain.Interfaces;
+using Popcorn.Domain.Models;
 
-namespace Popcorn.Core.Services;
+namespace Popcorn.Application.Services;
 
 public class MediaItemService(IMediaItemRepository mediaItemRepository, IMediaFileRepository mediaFileRepository)
 {
-    public async Task CreateMediaItemFromScan(MediaItem item, MediaScanResult scanResult)
+    public async Task<Guid> CreateMediaItemFromScan(MediaItem item, MediaScanResult scanResult)
     {
-        await mediaItemRepository.CreateMediaItem(item);
+        var newItemId = await mediaItemRepository.CreateMediaItem(item);
         await mediaFileRepository.UpsertMediaFiles(item.Id, GetFilesFromScanResult(scanResult));
+        return newItemId;
     }
 
     private List<MediaFile> GetFilesFromScanResult(MediaScanResult scanResult)
     {
-        var files = new List<MediaFile>();
-        foreach (var path in scanResult.Files)
+        var allFiles = scanResult.Folders.Select(path => new MediaFile
         {
-            files.Add(new MediaFile
-            {
-                Id = Guid.NewGuid(),
-                Path = path,
-                Title = Path.GetFileName(path),
-                Type = FileType.File
-            });
-        }
-        return files;
+            Id = Guid.NewGuid(),
+            Path = path,
+            Title = Path.GetFileName(path),
+            Type = FileType.Folder
+        })
+        .ToList();
+        
+        allFiles.AddRange(scanResult.Files.Select(path => new MediaFile
+        {
+            Id = Guid.NewGuid(),
+            Path = path,
+            Title = Path.GetFileName(path),
+            Type = FileType.File
+        }));
+
+        return allFiles;
     }
 
     public async Task<MediaItem> RescanItem(MediaItem item)

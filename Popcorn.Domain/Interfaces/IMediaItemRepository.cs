@@ -9,7 +9,7 @@ public interface IMediaItemRepository
     Task<MediaItem?> GetMediaItemFull(Guid id);
     Task<MediaItem?> GetMediaItemWithSegments(Guid id);
     Task<List<string>> GetMediaItemFolders();
-    Task CreateMediaItem(MediaItem mediaItem);
+    Task<Guid> CreateMediaItem(MediaItem mediaItem);
     Task DeleteMediaItem(Guid id);
     Task AddHistoryItem(Guid id, ItemHistory item);
     Task<List<ItemHistory>> GetHistoryItems(Guid itemId);

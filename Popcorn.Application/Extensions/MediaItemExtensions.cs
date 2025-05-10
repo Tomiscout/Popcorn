@@ -109,41 +109,13 @@ public static class MediaItemExtensions
     }
     public static List<MediaFile> GetFilesForDirectory(this IList<MediaFile> files, string rootDirectory)
     {
-        var foldersSet = new HashSet<string>();
+        var resultFiles = files
+            .Where(file => Path.GetDirectoryName(file.Path) == rootDirectory)
+            .OrderByDescending(x => x.Type)
+            .ThenBy(x => x.Title)
+            .ToList();
 
-        var resultFiles = new List<MediaFile>();
-        foreach (var file in files)
-        {
-            var parent = Path.GetDirectoryName(file.Path);
-            var grandParent = Path.GetDirectoryName(parent);
-            if (parent == rootDirectory)
-            {
-                resultFiles.Add(file);
-            }
-            else if (grandParent == rootDirectory && !string.IsNullOrWhiteSpace(parent))
-            {
-                foldersSet.Add(parent);
-            }
-        }
-
-        var folders = foldersSet.ToList().OrderBy(i => i);
-        foreach (var folder in folders)
-        {
-            resultFiles.Add(new MediaFile
-            {
-                Id = Guid.NewGuid(),
-                Path = folder,
-                Title = folder.Substring(folder.LastIndexOf(Path.DirectorySeparatorChar) + 1),
-                Type = FileType.Folder
-            });
-        }
-
-        var result = resultFiles.OrderByDescending(x => x.Type).ToList();
-        foreach(var file in result) //TODO its ugly but works
-        {
-            file.ParseTitle();
-        }
-        return result;
+        return resultFiles;
     }
 
     //Immediate sibling

@@ -26,13 +26,29 @@ export class WebSocketClient {
     this.ws.onmessage = this.handleMessage.bind(this);
   }
 
-  sendEvent<TPayload>(type: string, payload: TPayload) {
+  sendEvent<TPayload>(type: string, payload: TPayload = {} as any) {
     console.log('Sending event', type);
     const message = JSON.stringify({ type, payload });
     if (this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(message);
     } else {
       this.ws.addEventListener('open', () => this.ws.send(message), {
+        once: true,
+      });
+    }
+  }
+
+  sendBinaryEvent(type: string, data: Blob | ArrayBuffer | Uint8Array, ...params: string[]) {
+    console.log('Sending binary event', type);
+    const header = `${type},${params.join(',')};`;
+    const headerBytes = new TextEncoder().encode(header);
+
+    const payloadBlob = new Blob([headerBytes, data]);
+
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(payloadBlob);
+    } else {
+      this.ws.addEventListener('open', () => this.ws.send(payloadBlob), {
         once: true,
       });
     }
