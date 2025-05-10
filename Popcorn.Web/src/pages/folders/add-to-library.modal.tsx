@@ -1,4 +1,4 @@
-import { Modal, TextInput, Button, Image, FileInput, Group, Flex } from '@mantine/core';
+import { Modal, TextInput, Button, Image, FileInput, Flex } from '@mantine/core';
 import { useState, useEffect } from 'react';
 import { MediaScanResult } from '../../model/folders.contract';
 

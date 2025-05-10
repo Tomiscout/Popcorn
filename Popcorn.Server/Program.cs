@@ -1,71 +1,50 @@
-using FluentMigrator.Runner;
-using Popcorn.Persistence;
-using Popcorn.Server;
-using Popcorn.Server.Handlers;
 using Serilog;
 
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
-    .CreateLogger();
+namespace Popcorn.Server;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-builder.Services.AddPopcornServices();
-builder.Services.AddPopcornDatabase();
-builder.Services.AddSerilog();
-
-var app = builder.Build();
-
-var runner = app.Services.GetRequiredService<IMigrationRunner>();
-runner.MigrateUp();
-
-app.UseWebSockets();
-app.Map("/ws", HandleWebSocket);
-
-// Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
-    // app.UseSwagger();
-    // app.UseSwaggerUI();
-//}
-
-//app.UseHttpsRedirection();
-
-try
+public abstract class Program
 {
-    app.Run();
-}
-finally
-{
-    Log.CloseAndFlush();
-}
-
-return;
-
-static async Task HandleWebSocket(HttpContext context, IServiceScopeFactory serviceScopeFactory)
-{
-    if (context.WebSockets.IsWebSocketRequest)
+    public static async Task Main(string[] args)
     {
-        using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-        Log.Information("WebSocket connection established");
+        // Example of how to pass additional host configuration if needed for standalone
+        // Action<IHostBuilder> configureHost = builder =>
+        // {
+        //     builder.ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Trace));
+        // };
 
-        var bus = new WebSocketBus(webSocket);
-        WebSocketHandlers.RegisterAll(bus, serviceScopeFactory);
-        await bus.ListenAsync();
+        // await using var serverHost = new PopcornServerHost(args, configureHost);
+        await using var serverHost = new PopcornServerHost(args);
 
-        if (!webSocket.CloseStatus.HasValue)
+        try
         {
-            Log.Information("Closing Websocket");
-            await webSocket.CloseAsync(webSocket.CloseStatus.Value, webSocket?.CloseStatusDescription, CancellationToken.None);
+            await serverHost.StartAsync();
+            Console.WriteLine($"Popcorn.Server (standalone) running. Press Ctrl+C to shut down.");
+            Console.WriteLine($"Listening on: {serverHost.ListeningUrl}");
+
+            // Keep alive for standalone execution
+            var cts = new CancellationTokenSource();
+            Console.CancelKeyPress += (sender, e) =>
+            {
+                e.Cancel = true; // Prevent default termination
+                cts.Cancel();
+                Console.WriteLine("Shutting down...");
+            };
+            await Task.Delay(Timeout.Infinite, cts.Token).ContinueWith(_ => { }); // Wait for cancellation
         }
-    }
-    else
-    {
-        context.Response.StatusCode = 400;
+        catch (OperationCanceledException)
+        {
+            // Expected on Ctrl+C
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            // Log detailed exception with Serilog if configured in PopcornServerHost
+        }
+        finally
+        {
+            Console.WriteLine("Attempting graceful shutdown of server host...");
+            // StopAsync will be called by DisposeAsync implicitly with `await using`
+        }
+        Console.WriteLine("Standalone server host finished.");
     }
 }

@@ -6,7 +6,7 @@ import { useWebSocket } from '../../state/websocket-context';
 import { useFileContext } from '../../state/file-context';
 import LoadingPage from '../loading/loading.page';
 import { Box, Flex, TextInput } from '@mantine/core';
-import IconSearch from '@tabler/icons-react/dist/esm/icons/IconSearch';
+import { IconSearch } from '@tabler/icons-react';
 import classes from './watch.page.module.css';
 
 export interface WatchPageProps {

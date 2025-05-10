@@ -1,47 +1,28 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
-
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
-    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
-		<ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
-		<PublishAot>false</PublishAot> <!-- sadly dapper doesnt support aot -->
-		<PublishTrimmed>False</PublishTrimmed>
-		<PackageId>Popcorn.Linux</PackageId>
-		<RootNamespace>Popcorn.Photino</RootNamespace>
+	<RootNamespace>Popcorn.Linux</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Blazorise.Bootstrap5" Version="1.6.1" />
-    <PackageReference Include="Blazorise.Icons.FontAwesome" Version="1.6.1" />
-    <PackageReference Include="Blazorise.TreeView" Version="1.6.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
-    <PackageReference Include="Photino.Blazor" Version="4.0.13" />
-    <PackageReference Include="Serilog" Version="4.1.0" />
+    <PackageReference Include="GirCore.WebKit-6.0" Version="0.6.3" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+    <PackageReference Include="Serilog" Version="4.2.0" />
     <PackageReference Include="Serilog.AspNetCore.IngestionCore" Version="1.0.0" />
-    <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Popcorn.Application\Popcorn.Application.csproj" />
-    <ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
-    <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
-    <ProjectReference Include="..\Popcorn.WebView\Popcorn.WebView.csproj" />
-  </ItemGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 	  <Optimize>False</Optimize>
 	</PropertyGroup>
-
+  
   <ItemGroup>
-    <Content Update="wwwroot\**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <None Remove="favicon.ico" />
     <Content Include="favicon.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -51,4 +32,19 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Popcorn.Server\Popcorn.Server.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="web\" />
+  </ItemGroup>
+
+  <Target Name="CopyWebToOutput" AfterTargets="Build">
+    <ItemGroup>
+      <FilesToCopy Include="web\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(OutputPath)web\%(RecursiveDir)" />
+  </Target>
 </Project>

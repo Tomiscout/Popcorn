@@ -1,8 +1,6 @@
-import IconTrash from '@tabler/icons-react/dist/esm/icons/IconTrash';
-import IconPlus from '@tabler/icons-react/dist/esm/icons/IconPlus';
-import IconPlayerPlay from '@tabler/icons-react/dist/esm/icons/IconPlayerPlay';
+import { IconTrash, IconPlus, IconPlayerPlay } from '@tabler/icons-react';
 
-import { Flex, Text, Table, FileInput, Button, Accordion, Skeleton, Box, List, Divider } from '@mantine/core';
+import { Flex, Text, Table, Button, Accordion, Skeleton, Box, List, Divider } from '@mantine/core';
 import React, { useEffect, useState } from 'react';
 import { useModals } from '@mantine/modals';
 import { useWebSocket } from '../../state/websocket-context';
@@ -102,7 +100,7 @@ const FoldersPage: React.FC = () => {
                 {items.length ? (
                   <List spacing="sm">
                     {items.map((scanResult) => (
-                      <Box key={scanResult.filePath} mb="sm">
+                      <Box key={scanResult.folderPath} mb="sm">
                         <Flex align="center" gap={8}>
                           <Button variant="subtle" onClick={() => openAddScanResultDialog(scanResult)}>
                             <IconPlus size={16} />
@@ -114,7 +112,7 @@ const FoldersPage: React.FC = () => {
                           </Text>
                           <Text>{scanResult.title}</Text>
                           {scanResult.files.length === 1 && (
-                            <Button variant="subtle" onClick={() => launchFile(scanResult.filePath)}>
+                            <Button variant="subtle" onClick={() => launchFile(scanResult.folderPath)}>
                               <IconPlayerPlay size={16} />
                             </Button>
                           )}

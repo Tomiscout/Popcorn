@@ -1,12 +1,8 @@
-import IconDeviceTv from '@tabler/icons-react/dist/esm/icons/IconDeviceTv';
-import IconDownload from '@tabler/icons-react/dist/esm/icons/IconDownload';
-import IconFolderOpen from '@tabler/icons-react/dist/esm/icons/IconFolderOpen';
-import IconSearch from '@tabler/icons-react/dist/esm/icons/IconSearch';
-import IconSettings from '@tabler/icons-react/dist/esm/icons/IconSettings';
+import { IconDeviceTv, IconDownload, IconFolderOpen, IconSearch, IconSettings } from '@tabler/icons-react';
 
 import './App.css';
-import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
-import { AppShell, createTheme, InputWrapper, MantineProvider, NavLink } from '@mantine/core';
+import { Routes, Route, Link, Navigate, useLocation, HashRouter } from 'react-router-dom';
+import { AppShell, createTheme, MantineProvider, NavLink } from '@mantine/core';
 import WatchPage from './pages/watch/watch.page';
 import MediaSearchPage from './pages/search/media-search.page';
 import TorrentSearchPage from './pages/search/torrent-search.page';
@@ -156,7 +152,7 @@ function AppContent() {
 function App() {
   return (
     <FileProvider>
-      <BrowserRouter>
+      <HashRouter>
         <MantineProvider theme={theme} forceColorScheme="dark">
           <ModalsProvider>
             <WebSocketProvider>
@@ -164,7 +160,7 @@ function App() {
             </WebSocketProvider>
           </ModalsProvider>
         </MantineProvider>
-      </BrowserRouter>
+      </HashRouter>
     </FileProvider>
   );
 }

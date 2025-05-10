@@ -1,8 +1,0 @@
-
-/* fix cursor everywhere */
-:not(input):not(textarea):not(.mud-input) { 
-    caret-color: transparent;
-}
-input, textarea, .mud-input {
-    caret-color: auto;
-}

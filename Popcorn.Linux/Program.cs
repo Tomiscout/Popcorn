@@ -1,100 +1,177 @@
-﻿using Microsoft.AspNetCore.Components.Web;
-using Microsoft.Extensions.DependencyInjection;
-using Photino.Blazor;
-using System;
-using Blazored.Modal;
-using Popcorn.Shared.Linux;
-using PopcornPlayer.Shared;
-using FluentMigrator.Runner;
-using MudBlazor.Services;
-using Popcorn.Shared.Utils;
-using Popcorn.Persistence;
+﻿using System;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using Gtk;
+using Popcorn.Server;
 using Serilog;
-using Popcorn.WebView;
-using Popcorn.Domain.Interfaces;
-using Popcorn.Linux;
-using Popcorn.PlayerServer;
-using Popcorn.Shared.Interfaces;
+using WebKit.Internal;
 
-namespace Popcorn.Photino;
+namespace Popcorn.Linux;
 
-class Program
+public abstract class Program
 {
-    [STAThread]
-    static void Main(string[] args)
+    private static CancellationTokenSource _globalAppCts;
+    public static async Task Main(string[] args)
     {
-        Log.Logger = new LoggerConfiguration()
-            .WriteTo.Console()
-            .WriteTo.Debug()
-            //.WriteTo.File(Path.Combine(DirUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}PopcornPlayer.txt"), rollingInterval: RollingInterval.Day)
-            .CreateLogger();
-        
-        PhotinoBlazorAppBuilder appBuilder = PhotinoBlazorAppBuilder.CreateDefault(args);
-
-        appBuilder.Services.AddLogging(builder => builder.AddSerilog());
-
-        appBuilder.Services.AddMudServices();
-        appBuilder.Services.AddBlazoredModal();
-
-        appBuilder.Services.AddPopcornServices();
-        appBuilder.Services.AddPopcornDatabase();
-
-        appBuilder.Services.AddSingleton<IPlayerService, LinuxPlayerService>();
-        appBuilder.Services.AddSingleton<INativeFolderService, LinuxFolderService>();
-        appBuilder.Services.AddSingleton<INativeFileAssosiation, LinuxFileAssociation>();
-        appBuilder.Services.AddSingleton<INativeProcessRunner, LinuxProcessRunner>();
-
-        // register root component and selector
-        appBuilder.RootComponents.Add<Popcorn.WebView.Main>("app");
-        appBuilder.RootComponents.Add<HeadOutlet>("head::after");
-
-        FFmpegWrapper.ExePath = "ffmpeg"; //TODO proper linking
-        DirUtils.EnsureApplicationFolder();
-
-        PhotinoBlazorApp app = appBuilder.Build();
-
-        var runner = app.Services.GetRequiredService<IMigrationRunner>();
-        runner.MigrateUp();
-
-        // customize window
-                
-        app.MainWindow.SetContextMenuEnabled(true);
-        app.MainWindow.SetDevToolsEnabled(true);
-        app.MainWindow.SetIconFile("favicon.ico");
-        app.MainWindow.SetTitle("Popcorn");
-        app.MainWindow.SetUseOsDefaultSize(false);
-        app.MainWindow.SetSize(1680, 1050);
-        app.MainWindow.SetUseOsDefaultLocation(false);
-        app.MainWindow.SetTop(0);
-        app.MainWindow.SetLeft(0);
-        app.MainWindow.SetLogVerbosity(-1);
-
-        AppDomain.CurrentDomain.UnhandledException += (sender, error) =>
+        _globalAppCts = new CancellationTokenSource();
+        Console.CancelKeyPress += (sender, e) =>
         {
-            Dispose();
-            
-            try
-            {
-                string? message = error.ExceptionObject.ToString();
-
-                System.Diagnostics.Debug.WriteLine(message);
-
-                string path = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Popcorn", "Error.log");
-                System.IO.File.WriteAllText(path, message);
-
-                app.MainWindow.ShowMessage("Error", message);
-            }
-            catch (Exception e)
-            {
-            }
+            e.Cancel = true; // Prevent default termination
+            _globalAppCts.Cancel();
+            Console.WriteLine("Shutting down...");
         };
+        
+        await using var serverHost = new PopcornServerHost(args);
 
-        app.Run();
-        Dispose();
+        try
+        {
+            await serverHost.StartAsync(_globalAppCts.Token);
+            Console.WriteLine($"Popcorn.Linux running. Press Ctrl+C to shut down.");
+            Console.WriteLine($"Listening on: {serverHost.ListeningUrl}");
+
+            var gtkExitedTcs = new TaskCompletionSource<bool>();
+            var gtkThread = new Thread(() =>
+            {
+                try
+                {
+                    // Run the GTK window setup and event loop
+                    RunWebWindow(_globalAppCts.Token, gtkExitedTcs);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"An error occurred in the GTK application thread: {ex.Message}");
+                    Log.Error(ex, "Error in GTK application thread.");
+                    gtkExitedTcs.TrySetException(ex);
+                }
+                finally
+                {
+                    gtkExitedTcs.TrySetResult(true); // Signal that GTK thread has completed its work
+                    Console.WriteLine("GTK application thread finished.");
+                }
+            })
+            {
+                IsBackground = true, // Allows the process to exit if only this background thread remains
+                Name = "GTK Thread"
+            };
+            // GTK (and underlying libraries like WebKitGTK which uses COM on Windows) often require STA.
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                gtkThread.SetApartmentState(ApartmentState.STA);
+            }
+            gtkThread.Start();
+            
+            var shutdownTriggerTask = await Task.WhenAny(
+                Task.Delay(Timeout.Infinite, _globalAppCts.Token)
+                    .ContinueWith(_ => { }), // Suppress OperationCanceledException for Task.WhenAny
+                gtkExitedTcs.Task
+            );
+            if (shutdownTriggerTask == gtkExitedTcs.Task)
+            {
+                Console.WriteLine("GTK application closed. Signalling overall application shutdown...");
+                _globalAppCts.Cancel(); // Initiate server shutdown
+            }
+            
+            // Give a small delay to allow any final shutdown logic to begin
+            await Task.Delay(100);
+        }
+        catch (OperationCanceledException)
+        {
+            Console.WriteLine("Application shutdown initiated by cancellation.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An unhandled error occurred during application execution: {ex.Message}");
+            Log.Fatal(ex, "Application terminated due to an unhandled exception.");
+        }
+        finally
+        {
+            Console.WriteLine("Attempting graceful shutdown of server host...");
+            // StopAsync will be called by DisposeAsync implicitly with `await using`
+        }
+        Console.WriteLine("Popcorn.Linux application finished.");
+    }
+    
+    private static Gtk.Application _gtkApplication;
+    private static ApplicationWindow _window;
+    private static WebKit.WebView _webView;
+    
+    /// <summary>
+    /// Runs the GTK application components. This method should be called on the GTK thread.
+    /// </summary>
+    /// <param name="appCtsToken">The CancellationToken for overall application shutdown.</param>
+    /// <param name="gtkExitedTcs">The TaskCompletionSource to signal when the GTK thread exits.</param>
+    private static void RunWebWindow(CancellationToken appCtsToken, TaskCompletionSource<bool> gtkExitedTcs)
+    {
+        // Initialize WebKit. This must be called on the thread that will create GTK widgets.
+        WebKit.Module.Initialize();
+
+        _gtkApplication = global::Gtk.Application.New("tomiscout.popcorn.player", Gio.ApplicationFlags.FlagsNone);
+
+        _gtkApplication.OnActivate += (sender, args) => OnActivate((Gio.Application)sender, args);
+        _gtkApplication.OnShutdown += (sender, args) => OnShutdown((Gio.Application)sender, args, gtkExitedTcs);
+
+        // Register a callback with the CancellationToken.
+        appCtsToken.Register(() =>
+        {
+            // It's crucial to call GTK methods from the GTK main thread.
+            // GLib.Functions.TimeoutAddFull schedules a callback to run on the GTK main loop.
+            GLib.Functions.TimeoutAdd(0, 0, () =>
+            {
+                Console.WriteLine("Signaling GTK application to quit from cancellation token.");
+                _gtkApplication?.Quit();
+                return false;
+            });
+        });
+
+        _gtkApplication.RunWithSynchronizationContext(null);
+    }
+    
+    private static void OnActivate(Gio.Application app, EventArgs args)
+    {
+        _window = global::Gtk.ApplicationWindow.New((global::Gtk.Application)app);
+        _window.Title = "Popcorn";
+        _window.SetDefaultSize(1280, 720);
+
+        var overlay = global::Gtk.Overlay.New();
+        _window.SetChild(overlay);
+
+        _webView = WebviewGtk.CreateWebView();
+        overlay.AddOverlay(_webView);
+        
+        _window.Show();
+    }
+    
+    /// <summary>
+    /// Called when the GTK application is shutting down.
+    /// </summary>
+    /// <param name="gtkExitedTcs">The TaskCompletionSource to signal when GTK components are disposed.</param>
+    private static void OnShutdown(Gio.Application app, EventArgs args, TaskCompletionSource<bool> gtkExitedTcs)
+    {
+        Console.WriteLine("GTK application OnShutdown event triggered.");
+        DisposeGtkComponents();
+        // Signal that the GTK application has completely shut down and its resources are disposed.
+        gtkExitedTcs.TrySetResult(true);
+        // If GTK initiated the shutdown (e.g., window closed), ensure the overall application
+        // cancellation is signaled to prompt the server to shut down as well.
+        _globalAppCts?.Cancel();
+    }
+    
+    /// <summary>
+    /// Disposes the GTK UI components.
+    /// </summary>
+    private static void DisposeGtkComponents()
+    {
+        Console.WriteLine("Disposing GTK components...");
+        _webView?.Dispose();
+        _window?.Dispose();
+        _gtkApplication?.Dispose();
+        Console.WriteLine("GTK components disposed.");
     }
 
     private static void Dispose()
     {
-        //PlayerSocketManager.Dispose();
+        DisposeGtkComponents(); //TODO not right here
     }
 }

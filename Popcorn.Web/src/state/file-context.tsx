@@ -71,7 +71,7 @@ export const FileProvider: React.FC<PropsWithChildren<{}>> = ({ children }) => {
 };
 
 export const useFileUrl = (filename: string | undefined): string | undefined => {
-  const { fileUrlsMap, getFilesToLoad } = useFileContext();
+  const { fileUrlsMap } = useFileContext();
   const { client, isClientReady } = useWebSocket();
   const previous = useRef<string | undefined>(undefined);
 

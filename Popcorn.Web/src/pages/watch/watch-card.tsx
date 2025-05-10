@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './watch-card.css';
 import { useFileUrl } from '../../state/file-context';
@@ -9,7 +9,7 @@ type WatchCardProps = {
 };
 
 const WatchCard: React.FC<WatchCardProps> = ({ item }) => {
-  const [showOptions, setShowOptions] = useState(false);
+  const [showOptions, _] = useState(false);
   const navigate = useNavigate();
 
   const imageUrl = useFileUrl(item.imagePath);

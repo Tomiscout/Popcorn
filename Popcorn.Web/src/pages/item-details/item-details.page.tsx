@@ -12,12 +12,7 @@ import {
 } from '../../model/media.contract';
 import { useWebSocket } from '../../state/websocket-context';
 import { Button, Flex, Table, Tabs, Text, Pill, Breadcrumbs, Anchor } from '@mantine/core';
-import IconFile from '@tabler/icons-react/dist/esm/icons/IconFile';
-import IconHistory from '@tabler/icons-react/dist/esm/icons/IconHistory';
-import IconPlayerPlayFilled from '@tabler/icons-react/dist/esm/icons/IconPlayerPlayFilled';
-import IconFolder from '@tabler/icons-react/dist/esm/icons/IconFolder';
-import IconMovie from '@tabler/icons-react/dist/esm/icons/IconMovie';
-import IconTrash from '@tabler/icons-react/dist/esm/icons/IconTrash';
+import { IconFile, IconHistory, IconPlayerPlayFilled, IconFolder, IconMovie, IconTrash } from '@tabler/icons-react';
 import { useFileUrl } from '../../state/file-context';
 import './item-details.page.css';
 import { useModals } from '@mantine/modals';
@@ -112,7 +107,7 @@ const ItemDetailsPage: React.FC = () => {
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {currentMediaFiles?.map((file, index) => (
+          {currentMediaFiles?.map((file) => (
             <Table.Tr key={file.id} style={{ cursor: 'pointer' }} onClick={() => fileRowClicked(file.id)}>
               <Table.Td>
                 <Flex gap="xs">
