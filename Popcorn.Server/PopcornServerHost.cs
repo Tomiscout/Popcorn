@@ -44,8 +44,7 @@ public class PopcornServerHost : IAsyncDisposable
 
         hostBuilder.ConfigureWebHostDefaults(webBuilder =>
         {
-            //webBuilder.UseUrls("http://127.0.0.1:0"); // "0" means dynamic port
-            webBuilder.UseUrls("http://127.0.0.1:5000");
+            webBuilder.UseUrls("http://127.0.0.1:0"); // "0" means dynamic port
             webBuilder.UseStartup<Startup>();
         });
 

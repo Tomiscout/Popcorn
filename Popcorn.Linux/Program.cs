@@ -3,6 +3,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using GdkPixbuf;
 using Gtk;
 using Popcorn.Server;
 using Serilog;
@@ -13,6 +14,9 @@ namespace Popcorn.Linux;
 public abstract class Program
 {
     private static CancellationTokenSource _globalAppCts;
+
+    private static string? ServerUrl = null;
+    
     public static async Task Main(string[] args)
     {
         _globalAppCts = new CancellationTokenSource();
@@ -30,6 +34,7 @@ public abstract class Program
             await serverHost.StartAsync(_globalAppCts.Token);
             Console.WriteLine($"Popcorn.Linux running. Press Ctrl+C to shut down.");
             Console.WriteLine($"Listening on: {serverHost.ListeningUrl}");
+            ServerUrl = serverHost.ListeningUrl;
 
             var gtkExitedTcs = new TaskCompletionSource<bool>();
             var gtkThread = new Thread(() =>
@@ -107,7 +112,7 @@ public abstract class Program
         // Initialize WebKit. This must be called on the thread that will create GTK widgets.
         WebKit.Module.Initialize();
 
-        _gtkApplication = global::Gtk.Application.New("tomiscout.popcorn.player", Gio.ApplicationFlags.FlagsNone);
+        _gtkApplication = global::Gtk.Application.New("tomiscout.popcorn", Gio.ApplicationFlags.FlagsNone);
 
         _gtkApplication.OnActivate += (sender, args) => OnActivate((Gio.Application)sender, args);
         _gtkApplication.OnShutdown += (sender, args) => OnShutdown((Gio.Application)sender, args, gtkExitedTcs);
@@ -137,7 +142,7 @@ public abstract class Program
         var overlay = global::Gtk.Overlay.New();
         _window.SetChild(overlay);
 
-        _webView = WebviewGtk.CreateWebView();
+        _webView = WebviewGtk.CreateWebView(ServerUrl);
         overlay.AddOverlay(_webView);
         
         _window.Show();

@@ -19,7 +19,7 @@ export const WebSocketProvider = ({ children }: React.PropsWithChildren) => {
   const [isClientReady, setIsClientReady] = useState(false);
 
   if (!wsClientRef.current) {
-    wsClientRef.current = new WebSocketClient('ws://localhost:5000/ws');
+    wsClientRef.current = new WebSocketClient(`ws://${window.location.host}/ws`);
   }
 
   useEffect(() => {

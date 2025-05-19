@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const indexPath = './dist/index.html';
+const chromePath = './dist/index-chrome.html';
 const linuxPath = './dist/index-linux.html';
 
 async function patchAndCopy() {
@@ -14,8 +15,8 @@ async function patchAndCopy() {
     let patchedData = data.replace('<head>', '<head><base href="http://app.local/">');
 
     // Step 3: Write the patched content back to index.html
-    await fs.writeFile(indexPath, patchedData, 'utf8');
-    console.log('Patched index.html with <base> http://app.local/');
+    await fs.writeFile(chromePath, patchedData, 'utf8');
+    console.log('Patched index-chrome.html with <base> http://app.local/');
 
     // Step 4: Copy patched index.html to index-linux.html
     await fs.writeFile(linuxPath, patchedData, 'utf8');
@@ -38,9 +39,11 @@ async function copyBundle() {
   const __dirname = path.dirname(__filename);
 
   const srcDir = path.join(__dirname, 'dist');
-  const destDir = path.join(__dirname, '../Popcorn.Linux/web');
+  const serverDir = path.join(__dirname, '../Popcorn.Server/web');
+  const linuxDir = path.join(__dirname, '../Popcorn.Linux/web');
 
-  await fs.cp(srcDir, destDir, { recursive: true });
+  await fs.cp(srcDir, serverDir, { recursive: true });
+  await fs.cp(srcDir, linuxDir, { recursive: true });
 }
 
 patchAndCopy();

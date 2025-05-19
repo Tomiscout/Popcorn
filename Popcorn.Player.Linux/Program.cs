@@ -1,4 +1,5 @@
-﻿using Gtk;
+﻿using GdkPixbuf.Internal;
+using Gtk;
 using Microsoft.Extensions.DependencyInjection;
 using Popcorn.Persistence;
 using Popcorn.Player.Core;
@@ -43,6 +44,8 @@ public class Program
 
     private static void OnActivate(Gio.Application app, EventArgs args)
     {
+        Log.Information("Building player window");
+        
         _window = global::Gtk.ApplicationWindow.New((global::Gtk.Application)app);
         _window.Title = "Popcorn player";
         _window.SetDefaultSize(1280, 720);
@@ -55,6 +58,7 @@ public class Program
         _webView = WebviewGtk.CreateWebView();
         overlay.AddOverlay(_webView);
         
+        Log.Information("Showing player window");
         _window.Show();
         
         var player = Services.GetService<PlayerCore>()!;
@@ -76,7 +80,7 @@ public class Program
         else
         {
             Log.Logger.Information("Loading default file");
-            player.LoadMedia(@"/home/tom/Downloads/Torrent/[GST] JoJo no Kimyou na Bouken Part 6 Stone Ocean - (01-12) [1080p]/[GST] JoJo Part 6 - S05E07 [1080p].mkv");
+            player.LoadMedia(@"/home/tom/Downloads/Torrent/Bobs Burgers S01-S14 Complete + Movie [1080p WEB-DL x265 HEVC]-CAPT/Series/Season 1/S01E01.mkv");
             //player.LoadMedia(@"/mnt/data/Downloads/Sex.Education.S04.COMPLETE.1080p.NF.WEB-DL.DDP5.1.H.264-Archie[TGx]/Sex.Education.S04E01.Episode.1.1080p.NF.WEB-DL.DDP5.1.H.264-Archie.mkv");
             //player.LoadMedia(@"/home/tom/Videos/4K60p.mov");
         }
@@ -114,14 +118,26 @@ public class Program
     {
         if (!File.Exists(_socketPath))
         {
-            Log.Warning("Could not find popcorn socket file, Popcorn is not started.");
+            Log.Information("Could not find popcorn socket file, Popcorn is not started.");
             return;
         }
         
         PopcornClient = new PopcornSocketClient(_socketPath);
         PopcornClient.MessageReceived += (sender, @event) =>
         {
-            Services.GetService<PopcornPipeEventHandler>().Handle(@event);
+            // Need to marshal this on GTK thread, otherwise opengl surface is blue
+            GLib.Functions.IdleAdd(0, () =>
+            {
+                try
+                {
+                    Services.GetService<PopcornPipeEventHandler>().Handle(@event);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error handling message from Popcorn client");
+                }
+                return false;
+            });
         };
         PopcornClient.Start();
     }

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using PopcornPlayer.Shared.PipeEvents;
 using PopcornPlayer.Shared.PipeEvents.Client;
+using Serilog;
 
 namespace Popcorn.Player.Core.Core;
 
@@ -18,7 +19,7 @@ public class PopcornPipeEventHandler
 
     public void Handle(string message)
     {
-        _logger.LogInformation("Received message from socket: {message}", message);
+        Log.Information("Received message from popcorn socket: {message}", message);
 
         try
         {
@@ -39,7 +40,7 @@ public class PopcornPipeEventHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error while processing message: {message}", message);
+            Log.Error(ex, "Error while processing message: {message}", message);
         }
     }
 }

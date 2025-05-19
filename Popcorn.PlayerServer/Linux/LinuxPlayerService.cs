@@ -80,41 +80,38 @@ public class LinuxPlayerService : IPlayerService
 
     private void LaunchPlayer(string launchParam)
     {
-        var path = GetPlayerElfPath();
-        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+        var playerPath = GetPlayerElfPath();
+        if (string.IsNullOrEmpty(playerPath) || !File.Exists(playerPath))
         {
-            throw new FileNotFoundException("Popcorn Player path is not found. " + path);
+            throw new FileNotFoundException("Popcorn Player path is not found. " + playerPath);
         }
-        
+
+        // Use nohup to detach the process and redirect output
+        // The '&' at the end runs the command in the background
+        var command = $"nohup \"{playerPath}\" \"{launchParam}\" > /dev/null 2>&1 &";
+
         var startInfo = new ProcessStartInfo
         {
-            FileName = path,
-            Arguments = $"\"{launchParam}\"",
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true
+            FileName = "/bin/bash", // Or "/bin/sh"
+            Arguments = $"-c \"{command.Replace("\"", "\\\"")}\"", // Pass the command to the shell
+            UseShellExecute = true, // Crucial for nohup to work as expected
+            CreateNoWindow = true // Prevents a new terminal window from opening
         };
-        
-        var process = new Process() { StartInfo = startInfo };
-        // Handle standard output
-        process.OutputDataReceived += (sender, e) =>
+
+        try
         {
-            if (!string.IsNullOrEmpty(e.Data))
+            using (var process = Process.Start(startInfo))
             {
-                Debug.WriteLine($"[PopcornPlayer]: {e.Data}");
+                // We don't wait for exit or redirect output/error here
+                // because nohup handles it.
+                // The 'process' object here represents the shell process (bash/sh),
+                // not the player process itself.
             }
-        };
-        process.ErrorDataReceived += (sender, e) =>
+        }
+        catch (Exception ex)
         {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-                Debug.WriteLine($"[PopcornPlayer-ERROR]: {e.Data}");
-            }
-        };
-        
-        process.Start();
-        process.BeginOutputReadLine();  // Start async read of standard output
-        process.BeginErrorReadLine();  // Start async read of error output
+            _logger.LogError(ex, "Failed to launch player as detached process");
+        }
     }
 
     private string GetPlayerElfPath()

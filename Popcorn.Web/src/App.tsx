@@ -1,7 +1,7 @@
 import { IconDeviceTv, IconDownload, IconFolderOpen, IconSearch, IconSettings } from '@tabler/icons-react';
 
 import './App.css';
-import { Routes, Route, Link, Navigate, useLocation, HashRouter } from 'react-router-dom';
+import { Routes, Route, Link, Navigate, useLocation, BrowserRouter } from 'react-router-dom';
 import { AppShell, createTheme, MantineProvider, NavLink } from '@mantine/core';
 import WatchPage from './pages/watch/watch.page';
 import MediaSearchPage from './pages/search/media-search.page';
@@ -152,7 +152,7 @@ function AppContent() {
 function App() {
   return (
     <FileProvider>
-      <HashRouter>
+      <BrowserRouter>
         <MantineProvider theme={theme} forceColorScheme="dark">
           <ModalsProvider>
             <WebSocketProvider>
@@ -160,7 +160,7 @@ function App() {
             </WebSocketProvider>
           </ModalsProvider>
         </MantineProvider>
-      </HashRouter>
+      </BrowserRouter>
     </FileProvider>
   );
 }

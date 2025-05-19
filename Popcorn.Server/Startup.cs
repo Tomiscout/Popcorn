@@ -18,7 +18,25 @@ public class Startup
     {
         var runner = app.ApplicationServices.GetRequiredService<IMigrationRunner>();
         runner.MigrateUp();
+        
+        var webPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "web");
+        if (Directory.Exists(webPath))
+        {
+            app.UseDefaultFiles(new DefaultFilesOptions
+            {
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(webPath)
+            });
 
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(webPath)
+            });
+        }
+        else
+        {
+            Log.Error("Web bundle directory not found at {webPath}", webPath);
+        }
+        
         app.UseWebSockets();
         app.Map("/ws", wsApp =>
         {

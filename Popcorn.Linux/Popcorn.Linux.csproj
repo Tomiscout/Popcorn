@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ApplicationIcon>favicon.ico</ApplicationIcon>
-	<RootNamespace>Popcorn.Linux</RootNamespace>
+    <RootNamespace>Popcorn.Linux</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,9 +19,9 @@
   </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-	  <Optimize>False</Optimize>
-	</PropertyGroup>
-  
+    <Optimize>False</Optimize>
+  </PropertyGroup>
+
   <ItemGroup>
     <None Remove="favicon.ico" />
     <Content Include="favicon.ico">
@@ -37,10 +37,7 @@
     <ProjectReference Include="..\Popcorn.Server\Popcorn.Server.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="web\" />
-  </ItemGroup>
-
+<!--  It looks for /web in folder next to executable. In development this project is in a separate dir. -->
   <Target Name="CopyWebToOutput" AfterTargets="Build">
     <ItemGroup>
       <FilesToCopy Include="web\**\*.*" />
