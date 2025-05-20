@@ -1,25 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>net9.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-  	</PropertyGroup>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DebugType>full</DebugType>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DebugType>None</DebugType>
-  </PropertyGroup>
-  
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<DebugType>full</DebugType>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<DebugType>None</DebugType>
+	</PropertyGroup>
+
 	<ItemGroup>
-	  <PackageReference Include="MonoTorrent" Version="2.0.7" />
+		<PackageReference Include="MonoTorrent" Version="2.0.7" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
-	  <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
+		<ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
+		<ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
 	</ItemGroup>
 
 </Project>

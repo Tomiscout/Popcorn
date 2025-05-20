@@ -6,12 +6,15 @@ MPVSHARP_DIR=./MPVSharp
 MPVSHARP_SRC_DIR=$(MPVSHARP_DIR)/src
 MPVSHARP_BIN_DIR=$(MPVSHARP_DIR)/bin
 
+POPCORN_BIN_DIR=$(POPCORN_DIR_LINUX)/bin/$(CONFIG)/$(DOTNET_VERSION)
+POPCORN_PLAYER_BIN_DIR=$(POPCORN_PLAYER_DIR_LINUX)/bin/$(CONFIG)/$(DOTNET_VERSION)
+
 CONFIG=Release
 DOTNET_VERSION=net8.0
 
 # Clean output folders
 clean:
-	rm -rf $(BLD_DIR) $(MPVSHARP_BIN_DIR)
+	rm -rf $(BLD_DIR) $(MPVSHARP_BIN_DIR) $(POPCORN_BIN_DIR) $(POPCORN_PLAYER_BIN_DIR)
 
 # Pull and build MPVSharp
 update-mpvsharp:
@@ -25,7 +28,11 @@ update-mpvsharp:
 	# Copy the built DLL to the bin directory
 	cp $(MPVSHARP_DIR)/src/Nickvision.MPVSharp/bin/$(CONFIG)/net7.0/Nickvision.MPVSharp.* $(MPVSHARP_DIR)
 
-build-popcorn-linux:
+build-popcorn-web:
+	cd ./Popcorn.Web
+	npm run build
+
+build-popcorn-linux build-popcorn-web:
 	dotnet restore $(POPCORN_DIR_LINUX)
 	dotnet build $(POPCORN_DIR_LINUX) --configuration $(CONFIG)
 
@@ -36,8 +43,8 @@ build-popcorn-player-linux:
 # Bundle both projects together
 bundle-linux: build-popcorn-linux build-popcorn-player-linux
 	mkdir -p $(LINUX_DIR)
-	cp -r $(POPCORN_DIR_LINUX)/bin/$(CONFIG)/$(DOTNET_VERSION)/* $(LINUX_DIR)
-	cp -r $(POPCORN_PLAYER_DIR_LINUX)/bin/$(CONFIG)/$(DOTNET_VERSION)/* $(LINUX_DIR)
+	cp -r $(POPCORN_BIN_DIR)/* $(LINUX_DIR)
+	cp -r $(POPCORN_PLAYER_BIN_DIR)/* $(LINUX_DIR)
 
 build-player-web:
 	cd ./Popcorn.Player.Web

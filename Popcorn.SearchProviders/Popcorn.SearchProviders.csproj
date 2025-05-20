@@ -1,27 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>net9.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DebugType>full</DebugType>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DebugType>None</DebugType>
-  </PropertyGroup>
-  
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<DebugType>full</DebugType>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<DebugType>None</DebugType>
+	</PropertyGroup>
+
 	<ItemGroup>
-	  <PackageReference Include="HtmlAgilityPack" Version="1.11.66" />
-	  <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.8" />
-	  <PackageReference Include="TheMovieDbWrapper" Version="1.3.1" />
+		<PackageReference Include="HtmlAgilityPack" Version="1.11.66" />
+		<PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.8" />
+		<PackageReference Include="TheMovieDbWrapper" Version="1.3.1" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\Popcorn.Application\Popcorn.Application.csproj" />
-	  <ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
-	  <ProjectReference Include="..\Popcorn.Torrents\Popcorn.Torrents.csproj" />
-	  <ProjectReference Include="..\PopcornPlayer.Shared\PopcornPlayer.Shared.csproj" />
+		<ProjectReference Include="..\Popcorn.Application\Popcorn.Application.csproj" />
+		<ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
+		<ProjectReference Include="..\Popcorn.Torrents\Popcorn.Torrents.csproj" />
+		<ProjectReference Include="..\PopcornPlayer.Shared\PopcornPlayer.Shared.csproj" />
 	</ItemGroup>
 
 </Project>
