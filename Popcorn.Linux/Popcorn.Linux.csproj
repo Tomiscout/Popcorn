@@ -10,7 +10,6 @@
   <ItemGroup>
     <PackageReference Include="GirCore.WebKit-6.0" Version="0.6.3" />
     <PackageReference Include="Serilog" Version="4.3.0" />
-    <PackageReference Include="Serilog.AspNetCore.IngestionCore" Version="1.0.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />

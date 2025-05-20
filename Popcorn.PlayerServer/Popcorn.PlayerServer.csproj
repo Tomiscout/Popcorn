@@ -13,7 +13,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="EnvDTE" Version="17.11.40262" />
+		<PackageReference Include="EnvDTE" Version="17.14.40260" />
 		<PackageReference Include="NetCoreServer" Version="8.0.7" />
 		<PackageReference Include="PipeMethodCalls" Version="4.0.2" />
 		<PackageReference Include="PipeMethodCalls.NetJson" Version="3.0.0" />
