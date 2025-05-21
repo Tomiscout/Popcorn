@@ -52,7 +52,7 @@ public static class FileHandlers
 
             if(settings.UseInternalPlayer)
             {
-                await playerService.OpenFile(mediaFile.Id!.Value);
+                await playerService.OpenFile(mediaFile.Id);
             } else
             {
                 try
@@ -71,6 +71,7 @@ public static class FileHandlers
                 }
             }
             
+            await mediaFileRepository.SetFileAsPlayed(mediaFile.Id);
             var historyItems = await itemHistoryService.GetItemHistoryAsync(mediaFile.ItemId);
             await bus.SendEventAsync(SocketRequests.MediaItemHistory, historyItems);
         });

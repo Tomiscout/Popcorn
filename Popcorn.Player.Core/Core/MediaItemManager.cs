@@ -4,22 +4,16 @@ using Popcorn.Domain.Models;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Player.Core.Contracts;
 using Popcorn.Player.Core.Player;
+using Popcorn.Shared.Utils;
 using PopcornPlayer.Domain.Extensions;
 
 namespace Popcorn.Player.Core.Core;
-public class MediaItemManager
+public class MediaItemManager(
+    Lazy<WebEventHandler> webSocket,
+    IMediaItemRepository mediaItemRepository,
+    IMediaFileRepository mediaFileRepository)
 {
-    private readonly IPlayer _player;
-    private readonly Lazy<WebEventHandler> _webSocket;
-    private readonly IMediaItemRepository _mediaItemRepository;
     public MediaItem CurrentMediaItem { get; private set; }
-
-    public MediaItemManager(IPlayer player, Lazy<WebEventHandler> webSocket, IMediaItemRepository mediaItemRepository)
-    {
-        _player = player;
-        _webSocket = webSocket;
-        _mediaItemRepository = mediaItemRepository;
-    }
 
     public void UpdateItemHistory(List<ItemHistory> history) //From main client
     {
@@ -30,7 +24,7 @@ public class MediaItemManager
 
     public void LoadMediaInfo(Guid fileId)
     {
-        CurrentMediaItem = _mediaItemRepository.GetMediaItemFromFileId(fileId).Result;
+        CurrentMediaItem = mediaItemRepository.GetMediaItemFromFileId(fileId).Result;
         CurrentMediaItem.RecalculatePlayedFiles(CurrentMediaItem.Files);
 
         // Update current item if it already playing
@@ -49,6 +43,23 @@ public class MediaItemManager
             Files = CurrentMediaItem.Files.GetFilesForDirectory(path),
         };
         CurrentMediaItem.RecalculatePlayedFiles(@event.Files);
-        _webSocket.Value.PostEvent("folder_loaded", @event);
+        webSocket.Value.PostEvent("folder_loaded", @event);
+    }
+
+    public async Task UpdatePlayedFile(MediaFile file)
+    {
+        AssertUtils.AssertGuid(file.Id);
+        
+        await mediaFileRepository.SetFileAsPlayed(file.Id);
+        if (file.ItemId == Guid.Empty) return;
+        
+        await mediaItemRepository.AddHistoryItem(file.ItemId, new ItemHistory()
+        {
+            FileId = file.Id,
+            ItemId = file.ItemId,
+            PlaybackTime = DateTime.UtcNow
+        });
+            
+        // TODO event to popcorn to refresh played items
     }
 }

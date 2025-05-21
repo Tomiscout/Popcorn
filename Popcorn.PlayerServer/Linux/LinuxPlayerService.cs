@@ -125,7 +125,7 @@ public class LinuxPlayerService : IPlayerService
         //In development, player bundle is in different folder
         var debugPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, 
             "..", "..", "..", "..", 
-            "Popcorn.Player.Linux", "bin", "Debug", "net8.0", "Popcorn.Player.Linux");
+            "Popcorn.Player.Linux", "bin", "Debug", "net9.0", "Popcorn.Player.Linux");
 
         return File.Exists(debugPath) ? debugPath : string.Empty;
     }

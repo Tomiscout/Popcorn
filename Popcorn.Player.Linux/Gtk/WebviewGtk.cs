@@ -69,7 +69,7 @@ public class WebviewGtk
         {
             requestedPath = requestedPath.Substring(1);
         }
-        var filePath = System.IO.Path.Combine(WebPath, requestedPath);
+        var filePath = Path.Combine(WebPath, requestedPath);
 
         // Read the file and respond
         var fileBytes = System.IO.File.ReadAllBytes(filePath);

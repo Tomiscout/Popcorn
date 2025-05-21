@@ -46,10 +46,7 @@ public class PlayerCore
     public async Task LoadFileId(Guid fileId)
     {
         _mediaItemManager.LoadMediaInfo(fileId);
-        var file = _mediaItemManager.CurrentMediaItem.Files.First(f => f.Id == fileId);
-        file.ParseTitle();
-
-        await LoadMedia(file);
+        await LoadMedia(fileId);
     }
 
     public async Task LoadFilesFromInput(List<string> paths)
@@ -57,6 +54,7 @@ public class PlayerCore
         _isLoadedFromArgs = true;
         _inputFilePaths = paths.Select(p => new MediaFile
         {
+            Id = Guid.NewGuid(),
             Path = p,
             FormatTags = new List<string>() { Path.GetExtension(p) }
         }).ToList();
@@ -69,6 +67,15 @@ public class PlayerCore
         await LoadMedia(media);
     }
 
+    public Task LoadMedia(Guid fileId)
+    {
+        var mediaFile = _mediaItemManager.CurrentMediaItem?.Files.FirstOrDefault(f => f.Id == fileId) ?? _inputFilePaths?.FirstOrDefault(f => f.Id == fileId);
+        if (mediaFile != null) return LoadMedia(mediaFile);
+        
+        Log.Warning("File {FileId} not found", fileId);
+        return Task.CompletedTask;
+    }
+    
     public async Task LoadMedia(MediaFile file)
     {
         _isLoadingTrack = true;
@@ -78,10 +85,13 @@ public class PlayerCore
             Log.Error($"File not found. {file.Path}");
             return;
         }
+        
+        file.Played = true;
+
         Log.Warning($"Set of current media file {file.Path}");
-        if (file.Id == null || file.Id == Guid.Empty) //TODO HACK
+        if (!_isLoadedFromArgs)
         {
-            file.Id = Guid.NewGuid();
+            await _mediaItemManager.UpdatePlayedFile(file);
         }
 
         CurrentMediaProbe = ProbeMetadata(file.Path);
@@ -90,7 +100,6 @@ public class PlayerCore
             return;
         }
 
-        file.Played = true;
         CurrentMediaFile = file;
 
         var hasLoaded = await _player.LoadMedia(file.Path, CurrentMediaProbe);
@@ -104,27 +113,6 @@ public class PlayerCore
         }
 
         OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
-    }
-    public bool LoadMedia(string path)
-    {
-        var mediaFile = _mediaItemManager.CurrentMediaItem?.Files.FirstOrDefault(f => f.Path == path) ?? _inputFilePaths?.FirstOrDefault(f => f.Path == path);
-        if (mediaFile is null)
-        {
-            if (_inputFilePaths is null)
-            {
-                _inputFilePaths = new List<MediaFile>();
-                Log.Warning($"Recieved LoadMedia for unloaded file: {path}");
-            }
-            mediaFile = new MediaFile
-            {
-                Path = path,
-                FormatTags = new List<string>() { Path.GetExtension(path) }
-            };
-            mediaFile.ParseTitle();
-        }
-
-        LoadMedia(mediaFile);
-        return true;
     }
 
     public bool PlayNextTitle()
@@ -189,30 +177,16 @@ public class PlayerCore
         _mediaItemManager.SendCurrentMediaFolderLoaded(path);
         return true;
     }
-
-    #region Utility
-    public void Dispose()
-    {
-        if (_thumbnailService.FfmpegCts?.IsCancellationRequested == false)
-        {
-            // Not tested :)
-            _thumbnailService.FfmpegCts?.Cancel();
-            Thread.Sleep(200);
-        }
-        _thumbnailService.FfmpegCts?.Dispose();
-
-        _player.Dispose();
-    }
-
-    public void HandleFileDrop(string localPath)
+    
+    public async Task HandleFileDrop(string localPath)
     {
         if(string.IsNullOrWhiteSpace(localPath)) return;
 
         foreach(var format in MediaLoader.VideoFormats)
         {
             if (localPath.EndsWith(format))
-            {
-                LoadMedia(localPath);
+            { 
+                await LoadFilesFromInput([ localPath ]);
                 return;
             }
         }
@@ -227,5 +201,18 @@ public class PlayerCore
         }
     }
 
+    #region Utility
+    public void Dispose()
+    {
+        if (_thumbnailService.FfmpegCts?.IsCancellationRequested == false)
+        {
+            // Not tested :)
+            _thumbnailService.FfmpegCts?.Cancel();
+            Thread.Sleep(200);
+        }
+        _thumbnailService.FfmpegCts?.Dispose();
+
+        _player.Dispose();
+    }
     #endregion
 }

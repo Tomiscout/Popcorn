@@ -8,6 +8,7 @@ MPVSHARP_BIN_DIR=$(MPVSHARP_DIR)/bin
 
 POPCORN_BIN_DIR=$(POPCORN_DIR_LINUX)/bin/$(CONFIG)/$(DOTNET_VERSION)
 POPCORN_PLAYER_BIN_DIR=$(POPCORN_PLAYER_DIR_LINUX)/bin/$(CONFIG)/$(DOTNET_VERSION)
+INSTALL_DIR=~/.local/bin/Popcorn
 
 CONFIG=Release
 DOTNET_VERSION=net9.0
@@ -49,5 +50,10 @@ bundle-linux: build-popcorn-linux build-popcorn-player-linux
 build-player-web:
 	cd ./Popcorn.Player.Web
 	npm run build
+
+install-linux:
+	rm -rf $(INSTALL_DIR)
+	mkdir -p $(INSTALL_DIR)
+	cp -r $(LINUX_DIR)/* $(INSTALL_DIR)
 
 all: clean build-player-web bundle-linux

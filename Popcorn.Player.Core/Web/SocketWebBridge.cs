@@ -4,6 +4,7 @@ using System.Text.Json;
 using Fleck;
 using Popcorn.Player.Core.Contracts;
 using Popcorn.Player.Core.Web;
+using Serilog;
 
 namespace Popcorn.Player.Core.WebSocket;
 
@@ -33,10 +34,17 @@ public class SocketWebBridge : IWebBridge
             socket.OnClose = () => Console.WriteLine("Close!");
             socket.OnMessage = message =>
             {
-                var webEvent = JsonSerializer.Deserialize<WebEvent>(message);
-                if (webEvent == null) return;
+                try
+                {
+                    var webEvent = JsonSerializer.Deserialize<WebEvent>(message);
+                    if (webEvent == null) return;
 
-                _onMessage(webEvent);
+                    _onMessage(webEvent);
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Error while handling websocket message: {message}", message);
+                }
             };
         });
         return wsAddress;

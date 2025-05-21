@@ -17,7 +17,7 @@ public class PopcornPipeEventHandler
         _playerCore = playerCore;
     }
 
-    public void Handle(string message)
+    public async Task Handle(string message)
     {
         Log.Information("Received message from popcorn socket: {message}", message);
 
@@ -30,10 +30,10 @@ public class PopcornPipeEventHandler
                     var loadEvent = JsonSerializer.Deserialize<LoadMediaEvent>(message);
                     if(loadEvent?.FileId != null)
                     {
-                        _playerCore.LoadFileId(loadEvent!.FileId.Value);
+                        await _playerCore.LoadFileId(loadEvent!.FileId.Value);
                     } else if(loadEvent!.FilePath != null)
                     {
-                        _playerCore.LoadFilesFromInput(new List<string> { loadEvent!.FilePath });
+                        await _playerCore.LoadFilesFromInput([loadEvent!.FilePath]);
                     }
                     break;
             }

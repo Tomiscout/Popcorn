@@ -166,13 +166,13 @@ public class SegmentFinderService
         foreach (var file in files)
         {
             var (audioFile, _) = AudioExtractor.ExtractAudioFile(file.Path, file.GetIntroFilename(), WorkDirectory, 0, 360);
-            var introTimes = await introSession.DetectSegments(file.Id!.Value, audioFile);
+            var introTimes = await introSession.DetectSegments(file.Id, audioFile);
 
             foreach (var introTime in introTimes)
             {
                 await _mediaItemRepository.AddSegmentLocation(introTime);
             }
-            await _mediaFileRepository.UpdateMediaFileIntroProcessed(file.Id.Value, true);
+            await _mediaFileRepository.UpdateMediaFileIntroProcessed(file.Id, true);
         }
         introSession?.Dispose();
     }
@@ -193,7 +193,7 @@ public class SegmentFinderService
         foreach (var file in files)
         {
             var (audioFile, extractedLength) = AudioExtractor.ExtractAudioFile(file.Path, file.GetOutroFilename(), WorkDirectory, -outroTimeSeconds);
-            var outroTimes = await outroSession.DetectSegments(file.Id!.Value, audioFile);
+            var outroTimes = await outroSession.DetectSegments(file.Id, audioFile);
 
             // Convert start time to negative from the end of file
             foreach (var outroTime in outroTimes)
@@ -205,7 +205,7 @@ public class SegmentFinderService
             {
                 await _mediaItemRepository.AddSegmentLocation(introTime);
             }
-            await _mediaFileRepository.UpdateMediaFileOutroProcessed(file.Id.Value, true);
+            await _mediaFileRepository.UpdateMediaFileOutroProcessed(file.Id, true);
         }
         outroSession?.Dispose();
     }

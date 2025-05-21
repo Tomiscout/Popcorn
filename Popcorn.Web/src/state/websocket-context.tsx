@@ -19,7 +19,9 @@ export const WebSocketProvider = ({ children }: React.PropsWithChildren) => {
   const [isClientReady, setIsClientReady] = useState(false);
 
   if (!wsClientRef.current) {
-    wsClientRef.current = new WebSocketClient(`ws://${window.location.host}/ws`);
+    const isDevelop = import.meta.env.DEV; // If it runs from vite server
+    const url = isDevelop ? 'ws://localhost:5000/ws' : `ws://${window.location.host}/ws`;
+    wsClientRef.current = new WebSocketClient(url);
   }
 
   useEffect(() => {

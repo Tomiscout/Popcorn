@@ -15,4 +15,6 @@ public interface IMediaFileRepository
 
     Task<List<MediaFile>> GetFilesForItemId(Guid itemId, bool loadSegmentLocations = false,
         IDbConnection? connection = null);
+
+    Task SetFileAsPlayed(Guid fileId);
 }

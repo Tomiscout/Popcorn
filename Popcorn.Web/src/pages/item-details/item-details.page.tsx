@@ -68,6 +68,11 @@ const ItemDetailsPage: React.FC = () => {
       client.sendEvent(SocketRequests.FolderOpen, fileId);
     } else {
       client.sendEvent(SocketRequests.FileOpen, fileId);
+
+      //Sets as played locally
+      setCurrentMediaFiles((prev) =>
+        prev?.map((mediaFile) => (mediaFile.id === fileId ? { ...mediaFile, played: true } : mediaFile))
+      );
     }
   };
 
@@ -112,7 +117,7 @@ const ItemDetailsPage: React.FC = () => {
               <Table.Td>
                 <Flex gap="xs">
                   {file.type === FileType.File ? <IconMovie /> : <IconFolder />}
-                  <Text>{file.shortTitle || file.title}</Text>
+                  <Text c={file.played ? 'dimmed' : ''}>{file.shortTitle || file.title}</Text>
                 </Flex>
               </Table.Td>
               <Table.Td pl="0" pr="0">

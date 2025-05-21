@@ -67,7 +67,7 @@ public class WebEventHandler
             case "subtitle_delay_set":
                 _player.SubtitleSetDelay(message.Data!.GetJsonDouble()); break;
             case "file_open":
-                _playerCore.LoadMedia(message.Data!.GetJsonString()); break;
+                _playerCore.LoadMedia(Guid.Parse(message.Data!.GetJsonString())); break;
             case "folder_open":
                 _playerCore.OpenFolder(message.Data!.GetJsonString()); break;
             case "folder_open_root":

@@ -9,11 +9,11 @@ export class WebSocketClient {
   constructor(url: string) {
     console.log('Creating new websocket', url);
     this.ws = new WebSocket(url);
-    console.log('Websocket created', url);
     this.eventHandlers = new Map();
     this.blobEventHandlers = new Map();
 
     this.ws.onopen = () => {
+      console.log('Websocket connected', url);
       this.isReady = true;
       this.notifyReady(true);
     };

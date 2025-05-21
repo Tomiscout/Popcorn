@@ -38,7 +38,7 @@
 
   <Target Name="CopyWebPlayerToOutput" AfterTargets="Build">
     <ItemGroup>
-      <FilesToCopy Include="web-player/build\**\*.*" />
+      <FilesToCopy Include="web-player/\**\*.*" />
     </ItemGroup>
     <Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(OutputPath)web-player\%(RecursiveDir)" />
   </Target>

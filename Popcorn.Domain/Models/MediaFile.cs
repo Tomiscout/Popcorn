@@ -6,8 +6,8 @@ namespace Popcorn.Domain.Models;
 
 public class MediaFile
 {
-    public Guid? Id { get; set; } = Guid.NewGuid();
-    public Guid ItemId { get; set; }
+    public required Guid Id { get; set; } = Guid.NewGuid();
+    public Guid ItemId { get; set; } = Guid.Empty;
     public string Path { get; set; }  //TODO this should be renamed to FilePath, but file migration would be needed. Or just keep it whatever
     public string Title { get; set; }
     public string ShortTitle { get; set; } = string.Empty;

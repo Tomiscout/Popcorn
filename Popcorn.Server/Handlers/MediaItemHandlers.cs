@@ -28,7 +28,7 @@ public static class MediaItemHandlers
             // This is wonky way to process tags, since library is JS only. Would need to port it to c# or use somthing else
             var unprocessedFiles = mediaItem.Files
                 .Where(f => f is { Type: FileType.File, TagsProcessed: false })
-                .ToDictionary(f => f.Id!.Value, f => f.Title);
+                .ToDictionary(f => f.Id, f => f.Title);
             if (unprocessedFiles.Count > 0)
             {
                 await bus.SendEventAsync(SocketRequests.ParseTags, unprocessedFiles);
@@ -78,7 +78,7 @@ public static class MediaItemHandlers
             // This is wonky way to process tags, since library is JS only. Would need to port it to c# or use somthing else
             var unprocessedFiles = mediaFiles
                 .Where(f => f is { Type: FileType.File, TagsProcessed: false })
-                .ToDictionary(f => f.Id!.Value, f => f.Title);
+                .ToDictionary(f => f.Id, f => f.Title);
             if (unprocessedFiles.Count > 0)
             {
                 await bus.SendEventAsync(SocketRequests.ParseTags, unprocessedFiles);

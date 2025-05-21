@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using Dapper;
+using Microsoft.Extensions.Logging;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
 using Popcorn.Persistence.Extensions;
@@ -63,7 +64,7 @@ public class MediaFileRepository(ImageRepository imageRepository, DapperContext 
 
         foreach (var file in filesToDelete)
         {
-            await DeleteMediaFile(file.Id.Value);
+            await DeleteMediaFile(file.Id);
         }
     }
     
@@ -171,6 +172,21 @@ public class MediaFileRepository(ImageRepository imageRepository, DapperContext 
             if (disposeConn)
                 conn.Dispose();
         }
+    }
+
+    public async Task SetFileAsPlayed(Guid fileId)
+    {
+        using var connection = dbContext.CreateConnection();
+        var updateSql = @"
+            UPDATE MediaFile 
+            SET played = @Played
+            WHERE id = @Id";
+
+        await connection.ExecuteAsync(updateSql, new
+        {
+            Id = fileId.SqliteId(),
+            Played = true
+        });
     }
     
     private async Task<List<SegmentLocation>> LoadMediaItemSegmentLocations(IDbConnection connection, Guid itemId)

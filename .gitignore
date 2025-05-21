@@ -2,6 +2,7 @@
 */obj/
 
 .vs/
+.directory
 
 */**/node_modules/
 
@@ -20,3 +21,4 @@ Popcorn.Player.Linux/web-player/build/**/*.*
 /MPVSharp/Nickvision.MPVSharp*.*
 /Popcorn.Linux/web
 /Popcorn.Server/web
+/Popcorn.Player.Linux/web-player
