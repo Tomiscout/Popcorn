@@ -5,7 +5,7 @@ using Serilog;
 
 namespace Popcorn.Server;
 
-public class WebSocketBus(WebSocket webSocket)
+public class WebSocketBus(WebSocket webSocket, IServiceScopeFactory scopeFactory)
 {
     private readonly Dictionary<string, Delegate> _eventHandlers = new();
     private readonly Dictionary<string, Delegate> _binaryEventHandlers = new();
@@ -13,14 +13,43 @@ public class WebSocketBus(WebSocket webSocket)
     private static readonly JsonSerializerOptions JsonSerializerOptions = new ()
         { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-    public void RegisterHandler<T>(string eventType, Func<T, Task> handler)
+    public void RegisterWebServiceHandler<TWebService, TRequest>(
+        string eventType,
+        Func<TWebService, TRequest, Task> serviceAction
+    )
+        where TWebService : class
     {
-        _eventHandlers[eventType] = handler;
+        _eventHandlers[eventType] = new Func<IServiceProvider, TRequest, Task>(async (serviceProvider, request) =>
+        {
+            var webService =
+                ActivatorUtilities.CreateInstance<TWebService>(
+                    serviceProvider,
+                    this
+                );
+            await serviceAction(webService, request);
+        });
     }
-    
-    public void RegisterBinaryHandler(string eventType, Func<string[], ArraySegment<byte>, Task> handler)
+
+    public void RegisterWebServiceBinaryHandler<TWebService>(
+        string eventType,
+        Func<
+            TWebService,
+            string[],
+            ArraySegment<byte>,
+            Task
+        > serviceAction
+    )
+        where TWebService : class
     {
-        _binaryEventHandlers[eventType] = handler;
+        _binaryEventHandlers[eventType] = new Func<IServiceProvider, string[], ArraySegment<byte>, Task>(async (serviceProvider, metadata, payload) =>
+        {
+            var webService =
+                ActivatorUtilities.CreateInstance<TWebService>(
+                    serviceProvider,
+                    this
+                );
+            await serviceAction(webService, metadata, payload);
+        });
     }
     
     public async Task SendEventAsync(string type, object payload)
@@ -86,74 +115,97 @@ public class WebSocketBus(WebSocket webSocket)
                 ms.Write(buffer, 0, result.Count);
             }
             if (result.CloseStatus.HasValue) break;
-            
+
             // Parse and route request
-            if (result.MessageType == WebSocketMessageType.Text)
+            switch (result.MessageType)
             {
-                var message = Encoding.UTF8.GetString(ms.ToArray(), 0, (int)ms.Length);
-                var json = JsonDocument.Parse(message).RootElement;
-                
-                
-                if (json.TryGetProperty("type", out var typeProp) &&
-                    json.TryGetProperty("payload", out var payload))
+                case WebSocketMessageType.Text:
                 {
+                    var message = Encoding.UTF8.GetString(ms.ToArray(), 0, (int)ms.Length);
+                    var json = JsonDocument.Parse(message).RootElement;
+
+
+                    if (!json.TryGetProperty("type", out var typeProp) ||
+                        !json.TryGetProperty("payload", out var payload)) continue;
+
                     var type = typeProp.GetString();
-                    Log.Information("Received event: {type}", type);
-
-                    if (string.IsNullOrWhiteSpace(type) || !_eventHandlers.TryGetValue(type, out var handler))
-                    {
-                        // TODO log
-                        continue;
-                    }
-                    
-                    var handlerType = handler.GetType();
-                    var argType = handlerType.GenericTypeArguments[0];
-                    var deserialized = payload.Deserialize(argType, JsonSerializerOptions);
-                    try
-                    {
-                        handler.DynamicInvoke(deserialized);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Failed to process event: {type}", type);
-                    }
+                    await HandleEventPayload(type, payload);
+                    break;
                 }
-            } else if (result.MessageType == WebSocketMessageType.Binary)
-            {
-                var messageBytes = ms.ToArray();
-                var separatorIndex = Array.IndexOf(messageBytes, (byte)';');
-                if (separatorIndex < 0) 
-                    continue;
-                
-                var headerBytes = messageBytes[..separatorIndex];
-                var payloadBytes = new ArraySegment<byte>(
-                    messageBytes,
-                    separatorIndex + 1,
-                    messageBytes.Length - (separatorIndex + 1)
-                );
-
-                // Metadata
-                var headerText = Encoding.UTF8.GetString(headerBytes);
-                var parts = headerText.Split(',');
-                var type = parts[0];
-                var parameters = parts.Skip(1).ToArray();
-
-                Log.Information("Received binary event: {type}, {meta}", type, string.Join(",", parameters));
-                
-                if (_binaryEventHandlers.TryGetValue(type, out var handler))
+                case WebSocketMessageType.Binary:
                 {
-                    try
-                    {
-                        handler.DynamicInvoke(parameters, payloadBytes);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Error in binary handler for {type}", type);
-                    }
+                    var messageBytes = ms.ToArray();
+                    var separatorIndex = Array.IndexOf(messageBytes, (byte)';');
+                    if (separatorIndex < 0) 
+                        continue;
+                
+                    var headerBytes = messageBytes[..separatorIndex];
+                    var payloadBytes = new ArraySegment<byte>(
+                        messageBytes,
+                        separatorIndex + 1,
+                        messageBytes.Length - (separatorIndex + 1)
+                    );
+
+                    // Metadata
+                    var headerText = Encoding.UTF8.GetString(headerBytes);
+                    var parts = headerText.Split(',');
+
+                    await HandleBinaryEventPayload(parts[0], parts.Skip(1).ToArray(), payloadBytes);
+                    break;
                 }
             }
         } while (true);
 
         await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+    }
+
+    private async Task HandleEventPayload(string? eventType, JsonElement payload)
+    {
+        Log.Information("Received event: {type}", eventType);
+
+        if (string.IsNullOrWhiteSpace(eventType) || !_eventHandlers.TryGetValue(eventType, out var handler))
+        {
+            Log.Warning("Couldn't find handler for: {type}", eventType);
+            return;
+        }
+                    
+        var handlerType = handler.GetType();
+        var argType = handlerType.GenericTypeArguments[1];
+        var deserialized = payload.Deserialize(argType, JsonSerializerOptions);
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            if (handler.DynamicInvoke(scope.ServiceProvider, deserialized) is Task task)
+            {
+                await task;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to process event: {type}", eventType);
+        }
+    }
+
+    private async Task HandleBinaryEventPayload(string eventType, string[] parameters, ArraySegment<byte> payloadBytes)
+    {
+        Log.Information("Received binary event: {type}, {meta}", eventType, string.Join(",", parameters));
+                
+        if (!_binaryEventHandlers.TryGetValue(eventType, out var handler))
+        {
+            return;
+        }
+        
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            if (handler.DynamicInvoke(scope.ServiceProvider, parameters, payloadBytes) is Task task)
+            {
+                await task;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in binary handler for {type}", eventType);
+        }
     }
 }

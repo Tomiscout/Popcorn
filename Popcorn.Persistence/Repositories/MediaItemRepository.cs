@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using System.Data.Common;
 using Dapper;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;

@@ -27,20 +27,13 @@ public class PopcornServerHost : IAsyncDisposable
         _configureHostAction = configureHostAction;
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken = default)
+    public async Task StartAsync(Serilog.ILogger logger, CancellationToken cancellationToken = default)
     {
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .WriteTo.Console()
-            .CreateBootstrapLogger();
+        Log.Logger = logger;
 
         var hostBuilder = Host.CreateDefaultBuilder(_args);
 
-        hostBuilder.UseSerilog((context, services, configuration) => configuration
-            .ReadFrom.Configuration(context.Configuration)
-            .ReadFrom.Services(services)
-            .Enrich.FromLogContext()
-            .WriteTo.Console());
+        hostBuilder.UseSerilog(logger);
 
         hostBuilder.ConfigureWebHostDefaults(webBuilder =>
         {

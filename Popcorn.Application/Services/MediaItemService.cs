@@ -36,8 +36,9 @@ public class MediaItemService(IMediaItemRepository mediaItemRepository, IMediaFi
         return allFiles;
     }
 
-    public async Task<MediaItem> RescanItem(MediaItem item)
+    public async Task<MediaItem> RescanItem(Guid itemId)
     {
+        var item = await mediaItemRepository.GetMediaItem(itemId);
         var scanResult = await MediaLoader.ScanFolder(item.FolderDirectory);
             
         var files = scanResult.SelectMany(GetFilesFromScanResult).ToList();

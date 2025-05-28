@@ -5,26 +5,21 @@ using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
 using Popcorn.Domain.Services;
 using Popcorn.PlayerServer.Linux;
+using Popcorn.Shared.Utils;
 using PopcornPlayer.Shared.PipeEvents.Client;
+using Serilog;
 
 namespace Popcorn.PlayerServer;
 
-public class LinuxPlayerService : IPlayerService
+public class LinuxPlayerService(
+    ILogger<LinuxPlayerService> logger,
+    IMediaItemRepository mediaItemRepository,
+    MediaItemRefreshService mediaItemRefreshService)
+    : IPlayerService
 {
-    private const string _socketPath = "/tmp/popcorn_bridge.sock";
+    private const string SocketPath = "/tmp/popcorn_bridge.sock";
 
-    private readonly ILogger<LinuxPlayerService> _logger;
-    private readonly IMediaItemRepository _mediaItemRepository;
-    private readonly MediaItemRefreshService _mediaItemRefreshService;
     private PlayerBridgeServer? _server;
-
-    public LinuxPlayerService(ILogger<LinuxPlayerService> logger, IMediaItemRepository mediaItemRepository, MediaItemRefreshService mediaItemRefreshService)
-    {
-        _logger = logger;
-        _mediaItemRepository = mediaItemRepository;
-        _mediaItemRefreshService = mediaItemRefreshService;
-    }
-    
 
     public async Task OpenFile(Guid fileId)
     {
@@ -32,7 +27,8 @@ public class LinuxPlayerService : IPlayerService
         {
             if (_server?.ConnectedSessions > 0)
             {
-                _server.Multicast(JsonSerializer.Serialize(new LoadMediaEvent { FileId = fileId }));
+                logger.LogTrace("Opening file {fileId} and sending it to {sessionCount} socket clients", fileId, _server?.ConnectedSessions);
+                _server?.Multicast(JsonSerializer.Serialize(new LoadMediaEvent { FileId = fileId }));
                 return;
             }
 
@@ -43,7 +39,7 @@ public class LinuxPlayerService : IPlayerService
             LaunchPlayer(fileId.ToString());
         } catch(Exception e)
         {
-            _logger.LogError(e, "Failed to open file with internal player");
+            logger.LogError(e, "Failed to open file with internal player");
         }
     }
     public async Task OpenFile(string filePath)
@@ -64,17 +60,17 @@ public class LinuxPlayerService : IPlayerService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to open file with internal player");
+            logger.LogError(e, "Failed to open file with internal player");
         }
     }
 
     private void StartPlayerServer()
     {
-        if (File.Exists(_socketPath))
+        if (File.Exists(SocketPath))
         {
-            File.Delete(_socketPath);
+            File.Delete(SocketPath);
         }
-        _server = new PlayerBridgeServer(_socketPath);
+        _server = new PlayerBridgeServer(SocketPath);
         _server.Start();
     }
 
@@ -86,31 +82,24 @@ public class LinuxPlayerService : IPlayerService
             throw new FileNotFoundException("Popcorn Player path is not found. " + playerPath);
         }
 
-        // Use nohup to detach the process and redirect output
-        // The '&' at the end runs the command in the background
         var command = $"nohup \"{playerPath}\" \"{launchParam}\" > /dev/null 2>&1 &";
-
+        
         var startInfo = new ProcessStartInfo
         {
-            FileName = "/bin/bash", // Or "/bin/sh"
+            FileName = "/bin/sh",
             Arguments = $"-c \"{command.Replace("\"", "\\\"")}\"", // Pass the command to the shell
             UseShellExecute = true, // Crucial for nohup to work as expected
             CreateNoWindow = true // Prevents a new terminal window from opening
         };
-
+        
         try
         {
-            using (var process = Process.Start(startInfo))
-            {
-                // We don't wait for exit or redirect output/error here
-                // because nohup handles it.
-                // The 'process' object here represents the shell process (bash/sh),
-                // not the player process itself.
-            }
+            logger.LogTrace("Running player process: {command} {args}", startInfo.FileName, startInfo.Arguments);
+            using var process = Process.Start(startInfo);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to launch player as detached process");
+            logger.LogError(ex, "Failed to launch player as detached process");
         }
     }
 

@@ -1,3 +1,4 @@
+using Popcorn.Shared.Utils;
 using Serilog;
 
 namespace Popcorn.Server;
@@ -6,18 +7,17 @@ public abstract class Program
 {
     public static async Task Main(string[] args)
     {
-        // Example of how to pass additional host configuration if needed for standalone
-        // Action<IHostBuilder> configureHost = builder =>
-        // {
-        //     builder.ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Trace));
-        // };
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .WriteTo.Debug()
+            .WriteTo.File(Path.Combine(DirUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}Popcorn.Server-.txt"), rollingInterval: RollingInterval.Day)
+            .CreateLogger();
 
-        // await using var serverHost = new PopcornServerHost(args, configureHost);
         await using var serverHost = new PopcornServerHost(args);
 
         try
         {
-            await serverHost.StartAsync();
+            await serverHost.StartAsync(Log.Logger);
             Console.WriteLine($"Popcorn.Server (standalone) running. Press Ctrl+C to shut down.");
             Console.WriteLine($"Listening on: {serverHost.ListeningUrl}");
 

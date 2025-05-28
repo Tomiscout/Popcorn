@@ -1,6 +1,5 @@
 using FluentMigrator.Runner;
 using Popcorn.Persistence;
-using Popcorn.Server.Handlers;
 using Serilog;
 
 namespace Popcorn.Server;
@@ -55,8 +54,8 @@ public class Startup
             using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
             Log.Information("WebSocket connection established");
 
-            var bus = new WebSocketBus(webSocket);
-            WebSocketHandlers.RegisterAll(bus, serviceScopeFactory);
+            var bus = new WebSocketBus(webSocket, serviceScopeFactory);
+            WebSocketServices.RegisterWebServices(bus);
             await bus.ListenAsync();
 
             if (!webSocket.CloseStatus.HasValue)

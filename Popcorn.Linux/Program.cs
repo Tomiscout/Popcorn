@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -6,6 +7,7 @@ using System.Threading.Tasks;
 using GdkPixbuf;
 using Gtk;
 using Popcorn.Server;
+using Popcorn.Shared.Utils;
 using Serilog;
 using WebKit.Internal;
 
@@ -26,12 +28,19 @@ public abstract class Program
             _globalAppCts.Cancel();
             Console.WriteLine("Shutting down...");
         };
-        
+
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Verbose()
+            .WriteTo.Console()
+            .WriteTo.Debug()
+            .WriteTo.File(Path.Combine(DirUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}Popcorn-.txt"), rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+
         await using var serverHost = new PopcornServerHost(args);
 
         try
         {
-            await serverHost.StartAsync(_globalAppCts.Token);
+            await serverHost.StartAsync(Log.Logger, _globalAppCts.Token);
             Console.WriteLine($"Popcorn.Linux running. Press Ctrl+C to shut down.");
             Console.WriteLine($"Listening on: {serverHost.ListeningUrl}");
             ServerUrl = serverHost.ListeningUrl;

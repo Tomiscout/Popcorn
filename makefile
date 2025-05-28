@@ -37,7 +37,11 @@ build-popcorn-linux build-popcorn-web:
 	dotnet restore $(POPCORN_DIR_LINUX)
 	dotnet build $(POPCORN_DIR_LINUX) --configuration $(CONFIG)
 
-build-popcorn-player-linux:
+build-player-web:
+	cd ./Popcorn.Player.Web
+	npm run build
+
+build-popcorn-player-linux build-player-web:
 	dotnet restore $(POPCORN_PLAYER_DIR_LINUX)
 	dotnet build $(POPCORN_PLAYER_DIR_LINUX) --configuration $(CONFIG)
 
@@ -47,13 +51,9 @@ bundle-linux: build-popcorn-linux build-popcorn-player-linux
 	cp -r $(POPCORN_BIN_DIR)/* $(LINUX_DIR)
 	cp -r $(POPCORN_PLAYER_BIN_DIR)/* $(LINUX_DIR)
 
-build-player-web:
-	cd ./Popcorn.Player.Web
-	npm run build
-
 install-linux:
 	rm -rf $(INSTALL_DIR)
 	mkdir -p $(INSTALL_DIR)
 	cp -r $(LINUX_DIR)/* $(INSTALL_DIR)
 
-all: clean build-player-web bundle-linux
+all: clean build-popcorn-linux build-popcorn-player-linux bundle-linux

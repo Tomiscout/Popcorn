@@ -78,7 +78,7 @@ export const useFileUrl = (filename: string | undefined): string | undefined => 
   useEffect(() => {
     if (!filename || !isClientReady) return;
 
-    client.sendEvent(SocketRequests.ImageFile, { files: [filename] });
+    client.sendEvent(SocketRequests.ImageFile, [filename]);
   }, [filename, isClientReady]);
 
   return useMemo(() => {

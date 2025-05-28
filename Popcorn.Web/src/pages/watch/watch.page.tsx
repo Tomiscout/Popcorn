@@ -46,7 +46,7 @@ const WatchPage: React.FC<WatchPageProps> = ({ pageLoaded }) => {
       );
 
       if (imagesToLoad.length) {
-        client.sendEvent(SocketRequests.ImageFile, { files: imagesToLoad });
+        client.sendEvent(SocketRequests.ImageFile, imagesToLoad);
       } else {
         console.log('page loaded from handler');
         pageHasLoaded();
