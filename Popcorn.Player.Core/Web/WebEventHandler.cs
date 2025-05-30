@@ -23,7 +23,6 @@ public class WebEventHandler
     private bool _playerInitialized = false;
     private List<string>? _pendingMessages = new();
 
-
     public event EventHandler<bool> OnFullscreen;
 
     public WebEventHandler(IPlayer player, PlayerCore playerCore, MediaItemManager mediaItemManager, AudioSubtitlesService audioSubtitlesService, ThumbnailService thumbnailService)

@@ -79,8 +79,11 @@ public class Program
     {
         Task.Run(async () =>
         {
+            var webEventHandler = Services.GetRequiredService<WebEventHandler>();
+            webEventHandler.OnFullscreen += SetFullscreen;
+            
             var player = Services.GetRequiredService<PlayerCore>();
-
+            
             var envPaths = Environment.GetCommandLineArgs().Skip(1).ToList();
             if (envPaths.Count >= 1)
             {
@@ -135,7 +138,7 @@ public class Program
     public static void SetTitle(string title) => _window.Title = title;
 
     private static bool _isFullscreen = false;
-    public static void SetFullscreen(bool fullscreen)
+    public static void SetFullscreen(object? sender, bool fullscreen)
     {
         switch (fullscreen)
         {

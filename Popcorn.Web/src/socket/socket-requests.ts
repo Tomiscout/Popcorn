@@ -2,6 +2,7 @@ export enum SocketRequests {
   MediaList = 'MediaList',
   MediaItem = 'MediaItem',
   RemoveMediaItem = 'RemoveMediaItem',
+  RefreshMediaItem = 'RefreshMediaItem',
   MediaItemFileList = 'MediaItemFileList',
   MediaItemHistory = 'MediaItemHistory',
   ImageFile = 'ImageFile',

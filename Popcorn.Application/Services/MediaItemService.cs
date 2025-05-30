@@ -1,4 +1,5 @@
-﻿using Popcorn.Domain;
+﻿using System.Diagnostics;
+using Popcorn.Domain;
 using Popcorn.Domain.Enum;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
@@ -14,8 +15,10 @@ public class MediaItemService(IMediaItemRepository mediaItemRepository, IMediaFi
         return newItemId;
     }
 
-    private List<MediaFile> GetFilesFromScanResult(MediaScanResult scanResult)
+    private List<MediaFile> GetFilesFromScanResult(MediaScanResult? scanResult)
     {
+        if (scanResult == null) return [];
+        
         var allFiles = scanResult.Folders.Select(path => new MediaFile
         {
             Id = Guid.NewGuid(),
@@ -38,13 +41,13 @@ public class MediaItemService(IMediaItemRepository mediaItemRepository, IMediaFi
 
     public async Task<MediaItem> RescanItem(Guid itemId)
     {
+        var sw = new Stopwatch();
+        sw.Start();
         var item = await mediaItemRepository.GetMediaItem(itemId);
-        var scanResult = await MediaLoader.ScanFolder(item.FolderDirectory);
-            
-        var files = scanResult.SelectMany(GetFilesFromScanResult).ToList();
-        await mediaFileRepository.UpsertMediaFiles(item.Id, files);
-        item.Files = files;
+        var scanResult = await MediaLoader.ScanDirectorySingle(item.FolderDirectory);
 
+        await mediaFileRepository.UpsertMediaFiles(item.Id, GetFilesFromScanResult(scanResult), false);
+        sw.Stop();
         return item;
     }
 }

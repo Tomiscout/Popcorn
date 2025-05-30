@@ -12,7 +12,15 @@ import {
 } from '../../model/media.contract';
 import { useWebSocket } from '../../state/websocket-context';
 import { Button, Flex, Table, Tabs, Text, Pill, Breadcrumbs, Anchor } from '@mantine/core';
-import { IconFile, IconHistory, IconPlayerPlayFilled, IconFolder, IconMovie, IconTrash } from '@tabler/icons-react';
+import {
+  IconFile,
+  IconHistory,
+  IconPlayerPlayFilled,
+  IconFolder,
+  IconMovie,
+  IconTrash,
+  IconRefresh,
+} from '@tabler/icons-react';
 import { useFileUrl } from '../../state/file-context';
 import './item-details.page.css';
 import { useModals } from '@mantine/modals';
@@ -76,18 +84,22 @@ const ItemDetailsPage: React.FC = () => {
     }
   };
 
-  const mediaFilesReceived = (newFiles: MediaFile[]) => {
+  function refreshFiles() {
+    client.sendEvent(SocketRequests.RefreshMediaItem, mediaItem?.id);
+  }
+
+  function mediaFilesReceived(newFiles: MediaFile[]) {
     setIsOpeningFolder(false);
     setCurrentMediaFiles(newFiles);
-  };
+  }
 
-  const onBreadcrumbClick = (id: string | null, index: number) => {
+  function onBreadcrumbClick(id: string | null, index: number) {
     setIsOpeningFolder(true);
     setBreadcrumbs(breadcrumbs.slice(0, index + 1));
     client.sendEvent(SocketRequests.FolderOpen, id);
-  };
+  }
 
-  const removeMediaItem = () => {
+  function removeMediaItem() {
     modals.openConfirmModal({
       title: 'Confirm Deletion',
       children: <Text size="sm">Are you sure you want to delete this item?</Text>,
@@ -100,7 +112,7 @@ const ItemDetailsPage: React.FC = () => {
         }, 100);
       },
     });
-  };
+  }
 
   const renderFiles = () => {
     return (
@@ -169,6 +181,9 @@ const ItemDetailsPage: React.FC = () => {
             <Button variant="default">Setup Intro Skipping</Button>
             <Button variant="default" leftSection={<IconTrash size={14} />} onClick={removeMediaItem}>
               Remove
+            </Button>
+            <Button variant="default" leftSection={<IconRefresh size={14} />} onClick={refreshFiles}>
+              Refresh files
             </Button>
           </Flex>
         </Flex>

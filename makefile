@@ -30,23 +30,21 @@ update-mpvsharp:
 	cp $(MPVSHARP_DIR)/src/Nickvision.MPVSharp/bin/$(CONFIG)/net7.0/Nickvision.MPVSharp.* $(MPVSHARP_DIR)
 
 build-popcorn-web:
-	cd ./Popcorn.Web
-	npm run build
+	cd ./Popcorn.Web && npm run build
 
-build-popcorn-linux build-popcorn-web:
+build-popcorn-linux: build-popcorn-web
 	dotnet restore $(POPCORN_DIR_LINUX)
 	dotnet build $(POPCORN_DIR_LINUX) --configuration $(CONFIG)
 
 build-player-web:
-	cd ./Popcorn.Player.Web
-	npm run build
+	cd ./Popcorn.Player.Web && npm run build
 
-build-popcorn-player-linux build-player-web:
+build-popcorn-player-linux: build-player-web
 	dotnet restore $(POPCORN_PLAYER_DIR_LINUX)
 	dotnet build $(POPCORN_PLAYER_DIR_LINUX) --configuration $(CONFIG)
-
 # Bundle both projects together
-bundle-linux: build-popcorn-linux build-popcorn-player-linux
+bundle-linux:
+	rm -rf $(LINUX_DIR)
 	mkdir -p $(LINUX_DIR)
 	cp -r $(POPCORN_BIN_DIR)/* $(LINUX_DIR)
 	cp -r $(POPCORN_PLAYER_BIN_DIR)/* $(LINUX_DIR)

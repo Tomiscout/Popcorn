@@ -5,7 +5,7 @@ namespace Popcorn.Domain.Interfaces;
 
 public interface IMediaFileRepository
 {
-    Task UpsertMediaFiles(Guid itemId, List<MediaFile> mediaFiles);
+    Task UpsertMediaFiles(Guid itemId, List<MediaFile> mediaFiles, bool shouldUpdateFiles = true);
     Task InsertMediaFile(MediaFile file);
     Task UpdateMediaFileIntroProcessed(Guid fileId, bool introProcessed);
     Task UpdateMediaFileOutroProcessed(Guid fileId, bool outroProcessed);

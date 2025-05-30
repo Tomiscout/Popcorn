@@ -86,5 +86,6 @@ public class MediaItemWebService(
     public async Task RescanMediaItem(Guid mediaItemId)
     {
         await mediaItemService.RescanItem(mediaItemId);
+        await SendMediaItems(new MediaItemRequest { Id = mediaItemId });
     }
 }

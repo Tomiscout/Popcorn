@@ -31,7 +31,7 @@ public class MediaFileRepository(ImageRepository imageRepository, DapperContext 
         });
     }
 
-    public async Task UpsertMediaFiles(Guid itemId, List<MediaFile> mediaFiles)
+    public async Task UpsertMediaFiles(Guid itemId, List<MediaFile> mediaFiles, bool shouldUpdateFiles = true)
     {
         using var connection = dbContext.CreateConnection();
 
@@ -48,7 +48,6 @@ public class MediaFileRepository(ImageRepository imageRepository, DapperContext 
         }
 
         var filesToInsert = mediaFiles.Where(mf => !existingFiles.Any(ef => ef.Path == mf.Path)).ToList();
-        var filesToUpdate = mediaFiles.Where(mf => existingFiles.Any(ef => ef.Path == mf.Path)).ToList();
         var filesToDelete = existingFiles.Where(ef => !mediaFiles.Any(mf => mf.Path == ef.Path)).ToList();
 
         foreach (var file in filesToInsert)
@@ -57,9 +56,13 @@ public class MediaFileRepository(ImageRepository imageRepository, DapperContext 
             await InsertMediaFile(file);
         }
 
-        foreach (var file in filesToUpdate)
+        if (shouldUpdateFiles)
         {
-            await UpdateMediaFile(file);
+            var filesToUpdate = mediaFiles.Where(mf => existingFiles.Any(ef => ef.Path == mf.Path)).ToList();
+            foreach (var file in filesToUpdate)
+            {
+                await UpdateMediaFile(file);
+            }
         }
 
         foreach (var file in filesToDelete)
