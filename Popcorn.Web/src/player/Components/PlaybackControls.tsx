@@ -8,6 +8,7 @@ import {
   IconArrowsMaximize as Fullscreen,
   IconArrowsMinimize as ExitFullscreen,
 } from '@tabler/icons-react';
+import '../Styles/PlaybackControls.css';
 
 import VolumeControl from './VolumeControl';
 import EpisodesControl from './EpisodesControl';
@@ -68,31 +69,31 @@ const PlaybackControls = () => {
   const getFullscreenButton = () => (isFullscreen ? <ExitFullscreen /> : <Fullscreen />);
 
   return (
-    <div className="controls">
-      <button className="main-button play-pause" onClick={playPause}>
+    <div className="playback-controls">
+      <button className="control-button play-pause" onClick={playPause}>
         {getPlayButton()}
       </button>
 
       {!isFloating && (
         <>
-          <button className="main-button rewind" onClick={skipBackward}>
+          <div className="control-button rewind" onClick={skipBackward}>
             <RewindButton />
-          </button>
-          <button className="main-button fast-forward" onClick={skipForward}>
+          </div>
+          <div className="control-button fast-forward" onClick={skipForward}>
             <ForwardButton />
-          </button>
+          </div>
           <VolumeControl />
           <TrackTitle />
 
-          <button className="main-button next" onClick={nextTrack}>
+          <div className="control-button next" onClick={nextTrack}>
             <NextTrack />
-          </button>
+          </div>
           <EpisodesControl />
           <TrackControl />
         </>
       )}
 
-      <button className="main-button fullscreen" onClick={toggleFullscreen}>
+      <button className="control-button fullscreen" onClick={toggleFullscreen}>
         {getFullscreenButton()}
       </button>
     </div>

@@ -113,7 +113,7 @@ public class FileStreamService
       }).ToList()
     };
     
-    //_cache.Set(cacheKey, metadata, TimeSpan.FromDays(1));
+    _cache.Set(cacheKey, metadata, TimeSpan.FromDays(1));
     return metadata;
   }
 

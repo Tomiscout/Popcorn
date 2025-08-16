@@ -176,9 +176,9 @@ const TrackControl = () => {
           </div>
         </div>
       </div>
-      <button className="main-button" id="subtitle-button">
+      <div className="control-button" id="subtitle-button">
         <Subtitles />
-      </button>
+      </div>
     </div>
   );
 };

@@ -12,13 +12,6 @@ input:focus {
   outline: none;
 }
 
-/* .video-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-} */
 .video-container {
   position: relative;
   width: 640px;
@@ -93,7 +86,7 @@ input:focus {
   border-radius: 50%;
 }
 
-.video-container .controls {
+.video-container .playback-controls {
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -101,55 +94,11 @@ input:focus {
   margin-bottom: 4px;
 }
 
-.video-container .controls button {
-  background: none;
-  outline: none;
-  box-shadow: none;
-  border: none;
-  width: 4vw;
-  height: 4vw;
-  min-width: 50px;
-  min-height: 50px;
-  margin: 0px 1vw;
-  transform: scale(0.9);
-  transition: all 0.2s ease-in-out;
-  cursor: pointer;
-}
-
 .main-button {
   opacity: 0.4;
 }
 
-.video-container .controls button:hover {
-  opacity: 1;
-  transform: scale(1.2);
-}
-
-.video-container .controls button svg {
-  fill: white;
-  width: 100%;
-  height: 100%;
-}
-
-.video-container .controls button.volume svg path,
-.video-container .controls button.help svg,
-.video-container .controls button.episodes svg,
-.video-container .controls button.full-screen svg,
-.video-container .controls button.volume svg path,
-.video-container .controls button.cast svg {
-  fill: none;
-}
-
-.video-container .controls button.rewind svg,
-.video-container .controls button.fast-forward svg {
-  stroke: none;
-}
-
-.video-container .controls button.captions svg {
-  stroke: none;
-}
-
-.video-container .controls .title {
+.video-container .playback-controls .title {
   font-size: 2vw;
   width: 100%;
   height: 100%;
@@ -159,18 +108,18 @@ input:focus {
 }
 
 @media only screen and (max-width: 500px) {
-  .video-container .controls .title {
+  .video-container .playback-controls .title {
     display: none;
   }
 }
 
-.video-container .controls .title .series {
+.video-container .playback-controls .title .series {
   color: #fefefe;
   font-weight: bold;
   font-size: 1em;
 }
 
-.video-container .controls .title .episode {
+.video-container .playback-controls .title .episode {
   color: #a1a1a1;
   font-size: 0.75em;
   padding-left: 1vw;

@@ -103,9 +103,9 @@ const EpisodesControl = () => {
           </div>
         </div>
       </div>
-      <button className="main-button episodes">
+      <div className="control-button episodes">
         <Episodes />
-      </button>
+      </div>
     </div>
   );
 };

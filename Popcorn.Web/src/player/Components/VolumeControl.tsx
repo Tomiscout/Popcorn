@@ -16,8 +16,8 @@ const VolumeControl = () => {
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-  const volumeRef = useRef(null);
-  const volumePopupRef = useRef(null);
+  const volumeRef = useRef<HTMLDivElement>(null);
+  const volumePopupRef = useRef<HTMLDivElement>(null);
 
   // const throttledPostMessage = useMemo(() => throttle((type, value) => {
   //   postMessage(type, value);
@@ -28,7 +28,7 @@ const VolumeControl = () => {
     setMuted(newMutedState);
     postMessage('volume', newMutedState ? 0 : volume);
   };
-  const changeVolume = (vol) => {
+  const changeVolume = (vol: number) => {
     if (muted) {
       setMuted(false);
     }
@@ -36,7 +36,6 @@ const VolumeControl = () => {
 
     setVolume(vol);
     postMessage('volume', vol);
-    //throttledPostMessage('volume', vol); Deadlock is fixed now? maybe dont need this anymore
   };
 
   const upHandler = () => {
@@ -49,6 +48,8 @@ const VolumeControl = () => {
   const handleMouseEnter = () => {
     const volumeElement = volumeRef.current;
     const volumePopup = volumePopupRef.current;
+    if (!volumeElement || !volumePopup) return;
+
     const rect = volumeElement.getBoundingClientRect();
 
     const left = rect.left + rect.width / 2 - volumePopupHalfWidth;
@@ -103,9 +104,9 @@ const VolumeControl = () => {
           />
         </div>
       </div>
-      <button className="main-button" id="volume-button" onClick={onToggleMute}>
+      <div className="control-button" id="volume-button" onClick={onToggleMute}>
         {getVolumeIcon()}
-      </button>
+      </div>
     </div>
   );
 };

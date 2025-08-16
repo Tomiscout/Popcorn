@@ -83,14 +83,21 @@ export const PopcornPlayer: React.FC = () => {
       videoRef.current.currentTime = newTime / 1000;
     };
 
+    const setVolume = (newVolume: number) => {
+      if (!videoRef.current) return;
+      videoRef.current.volume = newVolume;
+    };
+
     registerEventHandler('set_playback_time', setPlaybackTime);
     registerEventHandler('play_status_changed', onToggle);
     registerEventHandler('skip_seconds', onSkip);
+    registerEventHandler('volume', setVolume);
 
     return () => {
       unregisterEventHandler('set_playback_time', setPlaybackTime);
       unregisterEventHandler('play_status_changed', onToggle);
       unregisterEventHandler('skip_seconds', onSkip);
+      unregisterEventHandler('volume', setVolume);
     };
   }, []);
 
