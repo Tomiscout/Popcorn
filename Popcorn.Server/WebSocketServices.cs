@@ -13,6 +13,7 @@ public static class WebSocketServices
         bus.RegisterWebServiceHandler<MediaItemWebService, MediaItemFileListRequest>(SocketRequests.MediaItemFileList, (service, request) => service.SendMediaItemFileList(request));
         bus.RegisterWebServiceHandler<MediaItemWebService, Guid>(SocketRequests.RemoveMediaItem, (service, request) => service.DeleteMediaItem(request));
         bus.RegisterWebServiceHandler<MediaItemWebService, Guid>(SocketRequests.RefreshMediaItem, (service, request) => service.RescanMediaItem(request));
+        bus.RegisterWebServiceHandler<MediaItemWebService, Guid>(SocketRequests.OpenMediaItemFolder, (service, request) => service.OpenMediaItemFolder(request));
         bus.RegisterWebServiceBinaryHandler<MediaItemWebService>(SocketRequests.CreateMediaItem, (service, metadata, fileBytes) => service.CreateMediaItem(metadata, fileBytes));
         
         bus.RegisterWebServiceHandler<HomeWebService, object>(SocketRequests.MediaList, (service, _) => service.SendHomeScreenMediaList());

@@ -12,12 +12,43 @@ input:focus {
   outline: none;
 }
 
-.video-container {
+/* .video-container {
   width: 100%;
   height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
+} */
+.video-container {
+  position: relative;
+  width: 640px;
+  height: 360px;
+  background: black;
+  overflow: hidden;
+}
+.video-container.floating {
+  position: fixed !important;
+  top: 20px;
+  left: 20px;
+  width: 480px;
+  aspect-ratio: 16 / 9;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.video-container.fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0;
+  padding: 0;
+}
+.video-container.inline {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9998; /* just below your floating if needed */
+  background: black;
 }
 
 .video-container video {
@@ -33,14 +64,14 @@ input:focus {
 }
 
 .red-slider {
-  background: #5B5B5B;
+  background: #5b5b5b;
   display: flex;
   cursor: pointer;
 }
 
 .red-slider .watched-bar,
 .red-slider .playhead {
-  background: #E31221;
+  background: #e31221;
   /* display: inline-block; */
   transition: all 0.1s;
 }
@@ -134,13 +165,13 @@ input:focus {
 }
 
 .video-container .controls .title .series {
-  color: #FEFEFE;
+  color: #fefefe;
   font-weight: bold;
   font-size: 1em;
 }
 
 .video-container .controls .title .episode {
-  color: #A1A1A1;
+  color: #a1a1a1;
   font-size: 0.75em;
   padding-left: 1vw;
 }
@@ -151,11 +182,11 @@ input:focus {
 }
 
 #volume-control {
-	margin: auto auto;
+  margin: auto auto;
   width: inherit;
-	height: 130px;
-	width: 5px;
-	background: #555;
+  height: 130px;
+  width: 5px;
+  background: #555;
 }
 
 #volume-popup {
@@ -167,13 +198,16 @@ input:focus {
 .popup {
   position: absolute;
   background-color: rgba(0, 0, 0, 0.737);
-  animation: fadeIn 0.2s ease-in; 
+  animation: fadeIn 0.2s ease-in;
 }
 
-
 @keyframes fadeIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .ui-slider-range-min {
@@ -208,6 +242,17 @@ input:focus {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-wrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }

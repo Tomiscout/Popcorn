@@ -1,11 +1,10 @@
-﻿using FFMpegCore.Enums;
-using FFMpegCore;
 using System.Drawing;
-using Popcorn.Player.Services;
-using VideoCodec = Popcorn.Player.Services.VideoCodec;
+using FFMpegCore;
+using FFMpegCore.Enums;
 
-namespace Popcorn.Player.Core.Services;
-internal class VideoDecoders
+namespace Popcorn.Shared.Ffmpeg;
+
+public class ThumbnailUtils
 {
     private const string ThumbSize = "160x90";
     private static readonly Size ThumbSizeDrawing = new Size(160, 90);
@@ -16,7 +15,7 @@ internal class VideoDecoders
         if (videoStream is null) throw new InvalidOperationException("Couldnt find video streams " + inputFile);
 
         // TODO select hw modification
-        var codec = ParseFileCodec(videoStream.CodecName);
+        var codec = videoStream.ParseVideoCodec();
         if (codec == VideoCodec.Unknown)
         {
             return GetCpuCommand(inputFile, outputFile, metadata, timeInSeconds);
@@ -24,22 +23,23 @@ internal class VideoDecoders
 
         //TODO handle hevc,av1 cases, since they're the newest and there may not be hw accelerating on people gpu's. test on 1080ti
 
+        //TOOD implement gpu scanner for linux
         // cuvid and qsv is in almost all cases faster if present (except amd+amd configs), dx11 apis are slow. Depending on codec, but by just using dx11 vs cuvid on same gpu i got max 3 times slower decoding
-        if (GpuScanner.AvailableNvidia)
-        {
-            return GetCudaCommand(codec, inputFile, outputFile, metadata, videoStream, timeInSeconds);
-        }
-
-        if (GpuScanner.AvailableIntel)
-        {
-            return GetQsvCommand(codec, inputFile, outputFile, metadata, videoStream, timeInSeconds);
-        }
-
-        // Maybe dx11 should be prioritized in intel+amd gpu configs. no way to test it without having it
-        if (GpuScanner.AvailableAmd)
-        {
-            return GetDx11Command(codec, inputFile, outputFile, metadata, videoStream, timeInSeconds);
-        }
+        // if (GpuScanner.AvailableNvidia)
+        // {
+        //     return GetCudaCommand(codec, inputFile, outputFile, metadata, videoStream, timeInSeconds);
+        // }
+        //
+        // if (GpuScanner.AvailableIntel)
+        // {
+        //     return GetQsvCommand(codec, inputFile, outputFile, metadata, videoStream, timeInSeconds);
+        // }
+        //
+        // // Maybe dx11 should be prioritized in intel+amd gpu configs. no way to test it without having it
+        // if (GpuScanner.AvailableAmd)
+        // {
+        //     return GetDx11Command(codec, inputFile, outputFile, metadata, videoStream, timeInSeconds);
+        // }
 
         return GetCpuCommand(inputFile, outputFile, metadata, timeInSeconds);
     }
@@ -118,24 +118,6 @@ internal class VideoDecoders
         return command.Arguments;
     }
 
-    public static VideoCodec ParseFileCodec(string codec) => codec switch
-    {
-        "h264" => VideoCodec.H264,
-        "hevc" => VideoCodec.H265,
-        "av1" => VideoCodec.AV1,
-        "mpeg1video" => VideoCodec.MPEG1,
-        "mpeg2video" => VideoCodec.MPEG2,
-        "mpeg4" => VideoCodec.MPEG4,
-        "vc1" => VideoCodec.VC1,
-        "vp8" => VideoCodec.VP8,
-        "vp9" => VideoCodec.VP9,
-        "h263" => VideoCodec.H263,
-        "h261" => VideoCodec.H261,
-        "wmv1" => VideoCodec.WMV1,
-        "wmv2" => VideoCodec.WMV2,
-        "wmv3" => VideoCodec.WMV3,
-        _ => VideoCodec.Unknown
-    };
 
     public static string GetCudaCodec(VideoCodec codec) => codec switch
     {

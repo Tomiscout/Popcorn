@@ -36,6 +36,11 @@ public class FileService(
 
     public void OpenRootFolderExplorer()
     {
-        folderService.OpenFolderInExplorer(DirUtils.DataFolder);
+        folderService.OpenFolderInExplorer(DirectoryUtils.DataFolder);
+    }
+    
+    public void OpenDirectoryExplorer(string path)
+    {
+        folderService.OpenFolderInExplorer(path);
     }
 }

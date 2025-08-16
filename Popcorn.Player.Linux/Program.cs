@@ -24,7 +24,7 @@ public class Program
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
             .WriteTo.Debug()
-            .WriteTo.File(Path.Combine(DirUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}Popcorn.Player-.txt"), rollingInterval: RollingInterval.Day)
+            .WriteTo.File(Path.Combine(DirectoryUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}Popcorn.Player-.txt"), rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
         AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionTrapper;

@@ -6,7 +6,7 @@ namespace Popcorn.Persistence.Repositories
     public class ImageRepository
     {
         private Dictionary<string, string> _imageCache = new Dictionary<string, string>();
-        private readonly string _imageFolder = Path.Join(DirUtils.DataFolder, "images/");
+        private readonly string _imageFolder = Path.Join(DirectoryUtils.DataFolder, "images/");
 
         private readonly ILogger<ImageRepository> _logger;
         public ImageRepository(ILogger<ImageRepository> logger)

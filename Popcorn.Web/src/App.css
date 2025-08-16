@@ -6,3 +6,8 @@
   background: #322929;
   background-attachment: fixed;
 }
+
+.app-content {
+  max-height: 100vh;
+  overflow: auto;
+}

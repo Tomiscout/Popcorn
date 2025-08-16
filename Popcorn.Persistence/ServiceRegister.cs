@@ -19,6 +19,8 @@ public static class ServiceRegister
             .ConfigureRunner(rb => rb
                 .AddSQLite()
                 .WithGlobalConnectionString(DapperContext.ConnectionString)
-                .ScanIn(typeof(DapperContext).Assembly).For.Migrations());
+                .ScanIn(typeof(DapperContext).Assembly).For.Migrations())
+            .AddLogging(lb => lb.AddFluentMigratorConsole())
+            .BuildServiceProvider(false);
     }
 }

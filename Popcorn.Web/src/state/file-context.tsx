@@ -10,7 +10,6 @@ import React, {
 } from 'react';
 import { SocketRequests } from '../socket/socket-requests';
 import { useWebSocket } from './websocket-context';
-
 interface FileContextState {
   fileUrlsMap: Map<string, string>;
   addOrUpdateFileUrl: (filename: string, url: string) => void;

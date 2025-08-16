@@ -90,7 +90,7 @@ public static class MediaLoader
         
         var mediaFiles = allEntries
             .Where(p => VideoFormats.Any(ext => p.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
-            .Where(p => folderEntries.Any(f => f != p)) // Removes folders with extension names 
+            //.Where(p => folderEntries.Any(f => f != p)) // Removes folders with extension names 
             .ToList();
 
         if (mediaFiles.Count == 0) 

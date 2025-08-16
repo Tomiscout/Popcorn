@@ -33,7 +33,7 @@ public abstract class Program
             .MinimumLevel.Verbose()
             .WriteTo.Console()
             .WriteTo.Debug()
-            .WriteTo.File(Path.Combine(DirUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}Popcorn-.txt"), rollingInterval: RollingInterval.Day)
+            .WriteTo.File(Path.Combine(DirectoryUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}Popcorn-.txt"), rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
         await using var serverHost = new PopcornServerHost(args);

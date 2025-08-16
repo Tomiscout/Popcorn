@@ -1,0 +1,36 @@
+.skip-button {
+    position: relative;
+    overflow: hidden;
+    background-color: #acacac;
+    cursor: pointer;
+    padding: 8px;
+    border: none;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    transition: background-color 0.2s ease;
+}
+
+.skip-button-text {
+    position: relative;
+    z-index: 5;
+    font-size: 15px;
+    font-family: Rubik, sans-serif;
+}
+
+.skip-button-progress {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 100%;
+    background-color: white; /* Adjust color as needed */
+    transition: width 0.2s linear; /* Smooth transition for width */
+    transition: background-color 0.2s ease;
+}
+
+.skip-button:hover {
+    background-color: #8a8a8a; /* Change to your desired hover color */
+}
+
+.skip-button:hover .skip-button-progress {
+    background-color: #c4c4c4; /* Change to your desired color for progress bar on hover */
+}

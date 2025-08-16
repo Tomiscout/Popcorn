@@ -7,6 +7,7 @@ using Popcorn.Persistence;
 using Popcorn.Persistence.Repositories;
 using Popcorn.PlayerServer;
 using Popcorn.PlayerServer.Linux;
+using Popcorn.Server.Services;
 using Popcorn.Shared.Interfaces;
 using Popcorn.Shared.Linux;
 
@@ -27,6 +28,9 @@ public static class ServiceRegister
         services.AddSingleton<MediaItemRefreshService>();
         // services.AddSingleton<SegmentFinderService>();
         services.AddSingleton<IFileService, FileService>();
+        services.AddScoped<FileStreamService>();
+        
+        services.AddScoped<VideoService>();
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -38,6 +42,8 @@ public static class ServiceRegister
             services.AddSingleton<INativeFileAssosiation, LinuxFileAssociation>();
             services.AddSingleton<INativeProcessRunner, LinuxProcessRunner>();
         }
+
+        services.AddMemoryCache();
 
         //MovieDbProvider.Initialize();
     }

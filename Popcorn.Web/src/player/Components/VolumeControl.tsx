@@ -1,11 +1,14 @@
 import React, { useState, useRef } from 'react';
-import { ReactComponent as LowVolume } from '../assets/icons/sound-min.svg';
-import { ReactComponent as MidVolume } from '../assets/icons/sound-med.svg';
-import { ReactComponent as FullVolume } from '../assets/icons/sound-max.svg';
-import { ReactComponent as MuteVolume } from '../assets/icons/sound-mute.svg';
-import { postMessage } from '../events';
-import '../Styles/VolumeSlider.css'
-import { useEventListeners } from '../Utlis/helpers';
+import {
+  IconVolume2 as LowVolume,
+  IconVolume as MidVolume,
+  IconVolume as FullVolume,
+  IconVolume3 as MuteVolume,
+} from '@tabler/icons-react';
+
+import { postMessage } from '../../utils/events';
+import '../Styles/VolumeSlider.css';
+import { useEventListeners } from '../Utlis/listener.utils';
 
 const VolumeControl = () => {
   const volumePopupHalfWidth = 20; //volumePopup.offsetWidth is not present on first render
@@ -26,22 +29,22 @@ const VolumeControl = () => {
     postMessage('volume', newMutedState ? 0 : volume);
   };
   const changeVolume = (vol) => {
-    if(muted) {
+    if (muted) {
       setMuted(false);
     }
-    vol = parseFloat((Math.max(0, Math.min(vol, 1))).toFixed(2))
-    
+    vol = parseFloat(Math.max(0, Math.min(vol, 1)).toFixed(2));
+
     setVolume(vol);
     postMessage('volume', vol);
     //throttledPostMessage('volume', vol); Deadlock is fixed now? maybe dont need this anymore
-  }
+  };
 
   const upHandler = () => {
     changeVolume(volume + 0.1);
-  }
+  };
   const downHandler = () => {
     changeVolume(volume - 0.1);
-  }
+  };
 
   const handleMouseEnter = () => {
     const volumeElement = volumeRef.current;
@@ -74,20 +77,20 @@ const VolumeControl = () => {
 
   const getBackgroundSize = () => {
     return {
-      backgroundSize: `${(volume * 100)}% 100%`,
+      backgroundSize: `${volume * 100}% 100%`,
     };
   };
 
   useEventListeners('keyup', {
-    'KeyM': onToggleMute,
-    'ArrowUp': upHandler,
-    'ArrowDown': downHandler,
+    KeyM: onToggleMute,
+    ArrowUp: upHandler,
+    ArrowDown: downHandler,
   });
 
   return (
     <div id="volume" ref={volumeRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       <div id="volume-popup" className="popup" ref={volumePopupRef} style={{ display: showPopup ? '' : 'none' }}>
-        <div className='volume-slider-container'>
+        <div className="volume-slider-container">
           <input
             type="range"
             min="0"
@@ -95,12 +98,12 @@ const VolumeControl = () => {
             step="0.01"
             onChange={(e) => changeVolume(e.target.value)}
             style={getBackgroundSize()}
-            className='volume-slider'
+            className="volume-slider"
             value={volume}
           />
         </div>
       </div>
-      <button className='main-button' id="volume-button" onClick={onToggleMute}>
+      <button className="main-button" id="volume-button" onClick={onToggleMute}>
         {getVolumeIcon()}
       </button>
     </div>

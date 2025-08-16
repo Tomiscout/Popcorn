@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Popcorn.Player.Core.Core;
 using Popcorn.Player.Core.WebSocket;
+using Popcorn.Shared.Ffmpeg;
 using Popcorn.Shared.Utils;
 using PopcornPlayer.Shared;
 using Serilog;
@@ -9,7 +10,7 @@ using Serilog;
 namespace Popcorn.Player.Core.Services;
 public class ThumbnailService(Lazy<PlayerCore> playerCore, Lazy<WebEventHandler> webSocket)
 {
-    private readonly string OutputFolder = Path.Combine(DirUtils.DataFolder, "thumb");
+    private readonly string OutputFolder = Path.Combine(DirectoryUtils.DataFolder, "thumb");
 
     public void Initialize()
     {
@@ -72,7 +73,7 @@ public class ThumbnailService(Lazy<PlayerCore> playerCore, Lazy<WebEventHandler>
             return File.ReadAllBytes(outputFilePath);
         }
 
-        string command = VideoDecoders.BuildDecoderCommand(timeInSeconds, metadata, inputFilePath, outputFilePath);
+        string command = ThumbnailUtils.BuildDecoderCommand(timeInSeconds, metadata, inputFilePath, outputFilePath);
 
         FFmpegWrapper.RunCommand(command, ct);
         thumbFile.Refresh();
@@ -83,7 +84,7 @@ public class ThumbnailService(Lazy<PlayerCore> playerCore, Lazy<WebEventHandler>
 
         if (ct.IsCancellationRequested) return null; // If ct canceled - dont attempt cpu command
 
-        FFmpegWrapper.RunCommand(VideoDecoders.GetCpuCommand(inputFilePath, outputFilePath, metadata, timeInSeconds), ct);
+        FFmpegWrapper.RunCommand(ThumbnailUtils.GetCpuCommand(inputFilePath, outputFilePath, metadata, timeInSeconds), ct);
         thumbFile.Refresh();
 
         return thumbFile.Exists && thumbFile.Length > 0 ? File.ReadAllBytes(thumbFile.FullName) : null;

@@ -7,7 +7,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.Extensions.Logging; // For ILogger
+using Microsoft.Extensions.Logging;
+using Popcorn.Shared.Utils; // For ILogger
 using Serilog; // If you want to ensure Serilog is configured by default
 
 namespace Popcorn.Server;
@@ -31,7 +32,12 @@ public class PopcornServerHost : IAsyncDisposable
     {
         Log.Logger = logger;
 
-        var hostBuilder = Host.CreateDefaultBuilder(_args);
+        DirectoryUtils.EnsureApplicationFolder();
+
+        var hostBuilder = Host.CreateDefaultBuilder(_args)
+            .UseEnvironment(
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+                ?? "Production");
 
         hostBuilder.UseSerilog(logger);
 

@@ -6,17 +6,34 @@ namespace Popcorn.Server;
 
 public class Startup
 {
+    private const string LocalDevCorsPolicy = "LocalDev";
+    
     public void ConfigureServices(IServiceCollection services)
     {
+        services.AddControllers();
         services.AddPopcornServices();
         services.AddPopcornDatabase();
         services.AddSerilog();
+        
+        services.AddCors(options =>
+        {
+            options.AddPolicy(LocalDevCorsPolicy, builder =>
+            {
+                builder
+                    .WithOrigins("http://localhost:5173")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
     }
     
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
-        var runner = app.ApplicationServices.GetRequiredService<IMigrationRunner>();
-        runner.MigrateUp();
+        if (!env.IsDevelopment()) //For some reason it cant resolve IMigrationRunner when Development
+        {
+            var runner = app.ApplicationServices.GetRequiredService<IMigrationRunner>();
+            runner.MigrateUp();
+        }
         
         var webPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "web");
         if (Directory.Exists(webPath))
@@ -44,6 +61,15 @@ public class Startup
                 var serviceScopeFactory = app.ApplicationServices.GetRequiredService<IServiceScopeFactory>();
                 await HandleWebSocket(context, serviceScopeFactory);
             });
+        });
+        app.UseRouting();
+        if (env.IsDevelopment())
+        {
+            app.UseCors(LocalDevCorsPolicy);
+        }
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapControllers();
         });
     }
     

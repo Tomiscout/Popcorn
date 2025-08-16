@@ -24,12 +24,14 @@ import {
 import { useFileUrl } from '../../state/file-context';
 import './item-details.page.css';
 import { useModals } from '@mantine/modals';
+import { usePlayerStore } from '../../state/player.store';
 
 const ItemDetailsPage: React.FC = () => {
   const { id } = useParams();
   const modals = useModals();
   const navigate = useNavigate();
   const { client, isClientReady } = useWebSocket();
+  const { setFileId: setPlayerFileId } = usePlayerStore();
 
   const [mediaItem, setMediaItem] = useState<MediaItem>();
   const [currentMediaFiles, setCurrentMediaFiles] = useState<MediaFile[]>();
@@ -75,7 +77,9 @@ const ItemDetailsPage: React.FC = () => {
       setBreadcrumbs((prev) => [...prev, { id: file.id, title: file.title }]);
       client.sendEvent(SocketRequests.FolderOpen, fileId);
     } else {
-      client.sendEvent(SocketRequests.FileOpen, fileId);
+      //TODO setting
+      //client.sendEvent(SocketRequests.FileOpen, fileId);
+      setPlayerFileId(fileId);
 
       //Sets as played locally
       setCurrentMediaFiles((prev) =>
@@ -86,6 +90,10 @@ const ItemDetailsPage: React.FC = () => {
 
   function refreshFiles() {
     client.sendEvent(SocketRequests.RefreshMediaItem, mediaItem?.id);
+  }
+
+  function openFolder() {
+    client.sendEvent(SocketRequests.OpenMediaItemFolder, mediaItem?.id);
   }
 
   function mediaFilesReceived(newFiles: MediaFile[]) {
@@ -165,7 +173,7 @@ const ItemDetailsPage: React.FC = () => {
   };
 
   return (
-    <Flex direction="column" w="100%">
+    <Flex direction="column" className="itemDetailsRoot" w="100%">
       <Flex m="sm" w="100%" h="256">
         <img src={imageUrl ? imageUrl : '/images/default-media.jpg'} className="rounded-image-header"></img>
 
@@ -185,6 +193,9 @@ const ItemDetailsPage: React.FC = () => {
             <Button variant="default" leftSection={<IconRefresh size={14} />} onClick={refreshFiles}>
               Refresh files
             </Button>
+            <Button variant="default" leftSection={<IconRefresh size={14} />} onClick={openFolder}>
+              Open folder
+            </Button>
           </Flex>
         </Flex>
       </Flex>
@@ -199,7 +210,7 @@ const ItemDetailsPage: React.FC = () => {
           </Tabs.Tab>
         </Tabs.List>
 
-        <Tabs.Panel value="files" mt="xs">
+        <Tabs.Panel value="files" mt="xs" className="scrollablePanel">
           <Breadcrumbs separator=">" m="sm">
             {breadcrumbs.map((crumb, idx) => (
               <Anchor key={crumb.id} component="button" size="sm" onClick={() => onBreadcrumbClick(crumb.id, idx)}>
@@ -209,7 +220,7 @@ const ItemDetailsPage: React.FC = () => {
           </Breadcrumbs>
           {renderFiles()}
         </Tabs.Panel>
-        <Tabs.Panel value="history" mt="xs">
+        <Tabs.Panel value="history" mt="xs" className="scrollablePanel">
           {renderHistory()}
         </Tabs.Panel>
       </Tabs>

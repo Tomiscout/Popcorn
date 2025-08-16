@@ -15,7 +15,7 @@ namespace Popcorn.PlayerServer.Windows;
 
 public static class ServerPipeManager
 {
-    private static readonly string _pipeNameFile = DirUtils.DataFolder + "pipeName.txt";
+    private static readonly string _pipeNameFile = DirectoryUtils.DataFolder + "pipeName.txt";
     private static PipeServerWithCallback<IPipeClient, PopcornPlayer.Shared.IPipeServer> _pipeServer;
 
     public static async Task StartServer(IMediaItemRepository mediaItemRepository, MediaItemRefreshService mediaItemRefreshService)

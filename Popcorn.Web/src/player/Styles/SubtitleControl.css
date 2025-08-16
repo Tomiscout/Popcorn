@@ -1,0 +1,179 @@
+#subtitle-popup {
+  display: flex;
+  height: 200px;
+}
+
+.subtitle-popup-container {
+  display: flex;
+  width: 100%;
+  background: #211313ba;
+}
+
+.subtitle-popup-half {
+  position: relative;
+  display: flex;
+  width: 50%;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.titles {
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+  margin-left: 15px;
+  margin-bottom: 4px;
+  flex-grow: 1;
+}
+
+/*Dividers*/
+.subtitle-popup-half:first-child::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 10%;
+  /* Center the border vertically (100% - 80% = 20%, half of 20% is 10%) */
+  bottom: 10%;
+  width: 1px;
+  background-color: #333;
+}
+
+.track-option:not(:last-child)::before {
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  /* Center the border horizontally (100% - 80% = 20%, half of 20% is 10%) */
+  right: 10%;
+  height: 0.5px;
+  background-color: #ffffff0d;
+  content: '';
+}
+
+.custom-radio {
+  display: flex;
+  align-items: center;
+}
+
+.custom-radio label {
+  display: flex;
+  align-items: center;
+}
+
+.custom-radio input[type='radio'] {
+  display: none;
+}
+
+.checkmark {
+  color: white;
+  margin-right: 5px;
+  display: none;
+  margin-left: 10px;
+}
+
+.checkmark-container {
+  flex: 0 0 28px;
+  /* adjust width as needed */
+  text-align: center;
+}
+
+.custom-select {
+  max-height: 157px;
+  flex-grow: 1;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.track-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+.track-option.selected .checkmark {
+  display: inline;
+}
+
+.option-text {
+  flex: 1 1 auto;
+  margin: 1px;
+  color: white;
+  font-weight: normal;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-size: 18px;
+}
+
+.option-desc-text {
+  font-weight: lighter;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.active {
+  visibility: visible;
+  font-weight: bold;
+}
+
+ul {
+  list-style: none;
+  padding-left: 0px;
+  margin: 0;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.custom-select {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.custom-select::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* Add a white handle */
+.custom-select::-webkit-scrollbar-thumb {
+  background: white;
+  border-radius: 10px;
+}
+
+/* For Chrome, Safari, and Opera */
+.custom-select::-webkit-scrollbar {
+  width: 5px;
+  /* Set width */
+}
+
+.bold {
+  font-weight: bold;
+}
+
+.add-subtitle-button {
+  display: flex;
+  align-items: center;
+  opacity: 0.8;
+}
+
+.add-subtitle-button svg {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.add-subtitle-button span {
+  font-size: 12px;
+  color: white;
+  margin-left: 2px;
+}
+
+.subtitles-header {
+  display: flex;
+}
+
+.subtitles-footer {
+  display: flex;
+  justify-content: space-between;
+}

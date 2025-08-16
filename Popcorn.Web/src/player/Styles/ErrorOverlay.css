@@ -1,0 +1,57 @@
+.error-overlay {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 40rem;
+    color: white;
+    margin: 10px;
+    z-index: 9999;
+    max-height: 85vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #f44336d6 transparent;
+  }
+  
+  .error-message {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f44336d6;
+    padding: 8px;
+    margin-bottom: 5px;
+    border-radius: 3px;
+  }
+  
+  .error-message span {
+    flex: 1;
+  }
+  
+  .error-message button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .error-container {
+    display: flex;
+    flex-direction: column;
+    max-width: 37rem;
+  }
+
+  .error-message-text {
+    font-weight: bold;
+  }
+
+  .error-message-exception-text {
+    font-size: 1.2rem;
+  }
+
+  .error-message-stacktrace {
+    margin-top: 0.7rem;
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  

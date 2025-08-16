@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { WebSocketClient } from '../socket/websocket-client';
+import { resolveServerHost } from '../utils/url-resolver';
 
 type WebSocketContextValue = {
   client: WebSocketClient;
@@ -19,8 +20,7 @@ export const WebSocketProvider = ({ children }: React.PropsWithChildren) => {
   const [isClientReady, setIsClientReady] = useState(false);
 
   if (!wsClientRef.current) {
-    const isDevelop = import.meta.env.DEV; // If it runs from vite server
-    const url = isDevelop ? 'ws://localhost:5000/ws' : `ws://${window.location.host}/ws`;
+    const url = `ws://${resolveServerHost()}/ws`;
     wsClientRef.current = new WebSocketClient(url);
   }
 

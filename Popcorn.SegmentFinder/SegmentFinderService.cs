@@ -13,7 +13,7 @@ namespace Popcorn.SegmentFinder;
 
 public class SegmentFinderService
 {
-    public static readonly string WorkDirectory = Path.Combine(DirUtils.DataFolder, "segmentFinder" + Path.DirectorySeparatorChar);
+    public static readonly string WorkDirectory = Path.Combine(DirectoryUtils.DataFolder, "segmentFinder" + Path.DirectorySeparatorChar);
 
     private ConcurrentQueue<Task> taskQueue = new ConcurrentQueue<Task>();
     private SemaphoreSlim semaphore;

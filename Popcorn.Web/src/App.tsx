@@ -2,7 +2,7 @@ import { IconDeviceTv, IconDownload, IconFolderOpen, IconSearch, IconSettings } 
 
 import './App.css';
 import { Routes, Route, Link, Navigate, useLocation, BrowserRouter } from 'react-router-dom';
-import { AppShell, createTheme, MantineProvider, NavLink } from '@mantine/core';
+import { AppShell, Button, createTheme, MantineProvider, NavLink } from '@mantine/core';
 import WatchPage from './pages/watch/watch.page';
 import MediaSearchPage from './pages/search/media-search.page';
 import TorrentSearchPage from './pages/search/torrent-search.page';
@@ -16,6 +16,11 @@ import { useWebSocket, WebSocketProvider } from './state/websocket-context';
 import { FileProvider, useFileContext } from './state/file-context';
 import { parseFilenames } from './utils/tags.parser';
 import { ModalsProvider } from '@mantine/modals';
+import { Mode, PopcornPlayer } from './player/PopcornPlayer';
+import { initEvents, postMessage } from './utils/events';
+import { disableDefaultListeners } from './player/Utlis/listener.utils';
+import { usePlayerStore } from './state/player.store';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const theme = createTheme({
   primaryColor: 'primaryRed',
@@ -39,6 +44,7 @@ function AppContent() {
   const location = useLocation();
   const { client, isClientReady } = useWebSocket();
   const { addOrUpdateFileUrl } = useFileContext();
+  const { fileId, isFloating, setIsFloating } = usePlayerStore();
 
   const [hasPageLoaded, setHasPageLoaded] = useState(false);
 
@@ -75,6 +81,10 @@ function AppContent() {
       client.onEventUnregiser(SocketRequests.ParseTags);
     };
   }, [isClientReady]);
+
+  const toggleFloating = () => {
+    setIsFloating(!isFloating);
+  };
 
   return (
     <AppShell
@@ -129,8 +139,14 @@ function AppContent() {
             label="Settings"
             leftSection={<IconSettings size={24} stroke={1.5} />}
           />
+
+          <Button variant="light" fullWidth mt="md" onClick={toggleFloating}>
+            {isFloating ? 'Dock Player' : 'Float Player'}
+          </Button>
         </AppShell.Navbar>
       )}
+
+      {fileId && <PopcornPlayer />}
 
       <AppShell.Main className="app-content">
         <Routes>
@@ -150,18 +166,24 @@ function AppContent() {
 }
 
 function App() {
+  disableDefaultListeners();
+  initEvents();
+  const queryClient = new QueryClient();
+
   return (
-    <FileProvider>
-      <BrowserRouter>
-        <MantineProvider theme={theme} forceColorScheme="dark">
-          <ModalsProvider>
-            <WebSocketProvider>
-              <AppContent />
-            </WebSocketProvider>
-          </ModalsProvider>
-        </MantineProvider>
-      </BrowserRouter>
-    </FileProvider>
+    <QueryClientProvider client={queryClient}>
+      <FileProvider>
+        <BrowserRouter>
+          <MantineProvider theme={theme} forceColorScheme="dark">
+            <ModalsProvider>
+              <WebSocketProvider>
+                <AppContent />
+              </WebSocketProvider>
+            </ModalsProvider>
+          </MantineProvider>
+        </BrowserRouter>
+      </FileProvider>
+    </QueryClientProvider>
   );
 }
 

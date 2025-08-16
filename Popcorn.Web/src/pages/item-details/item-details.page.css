@@ -5,3 +5,14 @@
   object-position: center;
   border-radius: 8px;
 }
+
+.itemDetailsRoot {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.scrollablePanel {
+  max-height: calc(100vh - 60px - 256px - 48px);
+  overflow-y: auto;
+}

@@ -6,6 +6,7 @@ public static class SocketRequests
     public const string MediaItem = "MediaItem";
     public const string RemoveMediaItem = "RemoveMediaItem";
     public const string RefreshMediaItem = "RefreshMediaItem";
+    public const string OpenMediaItemFolder = "OpenMediaItemFolder";
     public const string MediaItemFileList = "MediaItemFileList";
     public const string MediaItemHistory = "MediaItemHistory";
     public const string ImageFile = "ImageFile";

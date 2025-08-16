@@ -14,7 +14,8 @@ public class MediaItemWebService(
     IMediaItemRepository mediaItemRepository,
     MediaItemService mediaItemService,
     ItemHistoryService itemHistoryService,
-    IMediaFileRepository mediaFileRepository
+    IMediaFileRepository mediaFileRepository,
+    IFileService fileService
     )
 {
     public async Task SendMediaItems(MediaItemRequest item)
@@ -87,5 +88,13 @@ public class MediaItemWebService(
     {
         await mediaItemService.RescanItem(mediaItemId);
         await SendMediaItems(new MediaItemRequest { Id = mediaItemId });
+    }
+    
+    public async Task OpenMediaItemFolder(Guid mediaItemId)
+    {
+        var mediaItem = await mediaItemRepository.GetMediaItem(mediaItemId);
+        if (mediaItem == null) return;
+        
+        fileService.OpenDirectoryExplorer(mediaItem.FolderDirectory);
     }
 }

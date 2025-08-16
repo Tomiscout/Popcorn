@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
-import { ReactComponent as PlusIcon } from '../assets/icons/plus.svg';
-import { ReactComponent as MinusIcon } from '../assets/icons/minus.svg';
+import { useState, useEffect } from "react";
+import PropTypes from "prop-types";
+import { IconPlus, IconMinus } from "@tabler/icons-react";
 
-import '../Styles/NumberStepper.css';
+import "../Styles/NumberStepper.css";
 
 const NumberStepper = ({ onNumberChanged, step, reset }) => {
   const [value, setValue] = useState(0.0);
@@ -22,13 +21,13 @@ const NumberStepper = ({ onNumberChanged, step, reset }) => {
   };
 
   return (
-    <div className='number-stepper'>
+    <div className="number-stepper">
       <button onClick={() => handleValueChange(-step)}>
-        <MinusIcon />
+        <IconMinus />
       </button>
       <span>{(value === 0 ? 0 : value).toFixed(2)} s</span>
       <button onClick={() => handleValueChange(step)}>
-        <PlusIcon />
+        <IconPlus />
       </button>
     </div>
   );

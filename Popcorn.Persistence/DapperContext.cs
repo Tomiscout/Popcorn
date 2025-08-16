@@ -9,7 +9,7 @@ namespace Popcorn.Persistence;
 
 public class DapperContext
 {
-    public static string ConnectionString => $"Data Source={Path.Join(DirUtils.DataFolder, "data.db")};Version=3;foreign keys=true;";
+    public static string ConnectionString => $"Data Source={Path.Join(DirectoryUtils.DataFolder, "data.db")};Version=3;foreign keys=true;";
 
     public DapperContext()
     {

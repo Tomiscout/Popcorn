@@ -1,5 +1,5 @@
 ﻿
-namespace Popcorn.Player.Services;
+namespace Popcorn.Shared.Ffmpeg;
 public enum VideoCodec
 {
     Unknown,
@@ -20,3 +20,4 @@ public enum VideoCodec
     FLV1,
     FMP4,
 }
+

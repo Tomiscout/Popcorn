@@ -15,7 +15,7 @@ namespace Popcorn.Persistence
 
         public string GetDataFolder()
         {
-            return DirUtils.DataFolder;
+            return DirectoryUtils.DataFolder;
         }
 
         public async Task<T> LoadJsonAsync<T>(string fileName)
