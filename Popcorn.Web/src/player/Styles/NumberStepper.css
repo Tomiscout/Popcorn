@@ -1,24 +1,24 @@
 .number-stepper {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 
 .number-stepper span {
-    color: white;
-    margin: 0 3px;
-    font-size: 12px;
+  color: white;
+  margin: 0 3px;
+  font-size: 12px;
 }
 
 .number-stepper button {
-    width: 8px !important;
-    height: 8px !important;
-    min-width: 8px !important;
-    min-height: 8px !important;
-    margin-top: -11px !important;
-    margin-left: 0 !important;
+  width: 8px !important;
+  height: 8px !important;
+  min-width: 8px !important;
+  min-height: 8px !important;
+  margin-top: -11px !important;
+  margin-left: 0 !important;
 }
 
 .number-stepper svg {
-    width: 8px !important;
-    height: 8px !important;
+  width: 8px !important;
+  height: 8px !important;
 }

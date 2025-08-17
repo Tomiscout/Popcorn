@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Draggable from 'react-draggable';
 import './PopcornPlayer.css';
 import ErrorOverlay from './Components/ErrorOverlay';
@@ -22,9 +22,12 @@ const VideoPlayer = React.memo(
   React.forwardRef<HTMLVideoElement>((props, ref) => <RawVideoPlayer ref={ref} {...props} />)
 );
 
-export const PopcornPlayer: React.FC = () => {
+interface PopcornPlayerProps {
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+}
+
+export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const { fileId, isFloating, isFullscreen, setIsPlaying, setMetadata } = usePlayerStore();
 
   const { data: videoMetadata, isFetching: isFetchingMetadata, error: metadataError } = getVideoMetadata(fileId || '');
@@ -41,7 +44,6 @@ export const PopcornPlayer: React.FC = () => {
 
   // track our mode locally for CSS classes (sync'd to store)
   const [mode, setMode] = useState<Mode>('inline');
-
   // whenever store flags change, update local mode
   useEffect(() => {
     const newMode: Mode = isFloating ? 'floating' : isFullscreen ? 'fullscreen' : 'inline';
@@ -127,22 +129,28 @@ export const PopcornPlayer: React.FC = () => {
         <>
           <ControlBar containerRef={videoContainerRef} metadata={videoMetadata} />
           <PlaybackNotificationControl />
-          <VideoPlayer ref={videoRef} />
+          {/* <VideoPlayer ref={videoRef} /> */}
         </>
       )}
     </div>
   );
 
-  // if floating, wrap in Draggable
-  const wrapped =
-    mode === 'floating' ? (
-      <Draggable nodeRef={videoContainerRef} handle=".capture-click-area">
-        {container}
-      </Draggable>
-    ) : (
-      container
-    );
+  const wrapped = (
+    <Draggable nodeRef={videoContainerRef} handle=".capture-click-area" disabled={mode !== 'floating'}>
+      {container}
+    </Draggable>
+  );
 
-  // always portal to document.body → NEVER unmount on mode change
-  return createPortal(wrapped, document.body);
+  const portalContainer = createPortal(wrapped, document.body);
+  let portalVideo = null;
+  if (videoContainerRef.current && videoMetadata) {
+    portalVideo = createPortal(<VideoPlayer ref={videoRef} />, videoContainerRef.current);
+  }
+
+  return (
+    <>
+      {portalContainer}
+      {portalVideo}
+    </>
+  );
 };

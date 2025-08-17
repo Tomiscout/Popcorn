@@ -19,6 +19,7 @@ input:focus {
   background: black;
   overflow: hidden;
 }
+
 .video-container.floating {
   position: fixed !important;
   top: 20px;

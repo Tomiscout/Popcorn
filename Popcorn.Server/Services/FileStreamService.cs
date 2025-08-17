@@ -43,7 +43,7 @@ public class FileStreamService
     {
       if ((fmtNames.Contains("matroska") || fmtNames.Contains("mp4"))
           && vcodec is VideoCodec.H264 or VideoCodec.H265
-          && acodec is AudioCodec.AAC or AudioCodec.MP3)
+          && acodec is AudioCodec.AAC or AudioCodec.MP3 or AudioCodec.Unknown)
       {
         // MP4 container & good codecs → just faststart
         mime    = "video/mp4";
@@ -58,7 +58,7 @@ public class FileStreamService
       }
       else if (fmtNames.Contains("matroska")
                && vcodec is VideoCodec.VP8 or VideoCodec.VP9
-               && acodec is AudioCodec.Vorbis or AudioCodec.Opus)
+               && acodec is AudioCodec.Vorbis or AudioCodec.Opus or AudioCodec.Unknown)
       {
         //Probably remux not needed since WebM is mkv
         mime = "video/webm";

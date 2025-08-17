@@ -1,11 +1,17 @@
-import { useState, useEffect } from "react";
-import PropTypes from "prop-types";
-import { IconPlus, IconMinus } from "@tabler/icons-react";
+import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import { IconPlus, IconMinus } from '@tabler/icons-react';
 
-import "../Styles/NumberStepper.css";
+import '../Styles/NumberStepper.css';
+interface NumberStepperProps {
+  onNumberChanged: (val: number) => void;
+  step: number;
+  reset: boolean;
+  initialValue: number;
+}
 
-const NumberStepper = ({ onNumberChanged, step, reset }) => {
-  const [value, setValue] = useState(0.0);
+const NumberStepper: React.FC<NumberStepperProps> = ({ onNumberChanged, step, reset, initialValue = 0.0 }) => {
+  const [value, setValue] = useState(initialValue);
 
   useEffect(() => {
     if (reset) {
@@ -14,7 +20,7 @@ const NumberStepper = ({ onNumberChanged, step, reset }) => {
     }
   }, [reset]);
 
-  const handleValueChange = (delta) => {
+  const handleValueChange = (delta: number) => {
     const newValue = value + delta;
     setValue(newValue);
     onNumberChanged(newValue);
@@ -31,12 +37,6 @@ const NumberStepper = ({ onNumberChanged, step, reset }) => {
       </button>
     </div>
   );
-};
-
-NumberStepper.propTypes = {
-  onNumberChanged: PropTypes.func.isRequired,
-  step: PropTypes.number.isRequired,
-  reset: PropTypes.bool.isRequired,
 };
 
 export default NumberStepper;

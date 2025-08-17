@@ -11,7 +11,7 @@ import DownloadsPage from './pages/downloads/downloads.page';
 import SettingsPage from './pages/settings/settings.page';
 import ItemDetailsPage from './pages/item-details/item-details.page';
 import { SocketRequests } from './socket/socket-requests';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWebSocket, WebSocketProvider } from './state/websocket-context';
 import { FileProvider, useFileContext } from './state/file-context';
 import { parseFilenames } from './utils/tags.parser';
@@ -21,6 +21,7 @@ import { initEvents, postMessage } from './utils/events';
 import { disableDefaultListeners } from './player/Utlis/listener.utils';
 import { usePlayerStore } from './state/player.store';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createPortal } from 'react-dom';
 
 const theme = createTheme({
   primaryColor: 'primaryRed',
@@ -45,6 +46,8 @@ function AppContent() {
   const { client, isClientReady } = useWebSocket();
   const { addOrUpdateFileUrl } = useFileContext();
   const { fileId, isFloating, setIsFloating } = usePlayerStore();
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const [hasPageLoaded, setHasPageLoaded] = useState(false);
 
@@ -146,7 +149,7 @@ function AppContent() {
         </AppShell.Navbar>
       )}
 
-      {fileId && <PopcornPlayer />}
+      {fileId && <PopcornPlayer videoRef={videoRef} />}
 
       <AppShell.Main className="app-content">
         <Routes>
