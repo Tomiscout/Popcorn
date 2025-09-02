@@ -21,3 +21,16 @@ public enum VideoCodec
     FMP4,
 }
 
+public static class VideoCodecUtils
+{
+    public static VideoCodec ToVideoCodec(string? codecName)
+    {
+        if (string.IsNullOrWhiteSpace(codecName))
+            return VideoCodec.Unknown;
+
+        // TryParse will ignore case when the third parameter is true
+        return Enum.TryParse(codecName.Trim(), ignoreCase: true, out VideoCodec result)
+            ? result
+            : VideoCodec.Unknown;
+    }
+}

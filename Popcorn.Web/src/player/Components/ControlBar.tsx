@@ -1,42 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 import ProgressBar from './ProgressBar';
 import PlaybackControls from './PlaybackControls';
-import { useEventListeners } from '../Utlis/listener.utils';
 import '../Styles/ControlBar.css';
 import { MediaFileMetadata } from '../../query/models/video.models';
 
 export interface ControlBarProps {
-  containerRef: React.RefObject<HTMLDivElement | null>;
+  showControls: boolean;
   metadata: MediaFileMetadata;
 }
 
-export const ControlBar: React.FC<ControlBarProps> = ({ containerRef }) => {
-  const controlsTimeoutRef = useRef<NodeJS.Timeout>(null);
-  const controlsContainerRef = useRef<HTMLDivElement>(null);
-
-  const displayControls = () => {
-    if (controlsContainerRef?.current) {
-      controlsContainerRef.current.style.opacity = '1';
-    }
-    containerRef.current!.style.cursor = 'initial';
-
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-
-    controlsTimeoutRef.current = setTimeout(() => {
-      if (controlsContainerRef?.current) {
-        controlsContainerRef.current.style.opacity = '0';
-      }
-      containerRef.current!.style.cursor = 'none';
-    }, 3000);
-  };
-
-  useEventListeners('keyup', { default: displayControls });
-  useEventListeners('mousemove', { default: displayControls });
-
+export const ControlBar: React.FC<ControlBarProps> = ({ showControls }) => {
   return (
-    <div ref={controlsContainerRef} className="controls-root" style={{ display: 'contents' }}>
+    <div style={{ opacity: showControls ? '1' : '0' }} className="controls-root">
       <div className="fading-background" />
       <div className="controls-container">
         <ProgressBar />

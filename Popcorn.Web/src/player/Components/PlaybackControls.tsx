@@ -20,11 +20,12 @@ import { useEventListeners } from '../Utlis/listener.utils';
 import { usePlayerStore } from '../../state/player.store';
 
 const PlaybackControls = () => {
-  const { isFloating, isFullscreen, isPlaying, setIsFullscreen } = usePlayerStore();
+  const { isFloating, isFullscreen, isPlaying, setIsFullscreen, setIsFloating } = usePlayerStore();
+  const [floatingBeforeFullscreen, setFloatingBeforeFullscreen] = useState(false);
 
   const playPause = () => {
+    const { isPlaying } = usePlayerStore.getState();
     postMessage('play_status_changed', !isPlaying);
-    // setIsPlaying(!isPlaying);
   };
   const skipBackward = () => {
     postMessage('skip_seconds', -10);
@@ -36,10 +37,16 @@ const PlaybackControls = () => {
     postMessage('play_next_title', 10);
   };
   const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+    const newFullscreen = !isFullscreen;
+    if (newFullscreen) {
+      setFloatingBeforeFullscreen(isFloating);
+      setIsFloating(false);
+    }
+    setIsFullscreen(newFullscreen);
   };
   const exitFullscreen = () => {
     setIsFullscreen(false);
+    setIsFloating(floatingBeforeFullscreen);
   };
 
   useEventListeners('keyup', {

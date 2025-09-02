@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using FluentMigrator.Runner;
 using Popcorn.Persistence;
 using Serilog;
@@ -10,7 +11,12 @@ public class Startup
     
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddControllers();
+        services
+            .AddControllers()
+            .AddJsonOptions(opts =>
+            {
+                opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            });
         services.AddPopcornServices();
         services.AddPopcornDatabase();
         services.AddSerilog();

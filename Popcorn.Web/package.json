@@ -21,13 +21,16 @@
     "@mui/material": "^7.3.1",
     "@tabler/icons-react": "^3.31.0",
     "@tanstack/react-query": "^5.85.3",
+    "assjs": "^0.1.4",
     "dayjs": "^1.11.13",
+    "libpgs": "^0.8.1",
     "lodash.debounce": "^4.0.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-draggable": "^4.5.0",
     "react-router-dom": "^7.4.0",
     "uuid": "^11.1.0",
+    "vtt.js": "^0.13.0",
     "zustand": "^5.0.7"
   },
   "devDependencies": {
@@ -46,6 +49,7 @@
     "prettier": "3.5.3",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vite-plugin-static-copy": "^3.1.2"
   }
 }

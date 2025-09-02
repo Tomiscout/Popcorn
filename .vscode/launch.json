@@ -4,8 +4,12 @@
     {
       "type": "chrome",
       "runtimeExecutable": "/usr/bin/brave",
+      "runtimeArgs": [
+        "--enable-features=AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,VaapiOnNvidiaGPUs,VaapiIgnoreDriverChecks",
+        "--ozone-platform=wayland"
+      ],
       "request": "launch",
-      "name": "Chrome Popcorn web",
+      "name": "Chrome Popcorn linux",
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}/Popcorn.Web/src"
     },

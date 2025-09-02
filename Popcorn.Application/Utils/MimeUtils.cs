@@ -11,6 +11,11 @@ public static class MimeUtils
     {
         {".torrent", "application/x-bittorrent"},
         {".mp4", "application/mp4"},
+        {".wav", "audio/wav"},
+        {".vtt", "text/vtt"},
+        {".srt", "application/x-subrip"},
+        {".ass", "text/x-ass"},
+        {".sup", "text/x-pbs-subtitle"},
     };
 
     public static string GetMimeTypeForFileExtension(string filePath)

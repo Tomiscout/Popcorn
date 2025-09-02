@@ -1,6 +1,6 @@
 .controls-root {
-  transition: opacity 0.5s linear;
-  position: absolute;
+  transition: opacity 0.2s linear;
+  position: relative;
   left: 0px;
 }
 
@@ -15,10 +15,11 @@
 }
 
 .fading-background {
-  position: fixed;
-  bottom: 0px;
-  width: 100%;
-  min-height: 40vh;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 40%;
   background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.9));
-  z-index: -1 !important;
+  pointer-events: none;
 }

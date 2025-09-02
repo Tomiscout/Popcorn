@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Draggable from 'react-draggable';
 import './PopcornPlayer.css';
 import ErrorOverlay from './Components/ErrorOverlay';
-import { disableDefaultListeners } from './Utlis/listener.utils';
+import { disableDefaultListeners, useEventListeners } from './Utlis/listener.utils';
 import PlaybackNotificationControl from './Components/PlaybackNotificationControl';
 import { CaptureClickArea } from './Components/CaptureClickArea';
 import { ControlBar } from './Components/ControlBar';
@@ -14,6 +14,7 @@ import { TopBar } from './Components/TopBar';
 import { getVideoMetadata } from '../query/video.query';
 import { Loader } from '@mantine/core';
 import { postMessage } from '../utils/events';
+import SubtitleOverlay from './Components/Subtitles/SubtitleOverlay';
 
 export type Mode = 'inline' | 'floating' | 'fullscreen';
 
@@ -28,9 +29,12 @@ interface PopcornPlayerProps {
 
 export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  const { fileId, isFloating, isFullscreen, setIsPlaying, setMetadata } = usePlayerStore();
+  const { fileId, isFloating, isFullscreen, metadata, setIsPlaying, setMetadata, setCurrentSubtitle } =
+    usePlayerStore();
 
   const { data: videoMetadata, isFetching: isFetchingMetadata, error: metadataError } = getVideoMetadata(fileId || '');
+  const [showControls, setShowControls] = useState(true);
+
   useEffect(() => {
     if (metadataError) {
       postMessage('player_error', 'Failed to fetch metadata: ' + metadataError.message);
@@ -46,7 +50,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
   const [mode, setMode] = useState<Mode>('inline');
   // whenever store flags change, update local mode
   useEffect(() => {
-    const newMode: Mode = isFloating ? 'floating' : isFullscreen ? 'fullscreen' : 'inline';
+    const newMode: Mode = isFullscreen ? 'fullscreen' : isFloating ? 'floating' : 'inline';
     setMode(newMode);
   }, [isFloating, isFullscreen]);
 
@@ -90,18 +94,47 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
       videoRef.current.volume = newVolume;
     };
 
+    const subtitleTrackSelected = (selectedTrack: string) => {
+      const { metadata: currentMeta } = usePlayerStore.getState();
+      const subtitle = currentMeta?.subtitleTracks.find((track) => track.key === selectedTrack);
+      setCurrentSubtitle(subtitle || null);
+    };
+
     registerEventHandler('set_playback_time', setPlaybackTime);
     registerEventHandler('play_status_changed', onToggle);
     registerEventHandler('skip_seconds', onSkip);
     registerEventHandler('volume', setVolume);
+    registerEventHandler('subtitle_track_selected', subtitleTrackSelected);
 
     return () => {
       unregisterEventHandler('set_playback_time', setPlaybackTime);
       unregisterEventHandler('play_status_changed', onToggle);
       unregisterEventHandler('skip_seconds', onSkip);
       unregisterEventHandler('volume', setVolume);
+      unregisterEventHandler('subtitle_track_selected', subtitleTrackSelected);
     };
   }, []);
+
+  const controlsTimeoutRef = useRef<NodeJS.Timeout>(null);
+
+  const displayControls = () => {
+    setShowControls(true);
+    videoContainerRef.current!.style.cursor = 'initial';
+
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+      if (videoContainerRef.current) {
+        videoContainerRef.current.style.cursor = 'none';
+      }
+    }, 4000);
+  };
+
+  useEventListeners('keyup', { default: displayControls });
+  useEventListeners('mousemove', { default: displayControls });
 
   // global init once
   useEffect(() => {
@@ -122,14 +155,14 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
   const container = (
     <div className={`video-container ${mode}`} tabIndex={-1} ref={videoContainerRef}>
       <CaptureClickArea isFloating={mode === 'floating'} />
-      <TopBar />
+      <TopBar showControls={showControls} />
       <ErrorOverlay />
       {isFetchingMetadata && loadingSpinner()}
       {videoMetadata && (
         <>
-          <ControlBar containerRef={videoContainerRef} metadata={videoMetadata} />
+          <ControlBar showControls={showControls} metadata={videoMetadata} />
           <PlaybackNotificationControl />
-          {/* <VideoPlayer ref={videoRef} /> */}
+          <SubtitleOverlay videoRef={videoRef} />
         </>
       )}
     </div>

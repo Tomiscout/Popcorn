@@ -3,12 +3,17 @@ import '../Styles/TopBar.css';
 import { Button, CloseButton } from '@mantine/core';
 import { usePlayerStore } from '../../state/player.store';
 import { IconWindowMaximize, IconWindowMinimize } from '@tabler/icons-react';
+import { registerEventHandler, unregisterEventHandler } from '../../utils/events';
 
-export const TopBar: React.FC = () => {
-  const { isFloating, isFullscreen, setFileId, setIsFloating, setIsFullscreen } = usePlayerStore();
+export interface TopBarProps {
+  showControls: boolean;
+}
+
+export const TopBar: React.FC<TopBarProps> = ({ showControls }) => {
+  const { isFloating, isFullscreen, resetState, setIsFloating, setIsFullscreen } = usePlayerStore();
 
   function onClose() {
-    setFileId(null);
+    resetState();
   }
 
   function floatWindow() {
@@ -22,7 +27,7 @@ export const TopBar: React.FC = () => {
   }
 
   return (
-    <div className="top-bar">
+    <div className="top-bar" style={{ opacity: showControls ? '1' : '0' }}>
       <CloseButton onClick={onClose} />
 
       {!isFloating && !isFullscreen && <CloseButton onClick={floatWindow} icon={<IconWindowMinimize />} />}

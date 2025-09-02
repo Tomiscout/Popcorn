@@ -6,8 +6,8 @@ public static class AnalyseExtensions
 {
     public static VideoCodec ParseVideoCodec(this VideoStream? stream) => stream?.CodecName switch
     {
-        "h264" => VideoCodec.H264,
-        "hevc" => VideoCodec.H265,
+        "h264" or "x264" => VideoCodec.H264,
+        "hevc" or "x265" or "h265" => VideoCodec.H265,
         "av1" => VideoCodec.AV1,
         "mpeg1video" => VideoCodec.MPEG1,
         "mpeg2video" => VideoCodec.MPEG2,

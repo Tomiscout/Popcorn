@@ -13,6 +13,11 @@ public class MediaFileMetadata
     public int Episode { get; set; }
     public List<AudioTrackDto> AudioTracks { get; set; } = [];
     public List<SubtitleTrackDto> SubtitleTracks { get; set; } = [];
+    public VideoCodec? VideoDefaultCodec { get; set; }
+    public int? AudioDefaultIndex { get; set; }
+    public AudioCodec? AudioDefaultCodec { get; set; }
+    public int? SubtitleDefaultIndex { get; set; }
+    public List<string> FormatNames { get; set; } = [];
 }
 
 public class AudioTrackDto

@@ -2,13 +2,24 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import { fileURLToPath, URL } from 'url';
 import { resolve as _resolve } from 'path';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 // emulate __dirname
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    viteStaticCopy({
+      targets: [
+        {
+          src: 'node_modules/libpgs/dist/libpgs.worker.js',
+          dest: 'lib',
+        },
+      ],
+    }),
+  ],
   resolve: {
     alias: {
       '@': '/src',
