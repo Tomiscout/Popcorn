@@ -122,7 +122,7 @@ public class FileWebService(
             await bus.SendBinaryAsync(SocketRequests.ImageFile, data, path);
         }
 
-        await bus.SendEventAsync(SocketRequests.ImageFilesBatchSent, "");
+        await bus.SendEventAsync(SocketRequests.ImageFilesBatchSent, string.Empty);
     }
 
     public async Task HandleParsedTags(Dictionary<string, ParsedTags> request)

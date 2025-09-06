@@ -65,7 +65,7 @@ const VttSubtitleOverlay: React.FC<VttSubtitleOverlayProps> = ({ videoRef, curre
         textAlign: 'center',
         color: 'white',
         textShadow: '0px 0px 4px black',
-        fontSize: '18px',
+        fontSize: '3vw',
         pointerEvents: 'none',
       }}
     >

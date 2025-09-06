@@ -9,23 +9,14 @@ namespace Popcorn.Server.Services;
 
 public record StreamFile(string filePath, string mimeType);
 
-public class FileStreamService
+public class FileStreamService(
+  ILogger<FileStreamService> logger,
+  IMemoryCache memoryCache)
 {
-  private readonly ILogger<FileStreamService> _logger;
-  private readonly IMemoryCache      _cache;
-
-  public FileStreamService(
-    ILogger<FileStreamService> logger,
-    IMemoryCache               memoryCache)
-  {
-    _logger = logger;
-    _cache  = memoryCache;
-  }
-
   public async Task<StreamFile?> PrepareStreamFileAsync(MediaFile mediaFile)
   {
     var cacheKey = $"{mediaFile.Id}-stream";
-    if (_cache.TryGetValue(cacheKey, out StreamFile? cached))
+    if (memoryCache.TryGetValue(cacheKey, out StreamFile? cached))
     {
       return cached;
     }
@@ -63,25 +54,25 @@ public class FileStreamService
       }
       else
       {
-        _cache.Set(cacheKey, (StreamFile?) null, TimeSpan.FromDays(1));
+        memoryCache.Set(cacheKey, (StreamFile?) null, TimeSpan.FromDays(1));
         return null;
       }
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to prepare stream for {FileId}", mediaFile.Id);
+      logger.LogError(ex, "Failed to prepare stream for {FileId}", mediaFile.Id);
       throw;
     }
 
     var streamFile = new StreamFile(outPath, mime);
-    _cache.Set(cacheKey, streamFile, TimeSpan.FromDays(1));
+    memoryCache.Set(cacheKey, streamFile, TimeSpan.FromDays(1));
     return streamFile;
   }
 
   public async Task<MediaFileMetadata?> GetMediaFileMetadataAsync(MediaFile mediaFile)
   {
     var cacheKey = $"{mediaFile.Id}-metadata";
-    if (_cache.TryGetValue(cacheKey, out MediaFileMetadata? cached))
+    if (memoryCache.TryGetValue(cacheKey, out MediaFileMetadata? cached))
     {
       return cached;
     }
@@ -120,7 +111,8 @@ public class FileStreamService
       }).ToList()
     };
     
-    _cache.Set(cacheKey, metadata, TimeSpan.FromDays(1));
+    memoryCache.Set(cacheKey, metadata, TimeSpan.FromDays(1));
+    memoryCache.Set(cacheKey + "-probe", probe, TimeSpan.FromDays(1));
     return metadata;
   }
 

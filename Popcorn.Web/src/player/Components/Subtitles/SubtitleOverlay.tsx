@@ -5,7 +5,7 @@ import { resolveServerHost } from '../../../utils/url-resolver';
 import { postMessage, registerEventHandler, unregisterEventHandler } from '../../../utils/events';
 import VttSubtitleOverlay from './VttSubtitleOverlay';
 import PgsSubtitleOverlay from './PgsSubtitleOverlay';
-import { convertSrtToVtt } from '../../../utils/subtitle.utils';
+import { convertSrtToVtt } from '../../../utils/srt.utils';
 import { SubtitleTrackDto } from '../../../query/models/video.models';
 
 interface SubtitleOverlayProps {

@@ -29,8 +29,7 @@ interface PopcornPlayerProps {
 
 export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  const { fileId, isFloating, isFullscreen, metadata, setIsPlaying, setMetadata, setCurrentSubtitle } =
-    usePlayerStore();
+  const { fileId, isFloating, isFullscreen, setIsPlaying, setMetadata, setCurrentSubtitle } = usePlayerStore();
 
   const { data: videoMetadata, isFetching: isFetchingMetadata, error: metadataError } = getVideoMetadata(fileId || '');
   const [showControls, setShowControls] = useState(true);
@@ -181,9 +180,11 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
   }
 
   return (
-    <>
-      {portalContainer}
-      {portalVideo}
-    </>
+    fileId && (
+      <>
+        {portalContainer}
+        {portalVideo}
+      </>
+    )
   );
 };

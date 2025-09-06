@@ -5,9 +5,12 @@ import debounce from 'lodash.debounce';
 import Slider from '@mui/material/Slider';
 import SkipButton from './SkipButton';
 import { usePlayerStore } from '../../state/player.store';
+import { useWebSocket } from '../../state/websocket-context';
+import { SocketRequests } from '../../socket/socket-requests';
 
 const ProgressBar = () => {
-  const { currentTime, duration, setCurrentTime } = usePlayerStore();
+  const { fileId, currentTime, duration, thumbnailFiles, setCurrentTime } = usePlayerStore();
+  const { client } = useWebSocket();
 
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupTime, setPopupTime] = useState('');
@@ -15,9 +18,8 @@ const ProgressBar = () => {
   const [lineX, setLineX] = useState(0);
   const progressBarRef = useRef<HTMLDivElement>(null);
 
-  const [thumbnail, setThumbnail] = useState(null);
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [blobUrlMap, setBlobUrlMap] = useState(new Map());
 
   //const [currentTime, setCurrentTime] = useState(0);
   // const [totalTime, setTotalTime] = useState(0);
@@ -73,7 +75,18 @@ const ProgressBar = () => {
     outroButtonVisibleRef.current = outroButtonVisible;
   }, [introButtonVisible, outroButtonVisible]);
 
-  const handleSliderChange = (event, newValue: number) => {
+  useEffect(() => {
+    const blobUrl = thumbnailFiles[getThumbnailKey(lastRequestedTime.current)] || null;
+    if (blobUrl) {
+      setThumbnail(blobUrl);
+      setIsLoading(false);
+    }
+  }, [thumbnailFiles]);
+
+  function getThumbnailKey(timeMs: number) {
+    return `thumbnail_${fileId}_${timeMs / 1000}`;
+  }
+  const handleSliderChange = (_event, newValue: number) => {
     setCurrentTime(newValue);
     postMessage('set_playback_time', newValue); //TODO throttle
   };
@@ -205,8 +218,9 @@ const ProgressBar = () => {
     setIsLoading(true);
     lastRequestedTime.current = currentThumbTime;
 
-    if (blobUrlMap.has(currentThumbTime)) {
-      setThumbnail(blobUrlMap.get(currentThumbTime));
+    const currentKey = getThumbnailKey(currentThumbTime);
+    if (thumbnailFiles[currentKey]) {
+      setThumbnail(thumbnailFiles[currentKey]);
       setIsLoading(false);
       console.log('Grabbing thumb from cache:', currentThumbTime);
       return;
@@ -222,20 +236,10 @@ const ProgressBar = () => {
   };
   const debouncedThumbnailRequest = useRef(
     debounce((time) => {
-      postMessage('thumb_requested', time / 1000);
+      if (!client) return;
+      client.sendEvent(SocketRequests.ThumbnailFile, { fileId, timeSeconds: time / 1000 });
     }, 100)
   ).current; //Debounced 100ms
-
-  const thumbnailCallback = (blobUrl) => {
-    setBlobUrlMap((prevMap) => {
-      const newMap = new Map(prevMap);
-      newMap.set(lastRequestedTime.current, blobUrl);
-      return newMap;
-    });
-
-    setThumbnail(blobUrl);
-    setIsLoading(false);
-  };
 
   const clearThumbCache = () => {
     if (blobUrlMap?.size > 0) {

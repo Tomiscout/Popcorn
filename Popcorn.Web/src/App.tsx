@@ -21,7 +21,6 @@ import { initEvents, postMessage } from './utils/events';
 import { disableDefaultListeners } from './player/Utlis/listener.utils';
 import { usePlayerStore } from './state/player.store';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createPortal } from 'react-dom';
 
 const theme = createTheme({
   primaryColor: 'primaryRed',
@@ -45,7 +44,7 @@ function AppContent() {
   const location = useLocation();
   const { client, isClientReady } = useWebSocket();
   const { addOrUpdateFileUrl } = useFileContext();
-  const { fileId, isFloating, setIsFloating } = usePlayerStore();
+  const { fileId, isFloating, setIsFloating, addThumbnailFile } = usePlayerStore();
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -71,16 +70,30 @@ function AppContent() {
       }
     };
 
+    const thumbnailHandler = (payload: any, metadata: string[]) => {
+      const imageName = metadata[0];
+      try {
+        const imageFile = new File([payload as Uint8Array], imageName);
+        const objectURL = URL.createObjectURL(imageFile);
+        console.log('Received thumbnail', imageName);
+        addThumbnailFile(imageName, objectURL);
+      } catch (error) {
+        console.error(`Error processing image blob for ${imageName}:`, error);
+      }
+    };
+
     const tagsHandler = (fileNames: Record<string, string>) => {
       const tags = parseFilenames(fileNames);
       client.sendEvent(SocketRequests.ParseTags, tags);
     };
 
     client.onBlobEvent(SocketRequests.ImageFile, imageHandler);
+    client.onBlobEvent(SocketRequests.ThumbnailFile, thumbnailHandler);
     client.onEvent(SocketRequests.ParseTags, tagsHandler);
 
     return () => {
       client.onBlobEventUnregiser(SocketRequests.ImageFile);
+      client.onBlobEventUnregiser(SocketRequests.ThumbnailFile);
       client.onEventUnregiser(SocketRequests.ParseTags);
     };
   }, [isClientReady]);

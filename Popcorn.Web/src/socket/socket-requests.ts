@@ -7,6 +7,7 @@ export enum SocketRequests {
   MediaItemFileList = 'MediaItemFileList',
   MediaItemHistory = 'MediaItemHistory',
   ImageFile = 'ImageFile',
+  ThumbnailFile = 'ThumbnailFile',
   ImageFilesBatchSent = 'ImageFilesBatchSent',
   NextFile = 'NextFile',
   FileOpen = 'FileOpen',

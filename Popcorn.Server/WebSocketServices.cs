@@ -16,6 +16,8 @@ public static class WebSocketServices
         bus.RegisterWebServiceHandler<MediaItemWebService, Guid>(SocketRequests.OpenMediaItemFolder, (service, request) => service.OpenMediaItemFolder(request));
         bus.RegisterWebServiceBinaryHandler<MediaItemWebService>(SocketRequests.CreateMediaItem, (service, metadata, fileBytes) => service.CreateMediaItem(metadata, fileBytes));
         
+        bus.RegisterWebServiceHandler<MediaThumbnailsService, ThumbnailRequest>(SocketRequests.ThumbnailFile, (service, request) => service.OnThumbnailRequest(request));
+
         bus.RegisterWebServiceHandler<HomeWebService, object>(SocketRequests.MediaList, (service, _) => service.SendHomeScreenMediaList());
 
         bus.RegisterWebServiceHandler<FileWebService, Guid>(SocketRequests.FileOpen, (service, request) => service.OpenFile(request));

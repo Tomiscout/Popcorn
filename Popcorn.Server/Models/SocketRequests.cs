@@ -10,6 +10,7 @@ public static class SocketRequests
     public const string MediaItemFileList = "MediaItemFileList";
     public const string MediaItemHistory = "MediaItemHistory";
     public const string ImageFile = "ImageFile";
+    public const string ThumbnailFile = "ThumbnailFile";
     public const string ImageFilesBatchSent = "ImageFilesBatchSent";
     public const string FileOpen = "FileOpen";
     public const string FolderOpen = "FolderOpen";

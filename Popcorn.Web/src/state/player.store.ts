@@ -12,6 +12,7 @@ interface PlayerState {
   metadata: MediaFileMetadata | null;
   currentSubtitle: SubtitleTrackDto | null;
   subtitleFiles: { [key: string]: string };
+  thumbnailFiles: { [key: string]: string };
   setFileId: (v: string | null) => void;
   setIsPlaying: (v: boolean) => void;
   setIsFloating: (v: boolean) => void;
@@ -23,8 +24,10 @@ interface PlayerState {
   addSubtitleTrack: (newTrack: SubtitleTrackDto) => void;
   addSubtitleFile: (key: string, file: string) => void;
   getSubtitleFile: (v: string) => string | null;
-  resetState: () => void;
   getExtraTrackKey: () => string;
+  addThumbnailFile: (key: string, fileUrl: string) => void;
+  getThumbnailFile: (key: string) => string | null;
+  resetState: () => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set) => ({
@@ -38,6 +41,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   metadata: null,
   currentSubtitle: null,
   subtitleFiles: {},
+  thumbnailFiles: {},
   setFileId: (v) => set({ fileId: v }),
   setIsPlaying: (v) => set({ isPlaying: v }),
   setIsFloating: (v) => set({ isFloating: v }),
@@ -67,6 +71,14 @@ export const usePlayerStore = create<PlayerState>((set) => ({
     const state: PlayerState = usePlayerStore.getState();
     return state.subtitleFiles[trackId] || null;
   },
+  addThumbnailFile: (key, fileUrl) =>
+    set((state) => ({
+      thumbnailFiles: { ...state.thumbnailFiles, [key]: fileUrl },
+    })),
+  getThumbnailFile: (key) => {
+    const state: PlayerState = usePlayerStore.getState();
+    return state.thumbnailFiles[key] || null;
+  },
   getExtraTrackKey: () => {
     const state: PlayerState = usePlayerStore.getState();
     const newKey = `extra-${state.currentExtraTrack}`;
@@ -76,11 +88,14 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   resetState: () => {
     //Need to revoke blob URLs
     const state: PlayerState = usePlayerStore.getState();
-    Object.values(state.subtitleFiles).forEach((file) => {
-      if (file.startsWith('blob:')) {
-        URL.revokeObjectURL(file);
+    setTimeout(() => {
+      for (const fileData of Object.values(state.subtitleFiles)) {
+        if (fileData.startsWith('blob:')) {
+          URL.revokeObjectURL(fileData);
+        }
       }
-    });
+      Object.values(state.thumbnailFiles).forEach(URL.revokeObjectURL);
+    }, 100);
 
     set({
       fileId: null,
@@ -89,9 +104,11 @@ export const usePlayerStore = create<PlayerState>((set) => ({
       isFullscreen: false,
       currentTime: -1,
       duration: -1,
+      currentExtraTrack: 1000,
       metadata: null,
       currentSubtitle: null,
       subtitleFiles: {},
+      thumbnailFiles: {},
     });
   },
 }));
