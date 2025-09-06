@@ -14,7 +14,8 @@ public static class MimeUtils
         {".wav", "audio/wav"},
         {".vtt", "text/vtt"},
         {".srt", "application/x-subrip"},
-        {".ass", "text/x-ass"},
+        {".ass", "text/x-ssa"},
+        {".ssa", "text/x-ssa"},
         {".sup", "text/x-pbs-subtitle"},
     };
 

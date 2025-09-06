@@ -8,6 +8,7 @@ interface PlayerState {
   isFullscreen: boolean;
   currentTime: number;
   duration: number;
+  currentExtraTrack: number;
   metadata: MediaFileMetadata | null;
   currentSubtitle: SubtitleTrackDto | null;
   subtitleFiles: { [key: string]: string };
@@ -19,9 +20,11 @@ interface PlayerState {
   setDuration: (v: number) => void;
   setMetadata: (v: MediaFileMetadata) => void;
   setCurrentSubtitle: (v: SubtitleTrackDto | null) => void;
+  addSubtitleTrack: (newTrack: SubtitleTrackDto) => void;
   addSubtitleFile: (key: string, file: string) => void;
   getSubtitleFile: (v: string) => string | null;
   resetState: () => void;
+  getExtraTrackKey: () => string;
 }
 
 export const usePlayerStore = create<PlayerState>((set) => ({
@@ -31,6 +34,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   isFullscreen: false,
   currentTime: -1,
   duration: -1,
+  currentExtraTrack: 1000,
   metadata: null,
   currentSubtitle: null,
   subtitleFiles: {},
@@ -42,6 +46,19 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setDuration: (v) => set({ duration: v }),
   setMetadata: (v) => set({ metadata: v }),
   setCurrentSubtitle: (v) => set({ currentSubtitle: v }),
+  addSubtitleTrack: (newTrack) =>
+    set((state) => {
+      if (!state.metadata) {
+        return state;
+      }
+
+      return {
+        metadata: {
+          ...state.metadata,
+          subtitleTracks: [...(state.metadata.subtitleTracks ?? []), newTrack],
+        },
+      };
+    }),
   addSubtitleFile: (key, file) =>
     set((state) => ({
       subtitleFiles: { ...state.subtitleFiles, [key]: file },
@@ -49,6 +66,12 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   getSubtitleFile: (trackId) => {
     const state: PlayerState = usePlayerStore.getState();
     return state.subtitleFiles[trackId] || null;
+  },
+  getExtraTrackKey: () => {
+    const state: PlayerState = usePlayerStore.getState();
+    const newKey = `extra-${state.currentExtraTrack}`;
+    set({ currentExtraTrack: state.currentExtraTrack + 1 });
+    return newKey;
   },
   resetState: () => {
     //Need to revoke blob URLs

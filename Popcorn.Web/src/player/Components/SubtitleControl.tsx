@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { postMessage } from '../../utils/events';
 import NumberStepper from './NumberStepper';
 import '../Styles/SubtitleControl.css';
 import { IconPlus as AddIcon, IconBadgeCc as Subtitles } from '@tabler/icons-react';
 import { usePlayerStore } from '../../state/player.store';
+import { useFileDialog } from '@mantine/hooks';
+import { subtitleFormats } from '../../utils/file.utils';
 
 interface TrackEntry {
   id: string;
@@ -25,6 +27,16 @@ const TrackControl = () => {
   const [resetSubtitleDelay, setResetSubtitleDelay] = useState(false);
   const subtitleRef = useRef<HTMLDivElement>(null);
   const subtitlePopupRef = useRef<HTMLDivElement>(null);
+
+  const fileDialog = useFileDialog({
+    accept: subtitleFormats.join(','),
+    onChange: (files) => {
+      if (!files) return;
+      for (const file of files) {
+        postMessage('subtitle_dropped', file);
+      }
+    },
+  });
 
   useEffect(() => {
     if (!metadata) return;
@@ -73,10 +85,6 @@ const TrackControl = () => {
     setSelectedSubtitle(value);
     postMessage('subtitle_track_selected', value);
     subtitleDelayReset();
-  };
-
-  const handleAddSubtitle = () => {
-    postMessage('subtitle_file_select');
   };
 
   const subtitleDelayStep = 0.05;
@@ -163,11 +171,12 @@ const TrackControl = () => {
             </div>
             {renderCustomSelector(subtitleTracks, selectedSubtitle, handleSubtitleChange)}
             <div className="subtitles-footer">
-              <button className="add-subtitle-button" onClick={handleAddSubtitle}>
+              <button className="add-subtitle-button" onClick={fileDialog.open}>
                 <AddIcon />
                 <span>Add</span>
               </button>
               <NumberStepper
+                initialValue={0}
                 onNumberChanged={handleSubtitleDelayChanged}
                 step={subtitleDelayStep}
                 reset={resetSubtitleDelay}

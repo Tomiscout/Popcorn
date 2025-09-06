@@ -4,7 +4,7 @@ import './PopcornPlayer.css';
 import ErrorOverlay from './Components/ErrorOverlay';
 import { disableDefaultListeners, useEventListeners } from './Utlis/listener.utils';
 import PlaybackNotificationControl from './Components/PlaybackNotificationControl';
-import { CaptureClickArea } from './Components/CaptureClickArea';
+import { CaptureClickArea } from './Components/CaptureClickArea/CaptureClickArea';
 import { ControlBar } from './Components/ControlBar';
 import { initEvents, registerEventHandler, unregisterEventHandler } from '../utils/events';
 import { usePlayerStore } from '../state/player.store';
