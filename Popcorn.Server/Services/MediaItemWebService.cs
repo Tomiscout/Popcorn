@@ -6,9 +6,11 @@ using Popcorn.Server.Models.Requests;
 using PopcornPlayer.Domain.Extensions;
 using Popcorn.Domain.Enum;
 using Popcorn.Domain.Models;
+using Popcorn.Server.Attributes;
 
 namespace Popcorn.Server.Services;
 
+[WebSocketService]
 public class MediaItemWebService(
     WebSocketBus bus,
     IMediaItemRepository mediaItemRepository,
@@ -18,6 +20,8 @@ public class MediaItemWebService(
     IFileService fileService
     )
 {
+    
+    [WebSocketEvent(SocketRequests.MediaItem)]
     public async Task SendMediaItems(MediaItemRequest item)
     {            
         var mediaItem = await mediaItemRepository.GetMediaItemFull(item.Id);
@@ -47,6 +51,7 @@ public class MediaItemWebService(
         await bus.SendEventAsync(SocketRequests.MediaItem, mediaItem);
     }
 
+    [WebSocketEvent(SocketRequests.MediaItemFileList)]
     public async Task SendMediaItemFileList(MediaItemFileListRequest item)
     {
         // TODO load directories
@@ -54,6 +59,7 @@ public class MediaItemWebService(
         await mediaItemRepository.GetMediaItem(item.Id);
     }
     
+    [WebSocketBinaryEvent(SocketRequests.CreateMediaItem)]
     public async Task CreateMediaItem(string[] metadata, ArraySegment<byte> fileBytes)
     {
         var newItem = new MediaItem
@@ -79,17 +85,20 @@ public class MediaItemWebService(
         }
     }
 
+    [WebSocketEvent(SocketRequests.RemoveMediaItem)]
     public async Task DeleteMediaItem(Guid mediaItemId)
     {
         await mediaItemRepository.DeleteMediaItem(mediaItemId);
     }
     
+    [WebSocketEvent(SocketRequests.RefreshMediaItem)]
     public async Task RescanMediaItem(Guid mediaItemId)
     {
         await mediaItemService.RescanItem(mediaItemId);
         await SendMediaItems(new MediaItemRequest { Id = mediaItemId });
     }
     
+    [WebSocketEvent(SocketRequests.OpenMediaItemFolder)]
     public async Task OpenMediaItemFolder(Guid mediaItemId)
     {
         var mediaItem = await mediaItemRepository.GetMediaItem(mediaItemId);

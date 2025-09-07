@@ -1,37 +1,107 @@
-using Popcorn.Domain.Models;
-using Popcorn.Server.Models;
-using Popcorn.Server.Models.Requests;
-using Popcorn.Server.Services;
+using System.Reflection;
+using Popcorn.Server.Attributes;
 
 namespace Popcorn.Server;
 
 public static class WebSocketServices
 {
-    public static void RegisterWebServices(WebSocketBus bus)
+    public static void RegisterWebServices(WebSocketBus bus, Assembly assembly)
     {
-        bus.RegisterWebServiceHandler<MediaItemWebService, MediaItemRequest>(SocketRequests.MediaItem, (service, request) => service.SendMediaItems(request));
-        bus.RegisterWebServiceHandler<MediaItemWebService, MediaItemFileListRequest>(SocketRequests.MediaItemFileList, (service, request) => service.SendMediaItemFileList(request));
-        bus.RegisterWebServiceHandler<MediaItemWebService, Guid>(SocketRequests.RemoveMediaItem, (service, request) => service.DeleteMediaItem(request));
-        bus.RegisterWebServiceHandler<MediaItemWebService, Guid>(SocketRequests.RefreshMediaItem, (service, request) => service.RescanMediaItem(request));
-        bus.RegisterWebServiceHandler<MediaItemWebService, Guid>(SocketRequests.OpenMediaItemFolder, (service, request) => service.OpenMediaItemFolder(request));
-        bus.RegisterWebServiceBinaryHandler<MediaItemWebService>(SocketRequests.CreateMediaItem, (service, metadata, fileBytes) => service.CreateMediaItem(metadata, fileBytes));
-        
-        bus.RegisterWebServiceHandler<MediaThumbnailsService, ThumbnailRequest>(SocketRequests.ThumbnailFile, (service, request) => service.OnThumbnailRequest(request));
+        var serviceTypes = assembly.GetTypes()
+            .Where(t => t.IsClass 
+                        && !t.IsAbstract 
+                        && t.GetCustomAttributes(typeof(WebSocketServiceAttribute), inherit: false).Any());
 
-        bus.RegisterWebServiceHandler<HomeWebService, object>(SocketRequests.MediaList, (service, _) => service.SendHomeScreenMediaList());
+        foreach (var serviceType in serviceTypes)
+        {
+            foreach (var method in serviceType.GetMethods(BindingFlags.Public | BindingFlags.Instance))
+            {
+                var eventAttrs = method.GetCustomAttributes<WebSocketEventAttribute>();
+                foreach (var attr in eventAttrs)
+                {
+                    RegisterTextHandler(bus, serviceType, method, attr.EventType);
+                }
 
-        bus.RegisterWebServiceHandler<FileWebService, Guid>(SocketRequests.FileOpen, (service, request) => service.OpenFile(request));
-        bus.RegisterWebServiceHandler<FileWebService, Guid>(SocketRequests.FolderOpen, (service, request) => service.OpenFolder(request));
-        bus.RegisterWebServiceHandler<FileWebService, List<string>>(SocketRequests.ImageFile, (service, request) => service.SendImageFiles(request));
-        bus.RegisterWebServiceHandler<FileWebService, Dictionary<string, ParsedTags>>(SocketRequests.ParseTags, (service, request) => service.HandleParsedTags(request));
-
-        bus.RegisterWebServiceHandler<LibraryWebService, object>(SocketRequests.LibraryFolders, (service, _) => service.SendLibraryFolders());
-        bus.RegisterWebServiceHandler<LibraryWebService, string>(SocketRequests.RemoveLibraryFolder, (service, request) => service.RemoveLibraryFolder(request));
-        bus.RegisterWebServiceHandler<LibraryWebService, object>(SocketRequests.AddLibraryFolderPicker, (service, _) => service.AddLibraryFolderPicker());
-        bus.RegisterWebServiceHandler<LibraryWebService, object>(SocketRequests.LibraryFoldersData, (service, _) => service.SendLibraryFoldersData());
-
-        bus.RegisterWebServiceHandler<SettingsWebService, object>(SocketRequests.GetSettings, (service, _) => service.SendSettings());
-        bus.RegisterWebServiceHandler<SettingsWebService, SettingsModel>(SocketRequests.UpdateSettings, (service, request) => service.UpdateSettings(request));
-        bus.RegisterWebServiceHandler<SettingsWebService, object>(SocketRequests.OpenProgramFolder, (service, _) => service.OpenProgramFolder());
+                var binaryAttrs = method.GetCustomAttributes<WebSocketBinaryEventAttribute>();
+                foreach (var attr in binaryAttrs)
+                {
+                    RegisterBinaryHandler(bus, serviceType, method, attr.EventType);
+                }
+            }
+        }
     }
+
+    private static void RegisterTextHandler(WebSocketBus bus, Type serviceType, MethodInfo method, string eventType)
+{
+    var parameters = method.GetParameters();
+
+    if (parameters.Length == 0)
+    {
+        // No-arg handler
+        var registerMethod = typeof(WebSocketBus)
+            .GetMethod(nameof(WebSocketBus.RegisterWebServiceHandler))!
+            .MakeGenericMethod(serviceType, typeof(object));
+
+        // Build delegate: (service, _) => method.Invoke(service, null)
+        var del = (Func<object, object, Task>)((service, _) =>
+            (Task)method.Invoke(service, null)!);
+
+        registerMethod.Invoke(bus, new object[] { eventType, del });
+    }
+    else if (parameters.Length == 1)
+    {
+        var paramType = parameters[0].ParameterType;
+
+        var registerMethod = typeof(WebSocketBus)
+            .GetMethod(nameof(WebSocketBus.RegisterWebServiceHandler))!
+            .MakeGenericMethod(serviceType, paramType);
+
+        // Build delegate: (service, request) => method.Invoke(service, new[] { request })
+        var delType = typeof(Func<,,>).MakeGenericType(serviceType, paramType, typeof(Task));
+
+        var del = Delegate.CreateDelegate(
+            delType,
+            null,
+            method
+        );
+
+        registerMethod.Invoke(bus, new object[] { eventType, del });
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            $"Method {method.Name} has too many parameters for WebSocketEvent.");
+    }
+}
+
+private static void RegisterBinaryHandler(WebSocketBus bus, Type serviceType, MethodInfo method, string eventType)
+{
+    var parameters = method.GetParameters();
+
+    if (parameters.Length == 2 &&
+        parameters[0].ParameterType == typeof(string[]) &&
+        parameters[1].ParameterType == typeof(ArraySegment<byte>))
+    {
+        var registerMethod = typeof(WebSocketBus)
+            .GetMethod(nameof(WebSocketBus.RegisterWebServiceBinaryHandler))!
+            .MakeGenericMethod(serviceType);
+
+        // Build delegate: (service, metadata, payload) => method.Invoke(service, new object[] { metadata, payload })
+        var delType = typeof(Func<,,,>).MakeGenericType(
+            serviceType,
+            typeof(string[]),
+            typeof(ArraySegment<byte>),
+            typeof(Task)
+        );
+
+        var del = Delegate.CreateDelegate(delType, null, method);
+
+        registerMethod.Invoke(bus, new object[] { eventType, del });
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            $"Binary handler {method.Name} must have signature (string[], ArraySegment<byte>).");
+    }
+}
 }

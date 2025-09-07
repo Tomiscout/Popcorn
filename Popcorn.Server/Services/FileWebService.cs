@@ -5,12 +5,14 @@ using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
 using Popcorn.Persistence;
 using Popcorn.Persistence.Repositories;
+using Popcorn.Server.Attributes;
 using Popcorn.Server.Models;
 using Popcorn.Server.Models.Requests;
 using PopcornPlayer.Domain.Extensions;
 
 namespace Popcorn.Server.Services;
 
+[WebSocketService]
 public class FileWebService(
     WebSocketBus bus,
     IMediaFileRepository mediaFileRepository,
@@ -24,6 +26,7 @@ public class FileWebService(
     )
 {
 
+    [WebSocketEvent(SocketRequests.FileOpen)]
     public async Task OpenFile(Guid fileId)
     {
         var mediaFile = await mediaFileRepository.GetFileById(fileId);
@@ -77,6 +80,7 @@ public class FileWebService(
         await bus.SendEventAsync(SocketRequests.MediaItemHistory, historyItems);
     }
 
+    [WebSocketEvent(SocketRequests.FolderOpen)]
     public async Task OpenFolder(Guid fileId)
     {
         Guid mediaItemId;
@@ -103,6 +107,7 @@ public class FileWebService(
         await bus.SendEventAsync(SocketRequests.MediaItemFileList, directoryFiles);
     }
 
+    [WebSocketEvent(SocketRequests.ImageFile)]
     public async Task SendImageFiles(List<string> filesList)
     {
         var files = new Dictionary<string, byte[]>();
@@ -125,6 +130,7 @@ public class FileWebService(
         await bus.SendEventAsync(SocketRequests.ImageFilesBatchSent, string.Empty);
     }
 
+    [WebSocketEvent(SocketRequests.ParseTags)]
     public async Task HandleParsedTags(Dictionary<string, ParsedTags> request)
     {
         var mediaFiles = await mediaFileRepository.GetFilesByIds(request.Keys.ToArray());

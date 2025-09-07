@@ -87,7 +87,7 @@ public class Startup
             Log.Information("WebSocket connection established");
 
             var bus = new WebSocketBus(webSocket, serviceScopeFactory);
-            WebSocketServices.RegisterWebServices(bus);
+            WebSocketServices.RegisterWebServices(bus, typeof(Startup).Assembly);
             await bus.ListenAsync();
 
             if (!webSocket.CloseStatus.HasValue)

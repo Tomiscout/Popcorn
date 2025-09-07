@@ -1,11 +1,14 @@
 using Popcorn.Domain.Interfaces;
+using Popcorn.Server.Attributes;
 using Popcorn.Server.Models;
 using Popcorn.Server.Models.Responses;
 
 namespace Popcorn.Server.Services;
 
+[WebSocketService]
 public class HomeWebService(WebSocketBus bus, IMediaItemRepository mediaItemRepository)
 {
+    [WebSocketEvent(SocketRequests.MediaList)]
     public async Task SendHomeScreenMediaList()
     {
         var allItems = await mediaItemRepository.GetMediaItemsWithHistory();

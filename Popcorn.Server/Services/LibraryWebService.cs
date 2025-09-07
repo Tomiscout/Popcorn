@@ -3,22 +3,26 @@ using Popcorn.Core.Model;
 using Popcorn.Domain;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
+using Popcorn.Server.Attributes;
 using Popcorn.Server.Models;
 
 namespace Popcorn.Server.Services;
 
+[WebSocketService]
 public class LibraryWebService(
     WebSocketBus bus,
     FolderService folderService,
     IMediaItemRepository mediaItemRepository,
     INativeFolderService nativeFolderService)
 {
+    [WebSocketEvent(SocketRequests.LibraryFolders)]
     public async Task SendLibraryFolders()
     {
         var currentFolders = await folderService.LoadSavedFolders();
         await bus.SendEventAsync(SocketRequests.LibraryFolders, currentFolders.Select(f => f.Path).ToArray());
     }
-        
+    
+    [WebSocketEvent(SocketRequests.LibraryFoldersData)]
     public async Task SendLibraryFoldersData()
     {
         var groupedScanResults = new Dictionary<string, IList<MediaScanResult>>();
@@ -31,6 +35,7 @@ public class LibraryWebService(
         await bus.SendEventAsync(SocketRequests.LibraryFoldersData, groupedScanResults);
     }
     
+    [WebSocketEvent(SocketRequests.RemoveLibraryFolder)]
     public async Task RemoveLibraryFolder(string folder)
     {
         await folderService.DeleteFolder(folder);
@@ -38,6 +43,7 @@ public class LibraryWebService(
         await bus.SendEventAsync(SocketRequests.LibraryFolders, currentFolders.Select(f => f.Path).ToArray());
     }
     
+    [WebSocketEvent(SocketRequests.AddLibraryFolderPicker)]
     public async Task AddLibraryFolderPicker()
     {
         var result = await nativeFolderService.OpenFolderPicker();

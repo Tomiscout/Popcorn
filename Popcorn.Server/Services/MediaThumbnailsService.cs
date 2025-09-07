@@ -1,6 +1,7 @@
 using FFMpegCore;
 using Microsoft.Extensions.Caching.Memory;
 using Popcorn.Domain.Interfaces;
+using Popcorn.Server.Attributes;
 using Popcorn.Server.Models;
 using Popcorn.Server.Models.Requests;
 using Popcorn.Shared.Ffmpeg;
@@ -10,11 +11,13 @@ using Serilog;
 
 namespace Popcorn.Server.Services;
 
+[WebSocketService]
 public class MediaThumbnailsService(WebSocketBus bus,
     IMediaFileRepository mediaFileRepository, IMemoryCache memoryCache, ILogger<MediaThumbnailsService> logger)
 {
     public CancellationTokenSource FfmpegCts;
     
+    [WebSocketEvent(SocketRequests.ThumbnailFile)]
     public async Task OnThumbnailRequest(ThumbnailRequest request)
     {
         if(request.TimeSeconds < 0 || request.FileId == Guid.Empty) return;
