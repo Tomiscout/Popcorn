@@ -7,6 +7,7 @@ using Popcorn.Persistence;
 using Popcorn.Persistence.Repositories;
 using Popcorn.PlayerServer;
 using Popcorn.PlayerServer.Linux;
+using Popcorn.PlayerServer.Windows;
 using Popcorn.Server.Services;
 using Popcorn.Shared.Interfaces;
 using Popcorn.Shared.Linux;
@@ -34,7 +35,7 @@ public static class ServiceRegister
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            
+            services.AddSingleton<INativeFileAssosiation, WindowsFileAssociation>();
         } else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
             services.AddSingleton<IPlayerService, LinuxPlayerService>();
