@@ -1,0 +1,6 @@
+.player-btn {
+  z-index: 9999999;
+  position: absolute;
+  top: 60;
+  left: 60;
+}

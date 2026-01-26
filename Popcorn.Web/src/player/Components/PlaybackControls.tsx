@@ -13,7 +13,7 @@ import '../Styles/PlaybackControls.css';
 import VolumeControl from './VolumeControl';
 import EpisodesControl from './EpisodesControl';
 import TrackControl from './SubtitleControl';
-import TrackTitle from './TrackTitle';
+import { TrackTitle } from './TrackTitle';
 import { postMessage, registerEventHandler, unregisterEventHandler } from '../../utils/events';
 
 import { useEventListeners } from '../Utlis/listener.utils';
@@ -72,13 +72,12 @@ const PlaybackControls = () => {
     };
   }, []);
 
-  const getPlayButton = () => (isPlaying ? <PauseButton /> : <PlayButton />);
   const getFullscreenButton = () => (isFullscreen ? <ExitFullscreen /> : <Fullscreen />);
 
   return (
     <div className="playback-controls">
       <button className="control-button play-pause" onClick={playPause}>
-        {getPlayButton()}
+        {isPlaying ? <PauseButton /> : <PlayButton />}
       </button>
 
       {!isFloating && (

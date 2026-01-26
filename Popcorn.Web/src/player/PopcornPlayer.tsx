@@ -10,7 +10,7 @@ import { initEvents, registerEventHandler, unregisterEventHandler } from '../uti
 import { usePlayerStore } from '../state/player.store';
 import { createPortal } from 'react-dom';
 import { VideoPlayer as RawVideoPlayer } from './Components/VideoPlayer';
-import { TopBar } from './Components/TopBar';
+import { TopBar } from './Components/TopBar/TopBar';
 import { getVideoMetadata } from '../query/video.query';
 import { Loader } from '@mantine/core';
 import { postMessage } from '../utils/events';
@@ -29,7 +29,16 @@ interface PopcornPlayerProps {
 
 export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
   const videoContainerRef = useRef<HTMLDivElement>(null);
-  const { fileId, isFloating, isFullscreen, setIsPlaying, setMetadata, setCurrentSubtitle } = usePlayerStore();
+  const {
+    fileId,
+    isFloating,
+    isFullscreen,
+    additionalAudioFiles,
+    setIsPlaying,
+    setMetadata,
+    setCurrentSubtitle,
+    setCurrentAudio,
+  } = usePlayerStore();
 
   const { data: videoMetadata, isFetching: isFetchingMetadata, error: metadataError } = getVideoMetadata(fileId || '');
   const [showControls, setShowControls] = useState(true);
@@ -95,8 +104,14 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
 
     const subtitleTrackSelected = (selectedTrack: string) => {
       const { metadata: currentMeta } = usePlayerStore.getState();
-      const subtitle = currentMeta?.subtitleTracks.find((track) => track.key === selectedTrack);
+      const subtitle = currentMeta?.subtitleTracks.find((track) => track.index === Number.parseInt(selectedTrack));
       setCurrentSubtitle(subtitle || null);
+    };
+
+    const audioTrackSelected = (selectedTrack: string) => {
+      const { metadata: currentMeta } = usePlayerStore.getState();
+      const audio = currentMeta?.audioTracks.find((track) => track.index === Number.parseInt(selectedTrack));
+      setCurrentAudio(audio || null);
     };
 
     registerEventHandler('set_playback_time', setPlaybackTime);
@@ -104,6 +119,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
     registerEventHandler('skip_seconds', onSkip);
     registerEventHandler('volume', setVolume);
     registerEventHandler('subtitle_track_selected', subtitleTrackSelected);
+    registerEventHandler('audio_track_selected', audioTrackSelected);
 
     return () => {
       unregisterEventHandler('set_playback_time', setPlaybackTime);
@@ -111,6 +127,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
       unregisterEventHandler('skip_seconds', onSkip);
       unregisterEventHandler('volume', setVolume);
       unregisterEventHandler('subtitle_track_selected', subtitleTrackSelected);
+      unregisterEventHandler('audio_track_selected', audioTrackSelected);
     };
   }, []);
 

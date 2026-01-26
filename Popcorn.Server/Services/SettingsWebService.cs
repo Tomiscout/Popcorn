@@ -15,7 +15,7 @@ public class SettingsWebService(
     [WebSocketEvent(SocketRequests.GetSettings)]
     public async Task SendSettings()
     {
-        var settings = await settingsRepository.GetSettings();
+        var settings = await settingsRepository.GetSettingsAsync();
         await bus.SendEventAsync(SocketRequests.GetSettings, settings);   
     }
     

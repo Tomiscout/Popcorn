@@ -36,7 +36,7 @@ public class FileWebService(
             return;
         }
 
-        var settings = await settingsRepository.GetSettings();
+        var settings = await settingsRepository.GetSettingsAsync();
         if (!settings.UseInternalPlayer)
         {
             await mediaItemRepository.AddHistoryItem(mediaFile.ItemId, new ItemHistory

@@ -6,7 +6,7 @@ public class TrackUtils
 {
     public static async Task<string> ExtractSubtitleTrackAsync (
         string inputPath,
-        string subtitleTrackIndex,
+        int subtitleTrackIndex,
         string outputSubtitlePath,
         bool forceVtt
     )
@@ -21,18 +21,28 @@ public class TrackUtils
         return outputSubtitlePath;
     }
     
-    public static Task ExtractAudioTrackSafeAsync (
+    public static Task ExtractAudioTrackSafeAsync(
         string inputPath,
-        string audioTrackIndex,
+        int audioTrackIndex,
         string outputAudioPath,
-        string audioCodec
+        bool forceTranscode
     )
     {
-        return FFMpegArguments
-            .FromFileInput(inputPath)
-            .OutputToFile(outputAudioPath, overwrite: true, opts => opts
-                .WithCustomArgument($"-map 0:a:{audioTrackIndex}")
-                .WithCustomArgument(audioCodec == "vtt" ? "-c:s copy" : "-c:s aac")
-            ).ProcessAsynchronously();
+        var args = FFMpegArguments.FromFileInput(inputPath)
+            .OutputToFile(outputAudioPath, overwrite: true, opts =>
+            {
+                opts.WithCustomArgument($"-map 0:{audioTrackIndex}");
+
+                if (!forceTranscode)
+                {
+                    opts.WithCustomArgument("-c:a copy");
+                }
+                else
+                {
+                    opts.WithCustomArgument("-c:a aac -b:a 192k");
+                }
+            });
+
+        return args.ProcessAsynchronously();
     }
 }

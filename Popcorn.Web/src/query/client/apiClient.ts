@@ -28,7 +28,8 @@ const resolveErrorAsync = async (response: Response) => {
 const resolveResponseAsync = async (response: Response) => {
   const contentType = response.headers.get('content-type');
   if (contentType?.includes('application/json')) return response.json();
-  return response.text();
+  if (contentType?.startsWith('text/')) return response.text();
+  return response.blob();
 };
 
 const apiClient = <TResult = unknown, TError = ApiError>(url: URL | RequestInfo, init?: RequestInit) => {

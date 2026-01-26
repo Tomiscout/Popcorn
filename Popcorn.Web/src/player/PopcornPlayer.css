@@ -109,6 +109,11 @@ input:focus {
   align-items: center;
 }
 
+.video-container *:focus {
+  /* Note - bad for accesability, but fixes some bugs */
+  outline: none;
+}
+
 @media only screen and (max-width: 500px) {
   .video-container .playback-controls .title {
     display: none;

@@ -10,4 +10,6 @@ public class SettingsModel
 {
     public bool UseInternalPlayer { get; set; }
     public bool UseInternalTorrentClient { get; set; }
+    public List<string> PrefferedAudioLanguages { get; set; } = new();
+    public List<string> PrefferedSubtitleLanguages { get; set; } = new();
 }

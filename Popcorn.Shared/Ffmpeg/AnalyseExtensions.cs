@@ -29,7 +29,38 @@ public static class AnalyseExtensions
         "mp3" => AudioCodec.MP3,
         "opus" => AudioCodec.Opus,
         "vorbis" => AudioCodec.Vorbis,
+        "flac" => AudioCodec.Flac,
         _ => AudioCodec.Unknown
     };
 
+    public static int? GetDefaultAudioStream(this IMediaAnalysis probe, List<string> defaultLanguages)
+    {
+        return SelectDefaultStreamTrack(probe.AudioStreams, probe.PrimaryAudioStream?.Index, defaultLanguages);
+    }
+    
+    public static int? GetDefaultSubtitleStream(this IMediaAnalysis probe, List<string> defaultLanguages)
+    {
+        return SelectDefaultStreamTrack(probe.SubtitleStreams, probe.PrimarySubtitleStream?.Index, defaultLanguages);
+    }
+    
+    private static int? SelectDefaultStreamTrack(IEnumerable<MediaStream> streams, int? defaultIndex, List<string> defaultLanguages)
+    {
+        var streamsList = streams.ToList();
+        if(streamsList.Count < 2) return streamsList.FirstOrDefault()?.Index ?? null;
+        
+        foreach (var prefLang in defaultLanguages)
+        {
+            var match = streamsList
+                .FirstOrDefault(
+                    a =>
+                        !string.IsNullOrWhiteSpace(a.Language)
+                        && a.Language.Equals(prefLang, StringComparison.OrdinalIgnoreCase)
+                );
+
+            if (match != null)
+                return match.Index;
+        }
+
+        return streamsList.FirstOrDefault(a => a.Index == defaultIndex)?.Index ?? null;
+    }
 }

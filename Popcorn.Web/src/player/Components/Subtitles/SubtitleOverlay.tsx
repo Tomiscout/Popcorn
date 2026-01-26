@@ -36,7 +36,7 @@ const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ videoRef }) => {
       const subtitleKey = getExtraTrackKey();
       addSubtitleFile(subtitleKey, subtitleData);
       addSubtitleTrack({
-        key: subtitleKey,
+        index: subtitleKey,
         label: file.name,
         format: extension,
       } as SubtitleTrackDto);
@@ -52,11 +52,11 @@ const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ videoRef }) => {
   async function downloadSubtitleFile(): Promise<string | null> {
     if (!currentSubtitle) return null;
 
-    const errorMessage = `Failed to fetch subtitles [${currentSubtitle.language}]${currentSubtitle.label}-${currentSubtitle.key} ${currentSubtitle.format} from server.`;
+    const errorMessage = `Failed to fetch subtitles [${currentSubtitle.language}]${currentSubtitle.label}-${currentSubtitle.index} ${currentSubtitle.format} from server.`;
 
     try {
       const response = await fetch(
-        `http://${resolveServerHost()}/api/video/${fileId}/subtitles/${currentSubtitle.key}`
+        `http://${resolveServerHost()}/api/video/${fileId}/subtitles/${currentSubtitle.index}`
       );
       if (response.ok) {
         const mime = response.headers.get('Content-Type');
@@ -81,13 +81,13 @@ const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ videoRef }) => {
   async function subtitleChangedHandler() {
     if (!videoRef.current || !currentSubtitle) return;
 
-    let subtitleData = getSubtitleFile(currentSubtitle.key);
+    let subtitleData = getSubtitleFile(currentSubtitle.index);
     if (!subtitleData) {
       setLoadingSubtitle(true);
       const result = await downloadSubtitleFile();
       if (result) {
         subtitleData = result;
-        addSubtitleFile(currentSubtitle.key, subtitleData);
+        addSubtitleFile(currentSubtitle.index, subtitleData);
       } else {
         postMessage('player_error', 'Failed to load subtitle');
       }
@@ -122,13 +122,13 @@ const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ videoRef }) => {
 
   const renderSubtitles = () => {
     if (currentSubtitle.format === 'ass') {
-      return <AssSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.key} />;
+      return <AssSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.index} />;
     }
     if (currentSubtitle.format === 'srt' || currentSubtitle.format === 'vtt') {
-      return <VttSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.key} />;
+      return <VttSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.index} />;
     }
     if (currentSubtitle.format === 'sup') {
-      return <PgsSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.key} />;
+      return <PgsSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.index} />;
     } else {
       return <div></div>;
     }

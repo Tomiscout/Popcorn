@@ -1,40 +1,99 @@
+import { useAppStore } from '../state/app.store';
+
+type QueuedMessage = { kind: 'text'; data: string } | { kind: 'binary'; data: Blob };
+
 export class WebSocketClient {
-  private ws: WebSocket;
-  private eventHandlers: Map<string, (payload: any) => void>;
-  private blobEventHandlers: Map<string, (payload: Uint8Array<ArrayBuffer>, metadata: string[]) => void>;
+  private ws?: WebSocket;
+  private eventHandlers: Map<string, (payload: any) => void> = new Map();
+  private blobEventHandlers: Map<string, (payload: Uint8Array<ArrayBuffer>, metadata: string[]) => void> = new Map();
   private readyListeners: Set<(ready: boolean) => void> = new Set();
 
   public isReady: boolean = false;
 
+  private url: string;
+  private reconnectAttempts = 0;
+  private reconnectTimer?: number;
+  private manuallyClosed = false;
+  private sendQueue: QueuedMessage[] = [];
+  private connectTimeout?: number;
+
   constructor(url: string) {
-    console.log('Creating new websocket', url);
-    this.ws = new WebSocket(url);
-    this.eventHandlers = new Map();
-    this.blobEventHandlers = new Map();
+    this.url = url;
+    this.connect();
+  }
+
+  //#region Connection Management
+  private connect() {
+    console.log('Connecting websocket', this.url);
+    useAppStore.getState().setWebSocketConnecting(true);
+    this.ws = new WebSocket(this.url);
+
+    this.connectTimeout = window.setTimeout(() => {
+      if (this.ws?.readyState === WebSocket.CONNECTING) {
+        console.warn('WS connect timeout, forcing reconnect');
+        this.ws.close();
+      }
+    }, 5000);
 
     this.ws.onopen = () => {
-      console.log('Websocket connected', url);
+      clearTimeout(this.connectTimeout);
+      useAppStore.getState().setWebSocketConnecting(false);
+      useAppStore.getState().setWebSocketReconnecting(false);
+
+      console.log('Websocket connected');
       this.isReady = true;
+      this.reconnectAttempts = 0;
       this.notifyReady(true);
+      this.flushQueue();
     };
 
     this.ws.onclose = () => {
+      clearTimeout(this.connectTimeout);
       this.isReady = false;
       this.notifyReady(false);
+      if (!this.manuallyClosed) this.scheduleReconnect();
+    };
+
+    this.ws.onerror = () => {
+      this.ws?.close();
     };
 
     this.ws.onmessage = this.handleMessage.bind(this);
   }
 
+  private scheduleReconnect() {
+    useAppStore.getState().setWebSocketConnecting(true);
+    useAppStore.getState().setWebSocketReconnecting(true);
+
+    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 30_000);
+    this.reconnectAttempts++;
+
+    console.log('Reconnecting in', delay, 'ms');
+    clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = window.setTimeout(() => this.connect(), delay);
+  }
+
+  private flushQueue() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+    for (const msg of this.sendQueue) {
+      if (msg.kind === 'text') this.ws.send(msg.data);
+      else this.ws.send(msg.data);
+    }
+
+    this.sendQueue = [];
+  }
+  //#endregion
+
+  //#region Event sending
   sendEvent<TPayload>(type: string, payload: TPayload = {} as any) {
     console.log('Sending event', type);
     const message = JSON.stringify({ type, payload });
-    if (this.ws.readyState === WebSocket.OPEN) {
+
+    if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(message);
     } else {
-      this.ws.addEventListener('open', () => this.ws.send(message), {
-        once: true,
-      });
+      this.sendQueue.push({ kind: 'text', data: message });
     }
   }
 
@@ -43,17 +102,17 @@ export class WebSocketClient {
     const header = `${type},${params.join(',')};`;
     const headerBytes = new TextEncoder().encode(header);
 
-    const payloadBlob = new Blob([headerBytes, data]);
+    const payloadBlob = new Blob([headerBytes, data as any]);
 
-    if (this.ws.readyState === WebSocket.OPEN) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(payloadBlob);
     } else {
-      this.ws.addEventListener('open', () => this.ws.send(payloadBlob), {
-        once: true,
-      });
+      this.sendQueue.push({ kind: 'binary', data: payloadBlob });
     }
   }
+  //#endregion
 
+  //#region Event handling
   handleMessage(event: MessageEvent) {
     if (typeof event.data === 'string') {
       const { type, payload } = JSON.parse(event.data);
@@ -80,7 +139,7 @@ export class WebSocketClient {
         const metadata = decoder.decode(bytes.slice(0, separatorIndex)).split(',');
         const payload = bytes.slice(separatorIndex + 1);
 
-        const handler = this.blobEventHandlers.get(metadata[0]);
+        const handler = this.blobEventHandlers!.get(metadata[0]);
         if (handler) handler(payload, metadata.slice(1));
       });
     }
@@ -101,9 +160,10 @@ export class WebSocketClient {
   onBlobEventUnregiser(type: string) {
     this.blobEventHandlers.delete(type);
   }
+  //#endregion
 
   close() {
-    this.ws.close();
+    this.ws?.close();
   }
 
   private notifyReady(ready: boolean) {

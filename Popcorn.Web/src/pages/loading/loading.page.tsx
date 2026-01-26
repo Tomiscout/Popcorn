@@ -1,8 +1,13 @@
 import { Flex } from '@mantine/core';
 import React from 'react';
 import './loading.page.css';
+import { wsAddress } from '../../state/websocket-context';
+import { useAppStore } from '../../state/app.store';
 
 const LoadingPage: React.FC = () => {
+  const { isWebSocketReconnecting } = useAppStore();
+
+  const message = isWebSocketReconnecting ? 'Reconnecting to' : 'Connecting to';
   return (
     <Flex
       justify={'center'}
@@ -20,6 +25,10 @@ const LoadingPage: React.FC = () => {
     >
       <img src="images/popcorn.ico" className="pulsate"></img>
       <h1>Loading Popcorn</h1>
+      <Flex align="center" gap="0.5rem">
+        <h5>{message}</h5>
+        <h5 style={{ color: '#888' }}>{wsAddress}</h5>
+      </Flex>
     </Flex>
   );
 };

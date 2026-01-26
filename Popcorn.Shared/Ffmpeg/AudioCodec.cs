@@ -7,6 +7,7 @@ public enum AudioCodec
     MP3,
     Opus,
     Vorbis,
+    Flac,
 }
 
 public static class AudioCodecUtils

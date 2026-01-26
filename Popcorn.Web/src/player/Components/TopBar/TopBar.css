@@ -1,0 +1,34 @@
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 5;
+}
+
+.top-bar__background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.1) 80%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
+}
+
+.top-bar__content {
+  position: relative;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  transition: opacity 0.2s linear;
+  opacity: 1;
+  margin-top: 0.5rem;
+}

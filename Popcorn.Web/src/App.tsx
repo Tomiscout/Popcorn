@@ -21,6 +21,8 @@ import { initEvents, postMessage } from './utils/events';
 import { disableDefaultListeners } from './player/Utlis/listener.utils';
 import { usePlayerStore } from './state/player.store';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useAppStore } from './state/app.store';
+import LoadingPage from './pages/loading/loading.page';
 
 const theme = createTheme({
   primaryColor: 'primaryRed',
@@ -49,6 +51,7 @@ function AppContent() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const [hasPageLoaded, setHasPageLoaded] = useState(false);
+  const { isWebSocketConnecting } = useAppStore();
 
   // Ignore hasPageLoaded for paths other than /watch
   useEffect(() => {
@@ -101,6 +104,10 @@ function AppContent() {
   const toggleFloating = () => {
     setIsFloating(!isFloating);
   };
+
+  if (isWebSocketConnecting) {
+    return <LoadingPage />;
+  }
 
   return (
     <AppShell

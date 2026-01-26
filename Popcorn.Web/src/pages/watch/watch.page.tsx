@@ -4,8 +4,7 @@ import { SocketRequests } from '../../socket/socket-requests';
 import { MediaItem, MediaListResponse } from '../../model/media.contract';
 import { useWebSocket } from '../../state/websocket-context';
 import { useFileContext } from '../../state/file-context';
-import LoadingPage from '../loading/loading.page';
-import { Box, Flex, TextInput } from '@mantine/core';
+import { Box, Flex, Loader, TextInput } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import classes from './watch.page.module.css';
 
@@ -92,7 +91,7 @@ const WatchPage: React.FC<WatchPageProps> = ({ pageLoaded }) => {
         </Box>
       </Flex>
 
-      {!hasPageLoaded && <LoadingPage />}
+      {!hasPageLoaded && <Loader color="red" />}
     </>
   );
 };

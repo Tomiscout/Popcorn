@@ -1,6 +1,7 @@
 using FFMpegCore;
 using Microsoft.Extensions.Caching.Memory;
 using Popcorn.Domain.Models;
+using Popcorn.Persistence;
 using Popcorn.Server.Controllers.Models;
 using Popcorn.Shared.Ffmpeg;
 using Popcorn.Shared.Utils;
@@ -11,12 +12,14 @@ public record StreamFile(string filePath, string mimeType);
 
 public class FileStreamService(
   ILogger<FileStreamService> logger,
+  SettingsRepository settingsRepository,
   IMemoryCache memoryCache)
 {
   public async Task<StreamFile?> PrepareStreamFileAsync(MediaFile mediaFile)
   {
     var cacheKey = $"{mediaFile.Id}-stream";
-    if (memoryCache.TryGetValue(cacheKey, out StreamFile? cached))
+    if (memoryCache.TryGetValue(cacheKey, out StreamFile? cached) &&
+        (cached == null || (cached != null && File.Exists(cached.filePath))))
     {
       return cached;
     }
@@ -24,37 +27,51 @@ public class FileStreamService(
     var metadata = await GetMediaFileMetadataAsync(mediaFile);
     if (metadata == null) return null;
 
+    var audioTrack = metadata.GetDefaultAudioTrack();
+    
     var outPath = Path.Combine(DirectoryUtils.StreamCache, $"{mediaFile.Id}.mp4");
     string mime;
 
     try
     {
-      if ((metadata.FormatNames.Contains("matroska") || metadata.FormatNames.Contains("mp4"))
-          && metadata.VideoDefaultCodec is VideoCodec.H264 or VideoCodec.H265
-          && metadata.AudioDefaultCodec is AudioCodec.AAC or AudioCodec.MP3 or AudioCodec.Unknown)
+      // --- Case 1: H.264/H.265 video → MP4 target ---
+      if ((metadata.FormatNames.Contains("matroska") || metadata.FormatNames.Contains("mp4")) &&
+          metadata.VideoDefaultCodec is VideoCodec.H264 or VideoCodec.H265)
       {
-        // MP4 container & good codecs → just faststart
-        mime    = "video/mp4";
+        mime = "video/mp4";
+        
+        var args = FFMpegArguments.FromFileInput(mediaFile.Path);
 
-        await FFMpegArguments
-          .FromFileInput(mediaFile.Path)
-          .OutputToFile(outPath, overwrite: true, opts => opts
-            .WithVideoCodec("copy")
-            .WithAudioCodec("copy")
-            .WithCustomArgument("-movflags +faststart"))
-          .ProcessAsynchronously();
+        await args.OutputToFile(outPath, overwrite: true, opts =>
+        {
+          opts.WithVideoCodec("copy");
+
+          if (audioTrack != null && CodecUtils.IsAudioCodecMp4Compatible(audioTrack.Codec))
+          {
+            // Keep supported audio
+            opts.WithAudioCodec("copy");
+            opts.WithCustomArgument($"-map 0:v -map 0:{audioTrack.Index}");
+          }
+          else
+          {
+            // Drop audio (will be fetched separately)
+            opts.WithCustomArgument("-map 0:v -an");
+          }
+
+          opts.WithCustomArgument("-movflags +faststart");
+        }).ProcessAsynchronously();
       }
-      else if (metadata.FormatNames.Contains("matroska")
-               && metadata.VideoDefaultCodec is VideoCodec.VP8 or VideoCodec.VP9
-               && metadata.AudioDefaultCodec is AudioCodec.Vorbis or AudioCodec.Opus or AudioCodec.Unknown)
+      // --- Case 2: VP8/VP9 + Opus/Vorbis → WebM target ---
+      else if (metadata.FormatNames.Contains("matroska") &&
+               metadata.VideoDefaultCodec is VideoCodec.VP8 or VideoCodec.VP9)
       {
-        //Probably remux not needed since WebM is mkv
         mime = "video/webm";
-        outPath = mediaFile.Path;
+        outPath = mediaFile.Path; // already WebM-compatible
       }
+      // --- Case 3: Unsupported ---
       else
       {
-        memoryCache.Set(cacheKey, (StreamFile?) null, TimeSpan.FromDays(1));
+        memoryCache.Set(cacheKey, (StreamFile?)null, TimeSpan.FromDays(1));
         return null;
       }
     }
@@ -68,6 +85,7 @@ public class FileStreamService(
     memoryCache.Set(cacheKey, streamFile, TimeSpan.FromDays(1));
     return streamFile;
   }
+
 
   public async Task<MediaFileMetadata?> GetMediaFileMetadataAsync(MediaFile mediaFile)
   {
@@ -84,6 +102,31 @@ public class FileStreamService(
       .ToHashSet()
       .ToList();
     
+    var settings = await settingsRepository.GetSettingsAsync();
+    var defaultAudioTrack = probe.GetDefaultAudioStream(settings.PrefferedAudioLanguages);
+    var defaultSubtitleTrack = probe.GetDefaultAudioStream(settings.PrefferedAudioLanguages);
+    
+    var audioTracks = probe.AudioStreams.Select(a =>
+    {
+      var audioCodec = a.ParseAudioCodec();
+      return new AudioTrackDto
+      {
+        Index = a.Index,
+        Codec = a.ParseAudioCodec().ToString(),
+        Container = GetAudioCodecContainer(audioCodec),
+        Label = GetMediaStreamTitle(a),
+        Language = a.Language
+      };
+    }).ToList();
+
+    var subtitleTracks = probe.SubtitleStreams.Select(s => new SubtitleTrackDto
+    {
+      Index = s.Index,
+      Label = GetMediaStreamTitle(s),
+      Language = s.Language,
+      Format = TransformSubtitleCodecNameToExtension(s.CodecName)
+    }).ToList();
+    
     var metadata = new MediaFileMetadata
     {
       FileId = mediaFile.Id,
@@ -91,30 +134,27 @@ public class FileStreamService(
       FullTitle = mediaFile.Title,
       ShortTitle = mediaFile.GetDisplayTitle(),
       VideoDefaultCodec = probe.PrimaryVideoStream?.ParseVideoCodec(),
-      AudioDefaultCodec = probe.PrimaryAudioStream?.ParseAudioCodec(),
-      AudioDefaultIndex = probe.PrimaryAudioStream?.Index,
-      SubtitleDefaultIndex = probe.PrimarySubtitleStream?.Index,
+      AudioDefaultIndex = defaultAudioTrack,
+      SubtitleDefaultIndex = defaultSubtitleTrack,
       FormatNames = fmtNames,
-      AudioTracks = probe.AudioStreams.Select(a => new AudioTrackDto()
-      {
-        Key = a.Index.ToString(),
-        Codec = a.ParseAudioCodec().ToString(),
-        Label = GetMediaStreamTitle(a),
-        Language = a.Language
-      }).ToList(),
-      SubtitleTracks = probe.SubtitleStreams.Select(s =>new SubtitleTrackDto()
-      {
-        Key = s.Index.ToString(),
-        Label = GetMediaStreamTitle(s),
-        Language = s.Language,
-        Format = TransformSubtitleCodecNameToExtension(s.CodecName)
-      }).ToList()
+      AudioTracks = audioTracks,
+      SubtitleTracks = subtitleTracks,
     };
     
     memoryCache.Set(cacheKey, metadata, TimeSpan.FromDays(1));
     memoryCache.Set(cacheKey + "-probe", probe, TimeSpan.FromDays(1));
     return metadata;
   }
+
+  private string GetAudioCodecContainer(AudioCodec audioCodec) => audioCodec switch
+  {
+    AudioCodec.AAC => "m4a",
+    AudioCodec.Vorbis => "ogg",
+    AudioCodec.MP3 => "mp3",
+    AudioCodec.Opus => "webm",
+    AudioCodec.Flac => "flac",
+    _ => "m4a"
+  };
 
   private static string TransformSubtitleCodecNameToExtension(string subtitleCodecName) => subtitleCodecName switch
   {
@@ -131,10 +171,10 @@ public class FileStreamService(
     return title;
   }
 
-  public async Task<string> GetMediaFileSubtitlesAsync(MediaFile mediaFile, string trackId)
+  public async Task<string> GetMediaFileSubtitlesAsync(MediaFile mediaFile, int trackId)
   {
     var metadata = await GetMediaFileMetadataAsync(mediaFile);
-    var subtitle = metadata?.SubtitleTracks.FirstOrDefault(t => t.Key == trackId);
+    var subtitle = metadata?.SubtitleTracks.FirstOrDefault(t => t.Index == trackId);
     if (subtitle == null) throw new InvalidOperationException("Subtitle track not found");
 
     var forceVtt = subtitle.Format == "srt";
@@ -143,6 +183,27 @@ public class FileStreamService(
 
     outPath = await TrackUtils.ExtractSubtitleTrackAsync(mediaFile.Path, trackId, outPath, forceVtt);
     if(!File.Exists(outPath)) throw new InvalidOperationException($"File {outPath} not found");
+    
+    return outPath;
+  }
+
+  public async Task<string?> GetMediaFileAudioTrackAsync(MediaFile mediaFile, int trackId)
+  {
+    var metadata = await GetMediaFileMetadataAsync(mediaFile);
+    var audioTrack = metadata?.AudioTracks.FirstOrDefault(t => t.Index == trackId);
+    if (audioTrack == null) throw new InvalidOperationException("Audio track not found");
+
+    var outPath = Path.Combine(DirectoryUtils.StreamCache, $"{mediaFile.Id}-{trackId}.{audioTrack.Container}");
+
+    await TrackUtils.ExtractAudioTrackSafeAsync(
+      mediaFile.Path,
+      trackId,
+      outPath,
+      audioTrack.Codec == nameof(AudioCodec.Unknown)
+    );
+
+    if (!File.Exists(outPath))
+      throw new InvalidOperationException($"File {outPath} not found");
     
     return outPath;
   }

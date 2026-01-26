@@ -14,7 +14,7 @@ public class SettingsRepository
         EnsureSettingsExist().ConfigureAwait(false);
     }
 
-    public async Task<SettingsModel> GetSettings()
+    public async Task<SettingsModel> GetSettingsAsync()
     {
         if(_cachedSettings is null)
         {

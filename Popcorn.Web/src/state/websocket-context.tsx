@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { WebSocketClient } from '../socket/websocket-client';
 import { resolveServerHost } from '../utils/url-resolver';
 
+export const wsAddress = `ws://${resolveServerHost()}/ws`;
+
 type WebSocketContextValue = {
   client: WebSocketClient;
   isClientReady: boolean;
@@ -20,8 +22,7 @@ export const WebSocketProvider = ({ children }: React.PropsWithChildren) => {
   const [isClientReady, setIsClientReady] = useState(false);
 
   if (!wsClientRef.current) {
-    const url = `ws://${resolveServerHost()}/ws`;
-    wsClientRef.current = new WebSocketClient(url);
+    wsClientRef.current = new WebSocketClient(wsAddress);
   }
 
   useEffect(() => {

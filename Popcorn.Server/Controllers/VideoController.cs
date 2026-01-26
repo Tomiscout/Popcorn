@@ -50,10 +50,32 @@ public class VideoController(IMediaFileRepository mediaFileRepository, FileStrea
         return Ok(await fileStreamService.GetMediaFileMetadataAsync(mediaFile));
     }
     
-    [HttpGet("{fileId}/subtitles/{trackId}")]
-    public async Task<ActionResult> GetSubtitleFile(Guid fileId, string trackId)
+    [HttpGet("{fileId}/audio/{trackId}")]
+    public async Task<ActionResult> GetAudioFile(Guid fileId, int trackId)
     {
-        if (fileId == Guid.Empty || string.IsNullOrWhiteSpace(trackId))
+        if (fileId == Guid.Empty || trackId < 0)
+            return NotFound();
+
+        var mediaFile = await mediaFileRepository.GetFileById(fileId);
+        if (mediaFile == null) return NotFound();
+
+        if (!System.IO.File.Exists(mediaFile.Path))
+            return NotFound();
+
+        var filePath = await fileStreamService.GetMediaFileAudioTrackAsync(mediaFile, trackId);
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+
+        return PhysicalFile(
+            filePath,
+            MimeUtils.GetMimeTypeForFileExtension(extension),
+            Path.GetFileName(filePath)
+        );
+    }
+    
+    [HttpGet("{fileId}/subtitles/{trackId}")]
+    public async Task<ActionResult> GetSubtitleFile(Guid fileId, int trackId)
+    {
+        if (fileId == Guid.Empty || trackId < 0)
             return NotFound();
 
         var mediaFile = await mediaFileRepository.GetFileById(fileId);

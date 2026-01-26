@@ -15,22 +15,26 @@ public class MediaFileMetadata
     public List<SubtitleTrackDto> SubtitleTracks { get; set; } = [];
     public VideoCodec? VideoDefaultCodec { get; set; }
     public int? AudioDefaultIndex { get; set; }
-    public AudioCodec? AudioDefaultCodec { get; set; }
     public int? SubtitleDefaultIndex { get; set; }
     public List<string> FormatNames { get; set; } = [];
+
+    public AudioTrackDto? GetDefaultAudioTrack() => !AudioDefaultIndex.HasValue ? null : AudioTracks.First(t => t.Index == AudioDefaultIndex.Value);
+    public SubtitleTrackDto? GetDefaultSubtitleTrack() => !SubtitleDefaultIndex.HasValue ? null : SubtitleTracks.First(t => t.Index == SubtitleDefaultIndex.Value);
 }
 
 public class AudioTrackDto
 {
-    public required string Key { get; set; }
+    public required int Index { get; set; }
     public required string Label { get; set; }
     public string? Language { get; set; }
     public string Codec { get; set; }
+    
+    public string Container { get; set; }
 }
 
 public class SubtitleTrackDto
 {
-    public required string Key { get; set; }
+    public required int Index { get; set; }
     public required string Label { get; set; }
     public string? Language { get; set; }
     public string Format { get; set; }
