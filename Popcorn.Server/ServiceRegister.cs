@@ -9,6 +9,7 @@ using Popcorn.PlayerServer;
 using Popcorn.PlayerServer.Linux;
 using Popcorn.PlayerServer.Windows;
 using Popcorn.Server.Services;
+using Popcorn.Server.Services.Disk;
 using Popcorn.Shared.Interfaces;
 using Popcorn.Shared.Linux;
 
@@ -18,6 +19,7 @@ public static class ServiceRegister
 {
     public static void AddPopcornServices(this IServiceCollection services)
     {
+        services.AddSingleton<ScratchFilesCleanupService>();
         services.AddSingleton<FolderService>();
         services.AddSingleton<MediaItemService>();
         services.AddSingleton<ItemHistoryService>();

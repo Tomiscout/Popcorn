@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Serilog;
 
 namespace PopcornPlayer.Shared;
 public static class FFmpegWrapper
@@ -30,30 +31,36 @@ public static class FFmpegWrapper
 
     public static void RunCommand(string args, CancellationToken? cancellationToken = null)
     {
+        args = "-hide_banner -loglevel error " + args;
         ProcessStartInfo startInfo = new ProcessStartInfo
         {
             FileName = ExePath,
             Arguments = args,
-            //RedirectStandardOutput = true,
+            // RedirectStandardOutput = true,
+            RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
 
         using Process process = new Process();
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (!string.IsNullOrWhiteSpace(e.Data))
+                Log.Error("[ffmpeg] {Line}", e.Data);
+        };
+        
         process.StartInfo = startInfo;
         process.Start();
-        cancellationToken?.Register(() =>
+        process.BeginErrorReadLine();
+
+        using var reg = cancellationToken?.Register(() =>
         {
-            if (process == null || !process.StartInfo.FileName.Any()) return;
             try
             {
-                if (process.HasExited) return;
-                process.Kill();
-                process.WaitForExit(100);
+                if (!process.HasExited)
+                    process.Kill(entireProcessTree: true);
             }
-            catch (InvalidOperationException)
-            {
-            }
+            catch { }
         });
 
         process.WaitForExit();

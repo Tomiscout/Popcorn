@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using FluentMigrator.Runner;
 using Popcorn.Persistence;
+using Popcorn.Server.Services.Disk;
 using Serilog;
 
 namespace Popcorn.Server;
@@ -40,6 +41,9 @@ public class Startup
             var runner = app.ApplicationServices.GetRequiredService<IMigrationRunner>();
             runner.MigrateUp();
         }
+        
+        var scratchFilesService = app.ApplicationServices.GetRequiredService<ScratchFilesCleanupService>();
+        scratchFilesService.InitialCleanup();
         
         var webPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "web");
         if (Directory.Exists(webPath))

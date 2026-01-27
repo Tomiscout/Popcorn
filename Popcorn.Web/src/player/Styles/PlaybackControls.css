@@ -1,45 +1,24 @@
 .control-button {
   opacity: 0.4;
   background: none;
-  outline: none;
-  box-shadow: none;
   border: none;
-  width: 4vw;
-  height: 4vw;
-  min-width: 50px;
-  min-height: 50px;
-  margin: 0px 1vw;
-  transform: scale(0.9);
-  transition: all 0.2s ease-in-out;
   cursor: pointer;
+
+  width: clamp(32px, 4cqw, 56px);
+  height: clamp(32px, 4cqw, 56px);
+
+  margin: 0 clamp(4px, 1cqw, 16px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .control-button:hover {
   opacity: 1;
-  transform: scale(1.2);
+  transform: scale(1.15);
 }
 
 .control-button svg {
   width: 100%;
   height: 100%;
 }
-/* 
-
-
-.control-button.volume svg path,
-.control-button.help svg,
-.control-button.episodes svg,
-.control-button.full-screen svg,
-.control-button.volume svg path,
-.control-button.cast svg {
-  fill: none;
-}
-
-.control-button.rewind svg,
-.control-button.fast-forward svg {
-  stroke: none;
-}
-
-.control-button.captions svg {
-  stroke: none;
-} */
