@@ -67,6 +67,7 @@ export const CaptureClickArea: React.FC<CaptureClickAreaProps> = ({ isFloating }
   return (
     <div
       className={`capture-click-area ${isFileDragging ? 'drag-over' : ''}`}
+      tabIndex={-1}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onDragOver={handleDragOver}

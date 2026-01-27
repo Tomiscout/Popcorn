@@ -1,6 +1,7 @@
 #subtitle-popup {
   display: flex;
   height: 200px;
+  z-index: 20;
 }
 
 .subtitle-popup-container {

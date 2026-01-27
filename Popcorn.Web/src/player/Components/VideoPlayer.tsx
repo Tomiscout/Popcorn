@@ -31,92 +31,145 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({}, r
 
   const videoSrc = `http://${resolveServerHost()}/api/video/${fileId}`;
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const syncCleanupRef = useRef<(() => void) | null>(null);
 
   const [useExternalAudio, setUseExternalAudio] = useState(false);
   const [videoContainsAudio, setVideoContainsAudio] = useState(false);
 
   const getAudioFileMutation = useAudioDownloadMutation(fileId || '');
 
+  // Gets kicked off when currentAudio changes from the track selector
   useEffect(() => {
-    if (!metadata) return;
+    if (!metadata || !currentAudio) return;
 
-    const videoEl = (ref as any).current as HTMLVideoElement;
-    videoEl.pause();
+    (async () => {
+      const videoEl = (ref as any).current as HTMLVideoElement;
+      const audioEl = audioRef.current;
 
-    if (metadata.audioDefaultIndex === currentAudio?.index && !videoContainsAudio) {
-      setUseExternalAudio(true);
-    }
+      //Pause everything
+      await videoEl.pause();
+      await audioEl?.pause();
+      setIsPlaying(false);
 
-    const isAudioFetched = !!additionalAudioFiles.find((a) => a.index === currentAudio?.index);
-    setIsAudioLoading(!isAudioFetched);
+      //Determines if we need to use external audio
+      if (
+        metadata.audioDefaultIndex !== currentAudio.index ||
+        (metadata.audioDefaultIndex === currentAudio.index && !videoContainsAudio)
+      ) {
+        setUseExternalAudio(true);
+      }
 
-    if (!isAudioFetched) {
-      getAudioFileMutation.mutateAsync({ trackId: currentAudio?.index.toString() || '' }).then((blob) => {
-        const url = URL.createObjectURL(blob);
-        const newAudioFile: AdditionalAudioFile = {
-          url,
-          index: currentAudio?.index || 0,
-          mime: blob.type,
-        };
-        addAdditionalAudioFile(newAudioFile);
-      });
-    }
+      //Kick off audio fetch if we don't have it yet
+      const additionalTrack = additionalAudioFiles.find((a) => a.index === currentAudio?.index);
+      if (!additionalTrack) {
+        setIsAudioLoading(true);
+
+        getAudioFileMutation.mutateAsync({ trackId: currentAudio?.index.toString() || '' }).then((blob) => {
+          const url = URL.createObjectURL(blob);
+          const newAudioFile: AdditionalAudioFile = {
+            url,
+            index: currentAudio?.index || 0,
+            mime: blob.type,
+          };
+          addAdditionalAudioFile(newAudioFile);
+        });
+      } else {
+        audioEl!.src = additionalTrack.url;
+        finishAudioSwitch();
+      }
+    })();
   }, [currentAudio]);
+
+  async function finishAudioSwitch() {
+    const video = (ref as any).current as HTMLVideoElement;
+    const audio = audioRef.current!;
+
+    syncCleanupRef.current?.();
+    syncCleanupRef.current = null;
+
+    video.muted = useExternalAudio;
+
+    if (!useExternalAudio || !audio) {
+      audio?.pause();
+      audio && (audio.src = '');
+      await video.play();
+      setIsPlaying(true);
+      return;
+    }
+
+    // HARD SYNC
+    audio.currentTime = video.currentTime;
+    audio.playbackRate = video.playbackRate;
+
+    await audio.play();
+    await video.play();
+
+    setIsAudioLoading(false);
+    setIsPlaying(true);
+
+    /* ---------- EVENT SYNC ---------- */
+
+    const onPlay = () => {
+      if (audio.paused) audio.play();
+    };
+
+    const onPause = () => {
+      if (!audio.paused) audio.pause();
+    };
+
+    const onSeek = () => {
+      audio.currentTime = video.currentTime;
+    };
+
+    const onRate = () => {
+      audio.playbackRate = video.playbackRate;
+    };
+
+    video.addEventListener('play', onPlay);
+    video.addEventListener('pause', onPause);
+    video.addEventListener('seeking', onSeek);
+    video.addEventListener('ratechange', onRate);
+
+    /* ---------- AUTOSYNC LOOP ---------- */
+
+    let rafId: number;
+
+    const autoSync = () => {
+      if (!video.paused && !audio.paused) {
+        const diff = video.currentTime - audio.currentTime;
+        if (Math.abs(diff) > 0.2) {
+          audio.currentTime = video.currentTime;
+        }
+      }
+      rafId = requestAnimationFrame(autoSync);
+    };
+
+    rafId = requestAnimationFrame(autoSync);
+
+    /* ---------- CLEANUP ---------- */
+
+    syncCleanupRef.current = () => {
+      cancelAnimationFrame(rafId);
+      video.removeEventListener('play', onPlay);
+      video.removeEventListener('pause', onPause);
+      video.removeEventListener('seeking', onSeek);
+      video.removeEventListener('ratechange', onRate);
+    };
+  }
 
   useEffect(() => {
     const fetchedFile = additionalAudioFiles.find((a) => a.index === currentAudio?.index);
+    if (!fetchedFile) return;
 
-    if (fetchedFile) {
-      console.log('fetched audio file', fetchedFile);
+    console.log('fetched audio file', fetchedFile);
 
-      const videoEl = (ref as any).current as HTMLVideoElement;
-      const audioEl = audioRef.current;
-      // Mechanism to switch audio source between <video> and <audio>
-      if (currentAudio) {
-        if (videoContainsAudio && currentAudio.index === metadata?.audioDefaultIndex) {
-          // Use video element's audio
-          if (audioEl) {
-            audioEl.pause();
-            audioEl.src = '';
-          }
-          setUseExternalAudio(false);
-        } else if (audioEl) {
-          // Use external audio
-          audioEl.src = fetchedFile.url;
+    const audioEl = audioRef.current;
 
-          const onCanPlay = () => {
-            if (!videoEl.paused) {
-              audioEl.play().catch((err) => postMessage('player_error', 'Audio play failed ' + err));
-            }
-          };
+    if (!audioEl) return;
+    audioEl.src = fetchedFile.url;
 
-          audioEl.addEventListener('canplaythrough', onCanPlay, { once: true });
-        }
-      }
-      if (videoContainsAudio && currentAudio?.index === metadata?.audioDefaultIndex) {
-        videoEl.muted = true;
-      }
-    }
-    setIsAudioLoading(!fetchedFile);
+    finishAudioSwitch();
   }, [additionalAudioFiles]);
-
-  useEffect(() => {
-    console.log('isAudioLoading', isAudioLoading);
-
-    if (isAudioLoading) {
-      const videoEl = (ref as any).current as HTMLVideoElement;
-      const audioEl = audioRef.current;
-
-      videoEl.pause();
-      audioEl?.pause();
-    }
-  }, [isAudioLoading]);
-
-  useEffect(() => {
-    const videoEl = (ref as any)?.current as HTMLVideoElement | null;
-    if (!videoEl) return;
-    videoEl.muted = useExternalAudio; // runtime property, not just JSX attrib
-  }, [useExternalAudio]);
 
   function handleLoadedMetadata(e: SyntheticEvent<HTMLVideoElement>) {
     const video = e.currentTarget;
@@ -168,63 +221,9 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>(({}, r
     return 'Unknown error ' + errorCode;
   }
 
-  // --- Sync audio with video ---
-  useEffect(() => {
-    if (!useExternalAudio || !audioRef.current || !(ref as any)?.current) return;
-
-    const videoEl = (ref as any).current as HTMLVideoElement;
-    const audioEl = audioRef.current;
-
-    // load external track
-    const defaultAudio = additionalAudioFiles?.find((f) => f.index === metadata?.audioDefaultIndex);
-    if (defaultAudio) {
-      audioEl.src = defaultAudio.url;
-      audioEl.load();
-    }
-
-    // prevent video from playing before audio ready
-    const handleAudioCanPlay = () => {
-      if (videoEl.paused && videoEl.autoplay) {
-        videoEl.play();
-        audioEl.play();
-      }
-    };
-
-    audioEl.addEventListener('canplaythrough', handleAudioCanPlay);
-
-    // Sync playback events
-    const syncPlay = () => {
-      if (audioEl.paused) audioEl.play();
-    };
-    const syncPause = () => {
-      if (!audioEl.paused) audioEl.pause();
-    };
-
-    videoEl.addEventListener('play', syncPlay);
-    videoEl.addEventListener('pause', syncPause);
-
-    // Sync currentTime occasionally
-    const syncTime = () => {
-      if (Math.abs(videoEl.currentTime - audioEl.currentTime) > 0.3) {
-        audioEl.currentTime = videoEl.currentTime;
-      }
-    };
-    videoEl.addEventListener('timeupdate', syncTime);
-
-    return () => {
-      audioEl.removeEventListener('canplaythrough', handleAudioCanPlay);
-      videoEl.removeEventListener('play', syncPlay);
-      videoEl.removeEventListener('pause', syncPause);
-      videoEl.removeEventListener('timeupdate', syncTime);
-    };
-  }, [useExternalAudio, additionalAudioFiles, metadata, ref]);
-
   return (
-    <div style={{ width: '100%', height: '100%', background: 'black' }}>
+    <div tabIndex={-1} style={{ width: '100%', height: '100%', background: 'black' }}>
       {isAudioLoading && <Loader></Loader>}
-      <button className="player-btn" onClick={() => audioRef?.current?.play()}>
-        Play audio
-      </button>
       <video
         ref={ref}
         src={videoSrc}

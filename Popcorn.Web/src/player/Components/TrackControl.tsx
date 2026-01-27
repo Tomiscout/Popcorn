@@ -77,6 +77,7 @@ const TrackControl = () => {
   }, [audioTracks, subtitleTracks]);
 
   const handleAudioChange = (value: string) => {
+    if (selectedAudio === value) return;
     setSelectedAudio(value);
     postMessage('audio_track_selected', value);
   };

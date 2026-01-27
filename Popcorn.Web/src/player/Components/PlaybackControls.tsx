@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   IconPlayerPlayFilled as PlayButton,
   IconPlayerPauseFilled as PauseButton,
@@ -12,7 +12,7 @@ import '../Styles/PlaybackControls.css';
 
 import VolumeControl from './VolumeControl';
 import EpisodesControl from './EpisodesControl';
-import TrackControl from './SubtitleControl';
+import TrackControl from './TrackControl';
 import { TrackTitle } from './TrackTitle';
 import { postMessage, registerEventHandler, unregisterEventHandler } from '../../utils/events';
 
