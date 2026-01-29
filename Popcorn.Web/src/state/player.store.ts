@@ -42,6 +42,7 @@ interface PlayerState {
   getThumbnailFile: (key: string) => string | null;
   addAdditionalAudioFile: (file: AdditionalAudioFile) => void;
   resetState: () => void;
+  closePlayer: () => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set) => ({
@@ -67,7 +68,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setIsPlaying: (v) => set({ isPlaying: v }),
   setIsFloating: (v) => set({ isFloating: v }),
   setIsFullscreen: (v) => set({ isFullscreen: v }),
-  setIsAudioLoading: (v) => set({ isFullscreen: v }),
+  setIsAudioLoading: (v) => set({ isAudioLoading: v }),
   setCurrentTime: (v) => set({ currentTime: v }),
   setDuration: (v) => set({ duration: v }),
   setMetadata: (v) => set({ metadata: v }),
@@ -127,10 +128,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
     }, 100);
 
     set({
-      fileId: null,
       isPlaying: false,
-      isFloating: false,
-      isFullscreen: false,
       isAudioLoading: false,
       currentTime: -1,
       duration: -1,
@@ -141,6 +139,11 @@ export const usePlayerStore = create<PlayerState>((set) => ({
       subtitleFiles: {},
       thumbnailFiles: {},
       additionalAudioFiles: [],
+    });
+  },
+  closePlayer: () => {
+    set({
+      fileId: null,
     });
   },
 }));

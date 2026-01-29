@@ -25,4 +25,5 @@ public static class SocketRequests
     public const string GetSettings = "GetSettings";
     public const string UpdateSettings = "UpdateSettings";
     public const string OpenProgramFolder = "OpenProgramFolder";
+    public const string ErrorWhenHandlingEvent = "ErrorWhenHandlingEvent";
 }

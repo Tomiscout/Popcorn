@@ -83,36 +83,24 @@ public class FileWebService(
     }
 
     [WebSocketEvent(SocketRequests.FolderOpen)]
-    public async Task OpenFolder(Guid fileId)
+    public async Task OpenFolder(Guid fileOrMediaId)
     {
-        Guid mediaItemId;
-        string? rootPath = null;
+        var response = await GetPlayerPlaylistResponseForDirectory(fileOrMediaId);
+        if (response == null) return;
             
-        var mediaFile = await mediaFileRepository.GetFileById(fileId);
-        if (mediaFile == null)
-        {
-            mediaItemId = fileId; //Media item id comes when clicking on root. I'm lazy
-            var mediaItem = await mediaItemRepository.GetMediaItem(mediaItemId);
-            if (mediaItem == null) return;
-                
-            rootPath = mediaItem.FolderDirectory;
-        }
-        else
-        {
-            if (mediaFile.Type != FileType.Folder) return;
-            
-            mediaItemId = mediaFile.ItemId;
-            rootPath = mediaFile.Type == FileType.File ? Path.GetDirectoryName(mediaFile.Path) : mediaFile.Path;
-        }
-            
-        var allFiles = await mediaFileRepository.GetFilesForItemId(mediaItemId);
-        var directoryFiles = allFiles.GetFilesForDirectory(rootPath);
-            
-        await bus.SendEventAsync(SocketRequests.MediaItemFileList, directoryFiles);
+        await bus.SendEventAsync(SocketRequests.MediaItemFileList, response.Files);
     }
     
     [WebSocketEvent(SocketRequests.FolderOpenPlayer)]
     public async Task OpenFolderPlayer(Guid fileOrMediaId)
+    {
+        var response = await GetPlayerPlaylistResponseForDirectory(fileOrMediaId);
+        if (response == null) return;
+        
+        await bus.SendEventAsync(SocketRequests.FolderOpenPlayer, response);
+    }
+
+    private async Task<PlayerPlaylistResponse?> GetPlayerPlaylistResponseForDirectory(Guid fileOrMediaId)
     {
         Guid mediaItemId;
         string? rootPath = null;
@@ -123,7 +111,7 @@ public class FileWebService(
         {
             mediaItemId = fileOrMediaId; //Media item id comes when clicking on root. I'm lazy
             mediaItem = await mediaItemRepository.GetMediaItem(mediaItemId);
-            if (mediaItem == null) return;
+            if (mediaItem == null) return null;
                 
             rootPath = mediaItem.FolderDirectory;
         }
@@ -135,14 +123,13 @@ public class FileWebService(
             
         var allFiles = await mediaFileRepository.GetFilesForItemId(mediaItemId);
         mediaItem ??= await mediaItemRepository.GetMediaItem(mediaItemId);
-        if (mediaItem == null) return;
+        if (mediaItem == null) return null;
 
-        var response = new PlayerPlaylistResponse
+        return new PlayerPlaylistResponse
         {
             Navigation = mediaItem.BuildNavigationPath(rootPath),
             Files = allFiles.GetFilesForDirectory(rootPath)
         };
-        await bus.SendEventAsync(SocketRequests.FolderOpenPlayer, response);
     }
 
     [WebSocketEvent(SocketRequests.ImageFile)]

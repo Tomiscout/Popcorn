@@ -22,4 +22,5 @@ export enum SocketRequests {
   GetSettings = 'GetSettings',
   UpdateSettings = 'UpdateSettings',
   OpenProgramFolder = 'OpenProgramFolder',
+  ErrorWhenHandlingEvent = 'ErrorWhenHandlingEvent',
 }

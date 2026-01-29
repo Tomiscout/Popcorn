@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { postMessage } from '../../../utils/events';
 import {
   IconListDetails as Episodes,
@@ -11,14 +11,13 @@ import './EpisodesControl.css';
 import { usePlayerStore } from '../../../state/player.store';
 import { useWebSocket } from '../../../state/websocket-context';
 import { SocketRequests } from '../../../socket/socket-requests';
-import { FolderLoadedNavigation, MediaFile, PlayerPlaylistResponse } from '../../../model/media.contract';
+import { FileType, MediaFile } from '../../../model/media.contract';
 
 const EpisodesControl = () => {
   const episodesPopupWidth = 400;
 
-  const { client, isClientReady } = useWebSocket();
-  const { currentPlaylist, setCurrentPlaylist, currentPlaylistNavigation, setCurrentPlaylistNavigation, mediaId } =
-    usePlayerStore();
+  const { client } = useWebSocket();
+  const { currentPlaylist, currentPlaylistNavigation, mediaId } = usePlayerStore();
   const [showPopup, setShowPopup] = useState(false);
   const episodesRef = useRef<HTMLDivElement | null>(null);
   const episodesPopupRef = useRef<HTMLDivElement | null>(null);
@@ -45,30 +44,22 @@ const EpisodesControl = () => {
     setShowPopup(false);
   };
 
-  const fileClick = (file) => {
-    if (file.Type === 1) {
-      openFolder(file.Path);
+  const fileClick = (file: MediaFile) => {
+    if (file.type === FileType.Folder) {
+      openFolder(file.id);
       return;
     }
-    postMessage('file_open', file.Id);
+
+    postMessage('play_file', file.id);
   };
 
-  const openFolder = (fileId) => {
+  const openFolder = (fileId: string) => {
     client.sendEvent(SocketRequests.FolderOpenPlayer, fileId);
   };
 
   const openRootFolder = () => {
     client.sendEvent(SocketRequests.FolderOpenPlayer, mediaId);
   };
-
-  useEffect(() => {
-    if (!isClientReady) return;
-
-    client.onEvent<PlayerPlaylistResponse>(SocketRequests.FolderOpenPlayer, (response) => {
-      setCurrentPlaylistNavigation(response.navigation);
-      setCurrentPlaylist(response.files);
-    });
-  }, [isClientReady]);
 
   return (
     <div ref={episodesRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
@@ -89,7 +80,7 @@ const EpisodesControl = () => {
                 <span>
                   <IconChevronRight className="white ml" />
                 </span>
-                <p className="ml nav-item" onClick={() => openFolder(navFolder.id)}>
+                <p className="ml nav-item" onClick={() => openFolder(navFolder.fileId)}>
                   {navFolder.title}
                 </p>
               </React.Fragment>

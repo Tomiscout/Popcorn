@@ -1,6 +1,7 @@
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using Popcorn.Server.Models;
 using Serilog;
 
 namespace Popcorn.Server;
@@ -169,11 +170,11 @@ public class WebSocketBus(WebSocket webSocket, IServiceScopeFactory scopeFactory
             return;
         }
                     
-        var handlerType = handler.GetType();
-        var argType = handlerType.GenericTypeArguments[1];
-        var deserialized = payload.Deserialize(argType, JsonSerializerOptions);
         try
         {
+            var handlerType = handler.GetType();
+            var argType = handlerType.GenericTypeArguments[1];
+            var deserialized = payload.Deserialize(argType, JsonSerializerOptions);
             using var scope = scopeFactory.CreateScope();
             if (handler.DynamicInvoke(scope.ServiceProvider, deserialized) is Task task)
             {
@@ -182,7 +183,8 @@ public class WebSocketBus(WebSocket webSocket, IServiceScopeFactory scopeFactory
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to process event: {type}", eventType);
+            Log.Error(ex, "Failed to process event: {type}, {payload}", eventType,  payload);
+            await SendEventAsync(SocketRequests.ErrorWhenHandlingEvent, eventType);
         }
     }
 
@@ -205,7 +207,8 @@ public class WebSocketBus(WebSocket webSocket, IServiceScopeFactory scopeFactory
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error in binary handler for {type}", eventType);
+            Log.Error(ex, "Failed to process binary event: {type}, {parameters}", eventType, parameters);
+            await SendEventAsync(SocketRequests.ErrorWhenHandlingEvent, eventType);
         }
     }
 }

@@ -90,9 +90,19 @@ function AppContent() {
       client.sendEvent(SocketRequests.ParseTags, tags);
     };
 
+    const eventHandlingErrorSink = (eventName: string) => {
+      const message = `Failed to handle event on server: ${eventName}`;
+      if (playerFileId) {
+        postMessage('player_error', message);
+      } else {
+        postMessage('player_error', message); //TODO app error overlay
+      }
+    };
+
     client.onBlobEvent(SocketRequests.ImageFile, imageHandler);
     client.onBlobEvent(SocketRequests.ThumbnailFile, thumbnailHandler);
     client.onEvent(SocketRequests.ParseTags, tagsHandler);
+    client.onEvent(SocketRequests.ErrorWhenHandlingEvent, eventHandlingErrorSink);
 
     return () => {
       client.onBlobEventUnregiser(SocketRequests.ImageFile);

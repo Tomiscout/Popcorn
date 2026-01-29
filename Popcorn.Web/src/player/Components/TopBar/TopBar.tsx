@@ -9,10 +9,11 @@ export interface TopBarProps {
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ showControls }) => {
-  const { isFloating, isFullscreen, resetState, setIsFloating, setIsFullscreen } = usePlayerStore();
+  const { isFloating, isFullscreen, resetState, closePlayer, setIsFloating, setIsFullscreen } = usePlayerStore();
 
   function onClose() {
     resetState();
+    closePlayer();
   }
 
   function floatWindow() {

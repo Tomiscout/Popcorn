@@ -17,6 +17,7 @@ import { postMessage } from '../utils/events';
 import SubtitleOverlay from './Components/Subtitles/SubtitleOverlay';
 import { useWebSocket } from '../state/websocket-context';
 import { SocketRequests } from '../socket/socket-requests';
+import { PlayerPlaylistResponse } from '../model/media.contract';
 
 export type Mode = 'inline' | 'floating' | 'fullscreen';
 
@@ -36,11 +37,12 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
     fileId,
     isFloating,
     isFullscreen,
-    additionalAudioFiles,
     setIsPlaying,
     setMetadata,
     setCurrentSubtitle,
     setCurrentAudio,
+    setCurrentPlaylist,
+    setCurrentPlaylistNavigation,
   } = usePlayerStore();
 
   const { data: videoMetadata, isFetching: isFetchingMetadata, error: metadataError } = getVideoMetadata(fileId || '');
@@ -63,6 +65,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
   useEffect(() => {
     const newMode: Mode = isFullscreen ? 'fullscreen' : isFloating ? 'floating' : 'inline';
     setMode(newMode);
+    console.log('Setting new mode:', newMode);
   }, [isFloating, isFullscreen]);
 
   // whenever mode flips, trigger the Fullscreen API
@@ -119,7 +122,18 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
 
     // Kicks off player playlist file load for opened file id
     client?.sendEvent(SocketRequests.FolderOpenPlayer, fileId);
+    client.onEvent<PlayerPlaylistResponse>(SocketRequests.FolderOpenPlayer, (response) => {
+      setCurrentPlaylistNavigation(response.navigation);
+      setCurrentPlaylist(response.files);
+    });
 
+    const playFileHandler = (fileId: string) => {
+      const { resetState, setFileId } = usePlayerStore.getState();
+      resetState();
+      setFileId(fileId);
+    };
+
+    registerEventHandler('play_file', playFileHandler);
     registerEventHandler('set_playback_time', setPlaybackTime);
     registerEventHandler('play_status_changed', onToggle);
     registerEventHandler('skip_seconds', onSkip);
@@ -128,6 +142,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
     registerEventHandler('audio_track_selected', audioTrackSelected);
 
     return () => {
+      unregisterEventHandler('play_file', playFileHandler);
       unregisterEventHandler('set_playback_time', setPlaybackTime);
       unregisterEventHandler('play_status_changed', onToggle);
       unregisterEventHandler('skip_seconds', onSkip);
