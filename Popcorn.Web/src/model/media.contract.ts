@@ -44,6 +44,17 @@ export interface NextFileResponse {
   title: string;
 }
 
+export interface PlayerPlaylistResponse {
+  navigation: FolderLoadedNavigation[];
+  files: MediaFile[];
+}
+
+export interface FolderLoadedNavigation {
+  fileId: string;
+  path: string;
+  title: string;
+}
+
 export enum FileType {
   File = 0,
   Folder = 1,

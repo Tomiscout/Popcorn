@@ -12,6 +12,7 @@ export enum SocketRequests {
   NextFile = 'NextFile',
   FileOpen = 'FileOpen',
   FolderOpen = 'FolderOpen',
+  FolderOpenPlayer = 'FolderOpenPlayer',
   ParseTags = 'ParseTags',
   LibraryFolders = 'LibraryFolders',
   RemoveLibraryFolder = 'RemoveLibraryFolder',

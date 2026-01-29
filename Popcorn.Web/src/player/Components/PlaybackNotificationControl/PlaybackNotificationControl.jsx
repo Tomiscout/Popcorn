@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { registerEventHandler } from '../../utils/events';
+import { useState, useEffect } from 'react';
+import { registerEventHandler } from '../../../utils/events';
 
 import {
   IconPlayerPlayFilled as PlayButton,
@@ -12,7 +12,7 @@ import {
   IconVolume3 as MuteVolume,
 } from '@tabler/icons-react';
 
-import '../Styles/PlaybackNotificationControl.css';
+import './PlaybackNotificationControl.css';
 
 const PlaybackNotificationControl = () => {
   const [showNotification, setShowNotification] = useState(false);

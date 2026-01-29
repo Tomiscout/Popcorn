@@ -8,16 +8,16 @@ import {
   IconArrowsMaximize as Fullscreen,
   IconArrowsMinimize as ExitFullscreen,
 } from '@tabler/icons-react';
-import '../Styles/PlaybackControls.css';
+import './PlaybackControls.css';
 
-import VolumeControl from './VolumeControl';
-import EpisodesControl from './EpisodesControl';
-import TrackControl from './TrackControl';
-import { TrackTitle } from './TrackTitle';
-import { postMessage, registerEventHandler, unregisterEventHandler } from '../../utils/events';
+import VolumeControl from '../VolumeControl/VolumeControl';
+import EpisodesControl from '../EpisodesControl/EpisodesControl';
+import TrackControl from '../TrackControl/TrackControl';
+import { TrackTitle } from '../TrackTitle/TrackTitle';
+import { postMessage, registerEventHandler, unregisterEventHandler } from '../../../utils/events';
 
-import { useEventListeners } from '../Utlis/listener.utils';
-import { usePlayerStore } from '../../state/player.store';
+import { useEventListeners } from '../../Utlis/listener.utils';
+import { usePlayerStore } from '../../../state/player.store';
 
 const PlaybackControls = () => {
   const { isFloating, isFullscreen, isPlaying, setIsFullscreen, setIsFloating } = usePlayerStore();

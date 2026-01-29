@@ -4,7 +4,7 @@ import { resolveServerHost } from '../../utils/url-resolver';
 import { postMessage } from '../../utils/events';
 import { useAudioDownloadMutation } from '../../query/video.query';
 import { Loader } from '@mantine/core';
-import '../Styles/VideoPlayer.css';
+import './VideoPlayer.css';
 
 export interface AdditionalAudioFile {
   url: string;

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
 import { IconPlus, IconMinus } from '@tabler/icons-react';
 
-import '../Styles/NumberStepper.css';
+import './NumberStepper.css';
 interface NumberStepperProps {
   onNumberChanged: (val: number) => void;
   step: number;

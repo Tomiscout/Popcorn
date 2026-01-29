@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
   IconVolume2 as LowVolume,
   IconVolume as MidVolume,
@@ -6,9 +6,9 @@ import {
   IconVolume3 as MuteVolume,
 } from '@tabler/icons-react';
 
-import { postMessage } from '../../utils/events';
-import '../Styles/VolumeSlider.css';
-import { useEventListeners } from '../Utlis/listener.utils';
+import { postMessage } from '../../../utils/events';
+import './VolumeSlider.css';
+import { useEventListeners } from '../../Utlis/listener.utils';
 
 const VolumeControl = () => {
   const volumePopupHalfWidth = 20; //volumePopup.offsetWidth is not present on first render

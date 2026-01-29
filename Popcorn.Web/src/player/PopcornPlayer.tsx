@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Draggable from 'react-draggable';
 import './PopcornPlayer.css';
-import ErrorOverlay from './Components/ErrorOverlay';
+import ErrorOverlay from './Components/ErrorOverlay/ErrorOverlay';
 import { disableDefaultListeners, useEventListeners } from './Utlis/listener.utils';
-import PlaybackNotificationControl from './Components/PlaybackNotificationControl';
+import PlaybackNotificationControl from './Components/PlaybackNotificationControl/PlaybackNotificationControl';
 import { CaptureClickArea } from './Components/CaptureClickArea/CaptureClickArea';
-import { ControlBar } from './Components/ControlBar';
+import { ControlBar } from './Components/ControlBar/ControlBar';
 import { initEvents, registerEventHandler, unregisterEventHandler } from '../utils/events';
 import { usePlayerStore } from '../state/player.store';
 import { createPortal } from 'react-dom';
@@ -15,6 +15,8 @@ import { getVideoMetadata } from '../query/video.query';
 import { Loader } from '@mantine/core';
 import { postMessage } from '../utils/events';
 import SubtitleOverlay from './Components/Subtitles/SubtitleOverlay';
+import { useWebSocket } from '../state/websocket-context';
+import { SocketRequests } from '../socket/socket-requests';
 
 export type Mode = 'inline' | 'floating' | 'fullscreen';
 
@@ -29,6 +31,7 @@ interface PopcornPlayerProps {
 
 export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
   const videoContainerRef = useRef<HTMLDivElement>(null);
+  const { client } = useWebSocket();
   const {
     fileId,
     isFloating,
@@ -113,6 +116,9 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
       const audio = currentMeta?.audioTracks.find((track) => track.index === Number.parseInt(selectedTrack));
       setCurrentAudio(audio || null);
     };
+
+    // Kicks off player playlist file load for opened file id
+    client?.sendEvent(SocketRequests.FolderOpenPlayer, fileId);
 
     registerEventHandler('set_playback_time', setPlaybackTime);
     registerEventHandler('play_status_changed', onToggle);

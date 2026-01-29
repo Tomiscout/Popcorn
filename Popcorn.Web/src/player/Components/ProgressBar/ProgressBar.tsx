@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { postMessage, registerEventHandler } from '../../utils/events';
-import '../Styles/ProgressBar.css';
+import { useEffect, useState, useRef } from 'react';
+import { postMessage, registerEventHandler } from '../../../utils/events';
+import './ProgressBar.css';
 import debounce from 'lodash.debounce';
 import Slider from '@mui/material/Slider';
-import SkipButton from './SkipButton';
-import { usePlayerStore } from '../../state/player.store';
-import { useWebSocket } from '../../state/websocket-context';
-import { SocketRequests } from '../../socket/socket-requests';
+import SkipButton from '../SkipButton/SkipButton';
+import { usePlayerStore } from '../../../state/player.store';
+import { useWebSocket } from '../../../state/websocket-context';
+import { SocketRequests } from '../../../socket/socket-requests';
 
 const ProgressBar = () => {
   const { fileId, currentTime, duration, thumbnailFiles, setCurrentTime } = usePlayerStore();

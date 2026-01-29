@@ -31,7 +31,7 @@ const ItemDetailsPage: React.FC = () => {
   const modals = useModals();
   const navigate = useNavigate();
   const { client, isClientReady } = useWebSocket();
-  const { setFileId: setPlayerFileId } = usePlayerStore();
+  const { setFileId: setPlayerFileId, setMediaId: setPlayerMediaId } = usePlayerStore();
 
   const [mediaItem, setMediaItem] = useState<MediaItem>();
   const [currentMediaFiles, setCurrentMediaFiles] = useState<MediaFile[]>();
@@ -79,6 +79,7 @@ const ItemDetailsPage: React.FC = () => {
     } else {
       //TODO setting
       //client.sendEvent(SocketRequests.FileOpen, fileId);
+      setPlayerMediaId(id!);
       setPlayerFileId(fileId);
 
       //Sets as played locally

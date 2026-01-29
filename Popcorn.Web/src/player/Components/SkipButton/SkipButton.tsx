@@ -1,7 +1,7 @@
-import React, { useState, useEffect, memo, useRef } from 'react';
-import '../Styles/SkipButton.css';
-import { useEventListeners } from '../Utlis/listener.utils';
-import { registerEventHandler } from '../../utils/events';
+import { useState, useEffect, memo, useRef } from 'react';
+import './SkipButton.css';
+import { useEventListeners } from '../../Utlis/listener.utils';
+import { registerEventHandler } from '../../../utils/events';
 
 const SkipButton = memo(
   ({ text, onSkip, isVisible, duration = 5 }) => {

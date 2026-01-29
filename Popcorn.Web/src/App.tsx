@@ -46,7 +46,7 @@ function AppContent() {
   const location = useLocation();
   const { client, isClientReady } = useWebSocket();
   const { addOrUpdateFileUrl } = useFileContext();
-  const { fileId, isFloating, setIsFloating, addThumbnailFile } = usePlayerStore();
+  const { fileId: playerFileId, isFloating, setIsFloating, addThumbnailFile } = usePlayerStore();
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -169,7 +169,7 @@ function AppContent() {
         </AppShell.Navbar>
       )}
 
-      {fileId && <PopcornPlayer videoRef={videoRef} />}
+      {playerFileId && <PopcornPlayer videoRef={videoRef} />}
 
       <AppShell.Main className="app-content">
         <Routes>

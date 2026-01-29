@@ -1,4 +1,4 @@
-import { usePlayerStore } from '../../state/player.store';
+import { usePlayerStore } from '../../../state/player.store';
 
 export const TrackTitle = () => {
   const { metadata } = usePlayerStore();

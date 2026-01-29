@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { AudioTrackDto, MediaFileMetadata, SubtitleTrackDto } from '../query/models/video.models';
 import { AdditionalAudioFile } from '../player/Components/VideoPlayer';
+import { FolderLoadedNavigation, MediaFile } from '../model/media.contract';
 
 interface PlayerState {
-  fileId: string | null;
+  mediaId: string | null;
+  fileId: string | null; // If set - renders the player
   isPlaying: boolean;
   isFloating: boolean;
   isFullscreen: boolean;
@@ -17,7 +19,10 @@ interface PlayerState {
   subtitleFiles: { [key: string]: string };
   thumbnailFiles: { [key: string]: string };
   additionalAudioFiles: AdditionalAudioFile[];
+  currentPlaylist: MediaFile[] | null;
+  currentPlaylistNavigation: FolderLoadedNavigation[] | null;
   setFileId: (v: string | null) => void;
+  setMediaId: (v: string | null) => void;
   setIsPlaying: (v: boolean) => void;
   setIsFloating: (v: boolean) => void;
   setIsFullscreen: (v: boolean) => void;
@@ -26,6 +31,8 @@ interface PlayerState {
   setMetadata: (v: MediaFileMetadata) => void;
   setCurrentSubtitle: (v: SubtitleTrackDto | null) => void;
   setCurrentAudio: (v: AudioTrackDto | null) => void;
+  setCurrentPlaylist: (v: MediaFile[] | null) => void;
+  setCurrentPlaylistNavigation: (v: FolderLoadedNavigation[] | null) => void;
   addSubtitleTrack: (newTrack: SubtitleTrackDto) => void;
   setIsAudioLoading: (v: boolean) => void;
   addSubtitleFile: (key: string, file: string) => void;
@@ -38,6 +45,7 @@ interface PlayerState {
 }
 
 export const usePlayerStore = create<PlayerState>((set) => ({
+  mediaId: null,
   fileId: null,
   isPlaying: false,
   isFloating: false,
@@ -52,6 +60,9 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   thumbnailFiles: {},
   additionalAudioFiles: [],
   currentAudio: null,
+  currentPlaylist: [],
+  currentPlaylistNavigation: [],
+  setMediaId: (v) => set({ mediaId: v }),
   setFileId: (v) => set({ fileId: v }),
   setIsPlaying: (v) => set({ isPlaying: v }),
   setIsFloating: (v) => set({ isFloating: v }),
@@ -62,6 +73,8 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setMetadata: (v) => set({ metadata: v }),
   setCurrentSubtitle: (v) => set({ currentSubtitle: v }),
   setCurrentAudio: (v) => set({ currentAudio: v }),
+  setCurrentPlaylist: (v) => set({ currentPlaylist: v }),
+  setCurrentPlaylistNavigation: (v) => set({ currentPlaylistNavigation: v }),
   addSubtitleTrack: (newTrack) =>
     set((state) => {
       if (!state.metadata) {

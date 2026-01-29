@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { registerEventHandler } from '../../utils/events';
-import '../Styles/ErrorOverlay.css';
+import { useEffect, useState } from 'react';
+import { registerEventHandler } from '../../../utils/events';
+import './ErrorOverlay.css';
 
 const ErrorOverlay = () => {
   const [errors, setErrors] = useState<any[]>([]);

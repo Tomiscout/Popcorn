@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { postMessage } from '../../utils/events';
+import { postMessage } from '../../../utils/events';
 import {
   IconListDetails as Episodes,
   IconFolder,
@@ -7,13 +7,18 @@ import {
   IconPlayerPlayFilled as PlayButton,
 } from '@tabler/icons-react';
 
-import '../Styles/EpisodesControl.css';
+import './EpisodesControl.css';
+import { usePlayerStore } from '../../../state/player.store';
+import { useWebSocket } from '../../../state/websocket-context';
+import { SocketRequests } from '../../../socket/socket-requests';
+import { FolderLoadedNavigation, MediaFile, PlayerPlaylistResponse } from '../../../model/media.contract';
 
 const EpisodesControl = () => {
   const episodesPopupWidth = 400;
 
-  const [navigation, setNavigation] = useState<any[]>([]);
-  const [currentFiles, setCurrentFiles] = useState<any[]>([]);
+  const { client, isClientReady } = useWebSocket();
+  const { currentPlaylist, setCurrentPlaylist, currentPlaylistNavigation, setCurrentPlaylistNavigation, mediaId } =
+    usePlayerStore();
   const [showPopup, setShowPopup] = useState(false);
   const episodesRef = useRef<HTMLDivElement | null>(null);
   const episodesPopupRef = useRef<HTMLDivElement | null>(null);
@@ -40,10 +45,6 @@ const EpisodesControl = () => {
     setShowPopup(false);
   };
 
-  const openRootFolder = () => {
-    postMessage('folder_open_root');
-  };
-
   const fileClick = (file) => {
     if (file.Type === 1) {
       openFolder(file.Path);
@@ -52,17 +53,22 @@ const EpisodesControl = () => {
     postMessage('file_open', file.Id);
   };
 
-  const openFolder = (folderPath) => {
-    postMessage('folder_open', folderPath);
+  const openFolder = (fileId) => {
+    client.sendEvent(SocketRequests.FolderOpenPlayer, fileId);
+  };
+
+  const openRootFolder = () => {
+    client.sendEvent(SocketRequests.FolderOpenPlayer, mediaId);
   };
 
   useEffect(() => {
-    // registerWebviewEventHandler('folder_loaded', (data) => {
-    //   console.log('Folder loaded:', data);
-    //   setCurrentFiles(data.files);
-    //   setNavigation(data.navigation);
-    // });
-  }, []);
+    if (!isClientReady) return;
+
+    client.onEvent<PlayerPlaylistResponse>(SocketRequests.FolderOpenPlayer, (response) => {
+      setCurrentPlaylistNavigation(response.navigation);
+      setCurrentPlaylist(response.files);
+    });
+  }, [isClientReady]);
 
   return (
     <div ref={episodesRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
@@ -78,26 +84,26 @@ const EpisodesControl = () => {
         <div className="episodes-popup-container">
           <div className="navigation-container">
             <IconFolder className="nav-item" onClick={openRootFolder} />
-            {navigation.map((navFolder, index) => (
+            {currentPlaylistNavigation?.map((navFolder, index) => (
               <React.Fragment key={index}>
                 <span>
                   <IconChevronRight className="white ml" />
                 </span>
-                <p className="ml nav-item" onClick={() => openFolder(navFolder.path)}>
+                <p className="ml nav-item" onClick={() => openFolder(navFolder.id)}>
                   {navFolder.title}
                 </p>
               </React.Fragment>
             ))}
           </div>
           <div className="file-container">
-            {currentFiles.map((file, index) => (
+            {currentPlaylist?.map((file, index) => (
               <div
-                className={`file-item ${file.Played ? 'played-item' : ''}`}
+                className={`file-item ${file.played ? 'played-item' : ''}`}
                 key={index}
                 onClick={() => fileClick(file)}
               >
-                {file.Type === 0 ? <PlayButton className="white" /> : <IconFolder className="white" />}
-                <span>{file.ShortTitle}</span>
+                {file.type === 0 ? <PlayButton className="white" /> : <IconFolder className="white" />}
+                <span>{file.shortTitle || file.title}</span>
               </div>
             ))}
           </div>

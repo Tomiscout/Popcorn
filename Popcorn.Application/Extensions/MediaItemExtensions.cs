@@ -92,6 +92,7 @@ public static class MediaItemExtensions
 
     public static List<FolderLoadedNavigation> BuildNavigationPath(this MediaItem item, string topFolder)
     {
+        //TODO no validation that provided topFolder is subpath of parent
         var navigation = new List<FolderLoadedNavigation>();
         var rootDrive = Path.GetPathRoot(topFolder);
         var currentFolder = topFolder;

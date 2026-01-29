@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from 'react';
-import ProgressBar from './ProgressBar';
-import PlaybackControls from './PlaybackControls';
-import '../Styles/ControlBar.css';
-import { MediaFileMetadata } from '../../query/models/video.models';
+import React from 'react';
+import ProgressBar from '../ProgressBar/ProgressBar';
+import PlaybackControls from '../PlaybackControls/PlaybackControls';
+import './ControlBar.css';
+import { MediaFileMetadata } from '../../../query/models/video.models';
 
 export interface ControlBarProps {
   showControls: boolean;

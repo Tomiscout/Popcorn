@@ -1,6 +1,7 @@
 using Popcorn.Application.Exceptions;
 using Popcorn.Application.Services;
 using Popcorn.Domain;
+using Popcorn.Domain.Enum;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
 using Popcorn.Persistence;
@@ -8,6 +9,7 @@ using Popcorn.Persistence.Repositories;
 using Popcorn.Server.Attributes;
 using Popcorn.Server.Models;
 using Popcorn.Server.Models.Requests;
+using Popcorn.Server.Models.Responses;
 using PopcornPlayer.Domain.Extensions;
 
 namespace Popcorn.Server.Services;
@@ -97,14 +99,50 @@ public class FileWebService(
         }
         else
         {
+            if (mediaFile.Type != FileType.Folder) return;
+            
             mediaItemId = mediaFile.ItemId;
-            rootPath = mediaFile.Path;
+            rootPath = mediaFile.Type == FileType.File ? Path.GetDirectoryName(mediaFile.Path) : mediaFile.Path;
         }
             
         var allFiles = await mediaFileRepository.GetFilesForItemId(mediaItemId);
         var directoryFiles = allFiles.GetFilesForDirectory(rootPath);
             
         await bus.SendEventAsync(SocketRequests.MediaItemFileList, directoryFiles);
+    }
+    
+    [WebSocketEvent(SocketRequests.FolderOpenPlayer)]
+    public async Task OpenFolderPlayer(Guid fileOrMediaId)
+    {
+        Guid mediaItemId;
+        string? rootPath = null;
+        MediaItem? mediaItem = null;
+        
+        var mediaFile = await mediaFileRepository.GetFileById(fileOrMediaId);
+        if (mediaFile == null)
+        {
+            mediaItemId = fileOrMediaId; //Media item id comes when clicking on root. I'm lazy
+            mediaItem = await mediaItemRepository.GetMediaItem(mediaItemId);
+            if (mediaItem == null) return;
+                
+            rootPath = mediaItem.FolderDirectory;
+        }
+        else
+        {
+            mediaItemId = mediaFile.ItemId;
+            rootPath = mediaFile.Type == FileType.File ? Path.GetDirectoryName(mediaFile.Path) : mediaFile.Path;
+        }
+            
+        var allFiles = await mediaFileRepository.GetFilesForItemId(mediaItemId);
+        mediaItem ??= await mediaItemRepository.GetMediaItem(mediaItemId);
+        if (mediaItem == null) return;
+
+        var response = new PlayerPlaylistResponse
+        {
+            Navigation = mediaItem.BuildNavigationPath(rootPath),
+            Files = allFiles.GetFilesForDirectory(rootPath)
+        };
+        await bus.SendEventAsync(SocketRequests.FolderOpenPlayer, response);
     }
 
     [WebSocketEvent(SocketRequests.ImageFile)]

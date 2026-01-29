@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { postMessage } from '../../utils/events';
-import NumberStepper from './NumberStepper';
-import '../Styles/SubtitleControl.css';
+import { postMessage } from '../../../utils/events';
+import NumberStepper from '../NumberStepper/NumberStepper';
+import './TrackControl.css';
 import { IconPlus as AddIcon, IconBadgeCc as Subtitles } from '@tabler/icons-react';
-import { usePlayerStore } from '../../state/player.store';
+import { usePlayerStore } from '../../../state/player.store';
 import { useFileDialog } from '@mantine/hooks';
-import { subtitleFormats } from '../../utils/file.utils';
+import { subtitleFormats } from '../../../utils/file.utils';
 
 interface TrackEntry {
   id: string;

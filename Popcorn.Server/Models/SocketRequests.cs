@@ -14,6 +14,7 @@ public static class SocketRequests
     public const string ImageFilesBatchSent = "ImageFilesBatchSent";
     public const string FileOpen = "FileOpen";
     public const string FolderOpen = "FolderOpen";
+    public const string FolderOpenPlayer = "FolderOpenPlayer";
     public const string NextFile = "NextFile";
     public const string ParseTags = "ParseTags";
     public const string LibraryFolders = "LibraryFolders";
