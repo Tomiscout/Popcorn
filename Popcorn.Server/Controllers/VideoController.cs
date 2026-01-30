@@ -98,7 +98,7 @@ public class VideoController(IMediaFileRepository mediaFileRepository, FileStrea
                 MimeUtils.GetMimeTypeForFileExtension(extension),
                 Path.GetFileName(filePath)
             );
-    }
+    }    
 
     private async Task<FileStreamResult> BuildBrotliFileResponse(string filePath)
     {

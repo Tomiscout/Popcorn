@@ -27,7 +27,7 @@ public class Startup
             options.AddPolicy(LocalDevCorsPolicy, builder =>
             {
                 builder
-                    .WithOrigins("http://localhost:5173")
+                    .WithOrigins("*")
                     .AllowAnyHeader()
                     .AllowAnyMethod();
             });

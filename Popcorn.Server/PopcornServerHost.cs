@@ -45,6 +45,10 @@ public class PopcornServerHost : IAsyncDisposable
         {
             var port = Environment.GetEnvironmentVariable("POPCORN_PORT") ?? "0"; // 0 is dynamic port
             webBuilder.UseUrls($"http://127.0.0.1:{port}");
+            webBuilder.ConfigureKestrel(o =>
+            {
+                o.ListenAnyIP(int.Parse(port));
+            });
             webBuilder.UseStartup<Startup>();
         });
 
