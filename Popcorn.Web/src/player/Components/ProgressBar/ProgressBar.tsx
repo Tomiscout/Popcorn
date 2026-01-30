@@ -2,11 +2,11 @@ import { useEffect, useState, useRef } from 'react';
 import { postMessage, registerEventHandler } from '../../../utils/events';
 import './ProgressBar.css';
 import debounce from 'lodash.debounce';
-import Slider from '@mui/material/Slider';
 import SkipButton from '../SkipButton/SkipButton';
 import { usePlayerStore } from '../../../state/player.store';
 import { useWebSocket } from '../../../state/websocket-context';
 import { SocketRequests } from '../../../socket/socket-requests';
+import { Slider } from '@mantine/core';
 
 const ProgressBar = () => {
   const { fileId, currentTime, duration, thumbnailFiles, setCurrentTime } = usePlayerStore();
@@ -86,7 +86,7 @@ const ProgressBar = () => {
   function getThumbnailKey(timeMs: number) {
     return `thumbnail_${fileId}_${timeMs / 1000}`;
   }
-  const handleSliderChange = (_event, newValue: number) => {
+  const handleSliderChange = (newValue: number) => {
     setCurrentTime(newValue);
     postMessage('set_playback_time', newValue); //TODO throttle
   };
@@ -307,32 +307,15 @@ const ProgressBar = () => {
           ))}
           <Slider
             className="progress-slider"
+            color="red"
+            showLabelOnHover={false}
+            label={null}
+            defaultValue={40}
             min={0}
             max={duration}
+            step={1000}
             value={currentTime}
             onChange={handleSliderChange}
-            step={1000}
-            sx={{
-              color: '#E31221', // Sets the color of the thumb and the active part of the rail
-
-              '& .MuiSlider-rail, & .MuiSlider-track': {
-                height: '8px', // Increase rail and track height
-                border: 'none',
-              },
-
-              '& .MuiSlider-thumb': {
-                zIndex: 10,
-                boxShadow: 'none', // Remove default shadow
-
-                '&:hover, &.Mui-focusVisible': {
-                  boxShadow: 'none', // Remove shadow on hover and focus
-                },
-
-                '&.Mui-active': {
-                  boxShadow: '0px 0px 0px 8px rgba(227, 18, 33, 0.16)', // Shadow when pressed or dragging
-                },
-              },
-            }}
           />
           {popupVisible && <div className="time-seek-line" style={{ left: `${lineX}px` }}></div>}
         </div>

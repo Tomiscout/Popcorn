@@ -142,8 +142,8 @@ const ItemDetailsPage: React.FC = () => {
                 </Flex>
               </Table.Td>
               <Table.Td pl="0" pr="0">
-                {file.formatTags?.map((t) => <Pill>{t}</Pill>)}
-                {file.otherTags?.map((t) => <Pill>{t}</Pill>)}
+                {file.formatTags?.map((t, index) => <Pill key={index}>{t}</Pill>)}
+                {file.otherTags?.map((t, index) => <Pill key={index}>{t}</Pill>)}
               </Table.Td>
             </Table.Tr>
           ))}
