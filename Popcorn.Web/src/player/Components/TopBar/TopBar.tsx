@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import './TopBar.css';
-import { Box, Button, CloseButton } from '@mantine/core';
+import { Box } from '@mantine/core';
 import { usePlayerStore } from '../../../state/player.store';
 import { IconWindowMaximize, IconWindowMinimize, IconX } from '@tabler/icons-react';
 

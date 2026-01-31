@@ -31,19 +31,19 @@ const ProgressBar = () => {
   const introButtonVisibleRef = useRef(introButtonVisible);
   const outroButtonVisibleRef = useRef(outroButtonVisible);
 
-  const [skipRequested, setSkipRequested] = useState(false);
+  // const [skipRequested, setSkipRequested] = useState(false);
   const [currentSkipTimeEnd, setCurrentSkipTimeEnd] = useState(0);
   const currentSkipTimeEndRef = useRef(currentSkipTimeEnd);
 
   const playbackReset = () => {
     setThumbnail(null);
-    clearThumbCache();
+    // clearThumbCache();
     //setCurrentTime(0);
     // setTotalTime(0);
     setTimeSegments([]);
     setIntroButtonVisible(false);
     setOutroButtonVisible(false);
-    setSkipRequested(false);
+    // setSkipRequested(false);
     setCurrentSkipTimeEnd(0);
   };
 
@@ -59,7 +59,7 @@ const ProgressBar = () => {
     //   }
     // });
 
-    registerEventHandler('track_loaded', (data) => clearThumbCache());
+    // registerEventHandler('track_loaded', () => clearThumbCache());
     registerEventHandler('playback_reset', playbackReset);
     //registerSharedBufferHandler('thumb', thumbnailCallback);
   });
@@ -76,6 +76,7 @@ const ProgressBar = () => {
   }, [introButtonVisible, outroButtonVisible]);
 
   useEffect(() => {
+    if (!lastRequestedTime.current) return;
     const blobUrl = thumbnailFiles[getThumbnailKey(lastRequestedTime.current)] || null;
     if (blobUrl) {
       setThumbnail(blobUrl);
@@ -148,6 +149,7 @@ const ProgressBar = () => {
 
   const popupHalfWidth = 80 + 4; //width + padding
   const handleMouseMove = (e) => {
+    if (!progressBarRef.current) return;
     const rect = progressBarRef.current.getBoundingClientRect();
 
     if (rect.left <= 0) {
@@ -204,8 +206,8 @@ const ProgressBar = () => {
     return ret;
   }
 
-  const lastRequestedTime = useRef(null);
-  const latestRequestId = useRef(null);
+  const lastRequestedTime = useRef<number>(null);
+  const latestRequestId = useRef<number>(null);
   const thumbnailRequest = async (hoveredTime) => {
     const currentThumbTime = getThumbnailTime(hoveredTime);
     if (lastRequestedTime.current === currentThumbTime) {
@@ -241,12 +243,12 @@ const ProgressBar = () => {
     }, 100)
   ).current; //Debounced 100ms
 
-  const clearThumbCache = () => {
-    if (blobUrlMap?.size > 0) {
-      blobUrlMap.forEach((url) => URL.revokeObjectURL(url));
-    }
-    setBlobUrlMap(new Map());
-  };
+  // const clearThumbCache = () => {
+  //   if (blobUrlMap?.size > 0) {
+  //     blobUrlMap.forEach((url) => URL.revokeObjectURL(url));
+  //   }
+  //   setBlobUrlMap(new Map());
+  // };
 
   const getSegmentStyle = (segment) => {
     let startPercent, endPercent;
@@ -271,15 +273,15 @@ const ProgressBar = () => {
 
   // Handling skipping from SkipButton
   const handleSkip = () => {
-    setSkipRequested(true);
+    // ssetSkipRequested(true);
   };
-  useEffect(() => {
-    // Have to force useEffect, because of 'Cannot update a component ProgressBar while rendering a different component SkipButton'
-    if (skipRequested) {
-      handleSliderChange(null, currentSkipTimeEnd);
-      setSkipRequested(false);
-    }
-  }, [skipRequested, currentSkipTimeEnd]);
+  // useEffect(() => {
+  //   // Have to force useEffect, because of 'Cannot update a component ProgressBar while rendering a different component SkipButton'
+  //   if (skipRequested) {
+  //     handleSliderChange(null, currentSkipTimeEnd);
+  //     setSkipRequested(false);
+  //   }
+  // }, [skipRequested, currentSkipTimeEnd]);
 
   return (
     <div className="progress-controls">

@@ -47,7 +47,7 @@ const TrackControl = () => {
           ({
             description: t.label,
             language: t.language,
-            id: t.index,
+            id: t.index.toString(),
             selected: false,
           }) as TrackEntry
       )
@@ -59,7 +59,7 @@ const TrackControl = () => {
           ({
             description: t.label,
             language: t.language,
-            id: t.index,
+            id: t.index.toString(),
             selected: false,
           }) as TrackEntry
       )

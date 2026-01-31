@@ -36,7 +36,7 @@ const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ videoRef }) => {
       const subtitleKey = getExtraTrackKey();
       addSubtitleFile(subtitleKey, subtitleData);
       addSubtitleTrack({
-        index: subtitleKey,
+        index: parseInt(subtitleKey),
         label: file.name,
         format: extension,
       } as SubtitleTrackDto);
@@ -81,13 +81,13 @@ const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ videoRef }) => {
   async function subtitleChangedHandler() {
     if (!videoRef.current || !currentSubtitle) return;
 
-    let subtitleData = getSubtitleFile(currentSubtitle.index);
+    let subtitleData = getSubtitleFile(currentSubtitle.index.toString());
     if (!subtitleData) {
       setLoadingSubtitle(true);
       const result = await downloadSubtitleFile();
       if (result) {
         subtitleData = result;
-        addSubtitleFile(currentSubtitle.index, subtitleData);
+        addSubtitleFile(currentSubtitle.index.toString(), subtitleData);
       } else {
         postMessage('player_error', 'Failed to load subtitle');
       }
@@ -122,13 +122,13 @@ const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ videoRef }) => {
 
   const renderSubtitles = () => {
     if (currentSubtitle.format === 'ass') {
-      return <AssSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.index} />;
+      return <AssSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.index.toString()} />;
     }
     if (currentSubtitle.format === 'srt' || currentSubtitle.format === 'vtt') {
-      return <VttSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.index} />;
+      return <VttSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.index.toString()} />;
     }
     if (currentSubtitle.format === 'sup') {
-      return <PgsSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.index} />;
+      return <PgsSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.index.toString()} />;
     } else {
       return <div></div>;
     }

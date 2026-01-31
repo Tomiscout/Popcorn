@@ -3,11 +3,18 @@ import './SkipButton.css';
 import { useEventListeners } from '../../Utlis/listener.utils';
 import { registerEventHandler } from '../../../utils/events';
 
+type SkipButtonProps = {
+  text: string;
+  duration?: number;
+  isVisible: boolean;
+  onSkip: () => void;
+};
+
 const SkipButton = memo(
-  ({ text, onSkip, isVisible, duration = 5 }) => {
+  ({ text, onSkip, isVisible, duration = 5 }: SkipButtonProps) => {
     const [buttonText, setButtonText] = useState('');
     const [progress, setProgress] = useState(0);
-    const [intervalId, setIntervalId] = useState(null);
+    const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
     const [loadingCanceled, setLoadingCanceled] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const isPausedRef = useRef(isPaused);
@@ -18,7 +25,9 @@ const SkipButton = memo(
 
     useEffect(() => {
       if (!isVisible) {
-        clearInterval(intervalId);
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
         setLoadingCanceled(false);
         setProgress(0);
         return;
@@ -59,12 +68,16 @@ const SkipButton = memo(
     });
 
     const cancelAutoSkip = () => {
-      clearInterval(intervalId);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
       setProgress(100);
       setLoadingCanceled(true);
     };
     const forceSkip = () => {
-      clearInterval(intervalId);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
       setProgress(100);
       onSkip();
     };

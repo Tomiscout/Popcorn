@@ -3,6 +3,7 @@ import { IconDeviceTv, IconDownload, IconFolderOpen, IconSearch, IconSettings } 
 import './App.css';
 import { Routes, Route, Link, Navigate, useLocation, BrowserRouter } from 'react-router-dom';
 import { AppShell, Button, createTheme, MantineProvider, NavLink } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import WatchPage from './pages/watch/watch.page';
 import MediaSearchPage from './pages/search/media-search.page';
 import TorrentSearchPage from './pages/search/torrent-search.page';
@@ -16,7 +17,7 @@ import { useWebSocket, WebSocketProvider } from './state/websocket-context';
 import { FileProvider, useFileContext } from './state/file-context';
 import { parseFilenames } from './utils/tags.parser';
 import { ModalsProvider } from '@mantine/modals';
-import { Mode, PopcornPlayer } from './player/PopcornPlayer';
+import { PopcornPlayer } from './player/PopcornPlayer';
 import { initEvents, postMessage } from './utils/events';
 import { disableDefaultListeners } from './player/Utlis/listener.utils';
 import { usePlayerStore } from './state/player.store';
@@ -47,7 +48,6 @@ function AppContent() {
   const { client, isClientReady } = useWebSocket();
   const { addOrUpdateFileUrl } = useFileContext();
   const { fileId: playerFileId, isFloating, setIsFloating, addThumbnailFile } = usePlayerStore();
-  const videoContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const [hasPageLoaded, setHasPageLoaded] = useState(false);
@@ -65,7 +65,7 @@ function AppContent() {
     const imageHandler = (payload: any, metadata: string[]) => {
       const imageName = metadata[0];
       try {
-        const imageFile = new File([payload as Uint8Array], imageName);
+        const imageFile = new File([new Uint8Array(payload)], imageName);
         const objectURL = URL.createObjectURL(imageFile);
         addOrUpdateFileUrl(imageName, objectURL);
       } catch (error) {
@@ -76,7 +76,7 @@ function AppContent() {
     const thumbnailHandler = (payload: any, metadata: string[]) => {
       const imageName = metadata[0];
       try {
-        const imageFile = new File([payload as Uint8Array], imageName);
+        const imageFile = new File([new Uint8Array(payload.buffer)], imageName);
         const objectURL = URL.createObjectURL(imageFile);
         console.log('Received thumbnail', imageName);
         addThumbnailFile(imageName, objectURL);
@@ -208,6 +208,7 @@ function App() {
       <FileProvider>
         <BrowserRouter>
           <MantineProvider theme={theme} forceColorScheme="dark">
+            <Notifications />
             <ModalsProvider>
               <WebSocketProvider>
                 <AppContent />

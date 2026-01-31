@@ -16,8 +16,6 @@ const PopcornBox: React.FC = () => {
   const [particles, setParticles] = useState<Particle[]>([]);
   const iconRef = useRef<HTMLDivElement>(null);
 
-  const spawnCounter = React.useRef(0);
-
   const shake = () => {
     const el = iconRef.current?.querySelector('.shake-wrapper');
     if (!el) return;

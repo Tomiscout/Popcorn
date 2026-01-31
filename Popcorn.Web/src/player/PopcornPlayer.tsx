@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { ReactPortal, useEffect, useRef, useState } from 'react';
 import Draggable from 'react-draggable';
 import './PopcornPlayer.css';
 import ErrorOverlay from './Components/ErrorOverlay/ErrorOverlay';
@@ -212,7 +212,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
   );
 
   const portalContainer = createPortal(wrapped, document.body);
-  let portalVideo = null;
+  let portalVideo: ReactPortal | null = null;
   if (videoContainerRef.current && videoMetadata) {
     portalVideo = createPortal(<VideoPlayer ref={videoRef} />, videoContainerRef.current);
   }

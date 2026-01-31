@@ -97,7 +97,7 @@ const VolumeControl = () => {
             min="0"
             max="1"
             step="0.01"
-            onChange={(e) => changeVolume(e.target.value)}
+            onChange={(e) => changeVolume(parseFloat(e.target.value))}
             style={getBackgroundSize()}
             className="volume-slider"
             value={volume}

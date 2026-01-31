@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import ASS from 'assjs';
 import { usePlayerStore } from '../../../state/player.store';
 

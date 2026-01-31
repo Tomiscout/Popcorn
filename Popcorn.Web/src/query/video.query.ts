@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { querySetupGet, querySetupGetMutate } from './client/query.client';
+import { querySetupGet } from './client/query.client';
 import { MediaFileMetadata } from './models/video.models';
 import { useRequestHeaders } from './client/useRequestHeaders';
 import apiClient from './client/apiClient';
