@@ -39,7 +39,8 @@ public class MediaItemWebService(
         }
             
         var currentFiles = mediaItem.Files.GetFilesForDirectory(mediaItem.FolderDirectory)
-            .OrderBy(f => f.Title)
+            .OrderByDescending(f => f.Type)
+            .ThenBy(f => f.Title)
             .ToList();
         await bus.SendEventAsync(SocketRequests.MediaItemFileList, currentFiles);
 

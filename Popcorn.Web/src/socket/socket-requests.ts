@@ -23,4 +23,6 @@ export enum SocketRequests {
   UpdateSettings = 'UpdateSettings',
   OpenProgramFolder = 'OpenProgramFolder',
   ErrorWhenHandlingEvent = 'ErrorWhenHandlingEvent',
+  MediaSearch = 'MediaSearch',
+  MediaSearchDetails = 'MediaSearchDetails',
 }

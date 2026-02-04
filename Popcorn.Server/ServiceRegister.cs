@@ -8,6 +8,7 @@ using Popcorn.Persistence.Repositories;
 using Popcorn.PlayerServer;
 using Popcorn.PlayerServer.Linux;
 using Popcorn.PlayerServer.Windows;
+using Popcorn.SearchProviders.MovieDb;
 using Popcorn.Server.Services;
 using Popcorn.Server.Services.Disk;
 using Popcorn.Shared.Interfaces;
@@ -48,6 +49,6 @@ public static class ServiceRegister
 
         services.AddMemoryCache();
 
-        //MovieDbProvider.Initialize();
+        MovieDbProvider.Initialize();
     }
 }

@@ -41,10 +41,6 @@ namespace Popcorn.SearchProviders.MovieDb
 
         public static async Task<List<MovieDbSearchResult>> Search(string query)
         {
-            if(string.IsNullOrWhiteSpace(query))
-            {
-                throw new MovieDbException("Query is empty");
-            }
             if (_config is null)
             {
                 _config = (await _configApi.GetAsync()).Item;

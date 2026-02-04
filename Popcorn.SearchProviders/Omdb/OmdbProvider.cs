@@ -3,23 +3,23 @@ using System.Text.Json;
 
 namespace Popcorn.SearchProviders.Omdb
 {
-    public static class OmdbProvider
+    public class OmdbProvider
     {
-        private static readonly string _apiUrl = "https://www.omdbapi.com/";
-        private static readonly string _apiKey = "3e4598f7";
+        private const string ApiUrl = "https://www.omdbapi.com/";
+        private const string ApiKey = "3e4598f7";
 
-        public static async Task<OmdbResult> GetRatings(string imdb)
+        public async Task<OmdbResult> GetRatings(string imdb)
         {
             using HttpClient client = new HttpClient();
             var parameters = new Dictionary<string, string>
             {
                 { "i", imdb },
-                { "apiKey", _apiKey },
+                { "apiKey", ApiKey },
             };
             
             try
             {
-                var content = await client.GetStringAsync(new Uri(QueryHelpers.AddQueryString(_apiUrl, parameters)));
+                var content = await client.GetStringAsync(new Uri(QueryHelpers.AddQueryString(ApiUrl, parameters)));
                 var ratings = JsonSerializer.Deserialize<OmdbApiResult>(content);
                 if (ratings is null)
                 {

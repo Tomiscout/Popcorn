@@ -26,4 +26,6 @@ public static class SocketRequests
     public const string UpdateSettings = "UpdateSettings";
     public const string OpenProgramFolder = "OpenProgramFolder";
     public const string ErrorWhenHandlingEvent = "ErrorWhenHandlingEvent";
+    public const string MediaSearch = "MediaSearch";
+    public const string MediaSearchDetails = "MediaSearchDetails";
 }

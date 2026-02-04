@@ -22,6 +22,7 @@
         <ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
         <ProjectReference Include="..\Popcorn.Persistence\Popcorn.Persistence.csproj" />
         <ProjectReference Include="..\Popcorn.PlayerServer\Popcorn.PlayerServer.csproj" />
+        <ProjectReference Include="..\Popcorn.SearchProviders\Popcorn.SearchProviders.csproj" />
     </ItemGroup>
 
     <ItemGroup>

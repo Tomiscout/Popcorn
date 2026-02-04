@@ -5,8 +5,6 @@ using Popcorn.Shared.Enum;
 
 namespace Popcorn.SearchProviders
 {
-    
-    // All the code in this file is included in all platforms.
     public static class SearchProviders
     {
 

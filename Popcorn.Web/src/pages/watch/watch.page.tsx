@@ -6,7 +6,6 @@ import { useWebSocket } from '../../state/websocket-context';
 import { useFileContext } from '../../state/file-context';
 import { Box, Flex, Loader, TextInput } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
-import classes from './watch.page.module.css';
 
 export interface WatchPageProps {
   pageLoaded: () => void;
@@ -75,7 +74,7 @@ const WatchPage: React.FC<WatchPageProps> = ({ pageLoaded }) => {
           leftSection={<IconSearch size="16px" />}
           placeholder="Search"
           classNames={{
-            input: classes.searchInput,
+            input: 'searchInput',
           }}
         />
 

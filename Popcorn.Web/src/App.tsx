@@ -24,6 +24,7 @@ import { usePlayerStore } from './state/player.store';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAppStore } from './state/app.store';
 import LoadingPage from './pages/loading/loading.page';
+import MediaDetailsPage from './pages/search/media-details.page';
 
 const theme = createTheme({
   primaryColor: 'primaryRed',
@@ -187,6 +188,7 @@ function AppContent() {
           <Route path="/watch" element={<WatchPage pageLoaded={() => setHasPageLoaded(true)} />} />
           <Route path="/watch/:id" element={<ItemDetailsPage />} />
           <Route path="/media-search" element={<MediaSearchPage />} />
+          <Route path="/media-details/:id" element={<MediaDetailsPage />} />
           <Route path="/torrent-search" element={<TorrentSearchPage />} />
           <Route path="/folders" element={<FoldersPage />} />
           <Route path="/torrent-client" element={<DownloadsPage />} />

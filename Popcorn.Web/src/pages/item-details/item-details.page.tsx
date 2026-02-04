@@ -201,7 +201,7 @@ const ItemDetailsPage: React.FC = () => {
         </Flex>
       </Flex>
 
-      <Tabs defaultValue="files">
+      <Tabs defaultValue="files" variant="outline">
         <Tabs.List grow>
           <Tabs.Tab value="files" leftSection={<IconFile size={24} />}>
             Files
