@@ -6,7 +6,7 @@ using Popcorn.Server.Models.Requests;
 namespace Popcorn.Server.Services;
 
 [WebSocketService]
-public class MediaSearchService(WebSocketBus bus)
+public class MediaSearchService(WebSocketBus bus, ILogger<MediaSearchService> logger)
 {
 
     [WebSocketEvent(SocketRequests.MediaSearch)]
@@ -15,22 +15,40 @@ public class MediaSearchService(WebSocketBus bus)
         var queryString = request.SearchText.Trim();
         if (string.IsNullOrWhiteSpace(queryString)) return;
         
-        var response = await MovieDbProvider.Search(queryString);
-        await bus.SendEventAsync(SocketRequests.MediaSearch, response);
+        List<MovieDbSearchResult>? results = null;
+        try
+        {
+            results = await MovieDbProvider.Search(queryString);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to fetch MovieDb for query:{query}", request.SearchText);
+        }
+
+        await bus.SendEventAsync(SocketRequests.MediaSearch, results ?? []);
     }   
     
     [WebSocketEvent(SocketRequests.MediaSearchDetails)]
     public async Task HandleMediaSearchDetails(MediaSearchDetailsRequest request)
     {
-        if (request.Type == MovieDbMediaType.TvShow)
+        var response = new MediaSearchDetailsResponse();
+        try
         {
-            await MovieDbProvider.GetTvDetails(request.Id);
+            if (request.Type == MovieDbMediaType.TvShow)
+            {
+                response.TvShow = await MovieDbProvider.GetTvDetails(request.Id);
+            }
+            else
+            {
+                response.Movie = await MovieDbProvider.GetMovieDetails(request.Id);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await MovieDbProvider.GetMovieDetails(request.Id);
+            logger.LogError(ex, "Failed to fetch {type} details for {id}", request.Type, request.Id);
         }
-        var response = await MovieDbProvider.Search(queryString);
-        await bus.SendEventAsync(SocketRequests.MediaSearch, response);
+       
+        
+        await bus.SendEventAsync(SocketRequests.MediaSearchDetails, response);
     }  
 }

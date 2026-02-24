@@ -8,6 +8,7 @@ import debounce from 'lodash.debounce';
 import { MediaSearchRequest, MovieDbMediaType, MovieDbSearchResult } from '../../model/search.contract';
 import './media-search.page.css';
 import { useNavigate } from 'react-router-dom';
+import { useSocketEvents } from '../../socket/useSocketEvents.hook';
 
 const mediaTypeTextMap: Record<MovieDbMediaType, { text: string; backgroundColor: string }> = {
   [MovieDbMediaType.Movie]: { text: 'Movie', backgroundColor: '#4caf50' },
@@ -22,6 +23,14 @@ const MediaSearchPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<MovieDbSearchResult[]>([]);
 
   const navigate = useNavigate();
+
+  useSocketEvents({
+    [SocketRequests.MediaSearch]: (response: MovieDbSearchResult[]) => {
+      setIsLoading(false);
+      setSearchResults(response);
+      console.log('Search results:', response);
+    },
+  });
 
   const debouncedSearch = React.useMemo(
     () =>
@@ -47,22 +56,6 @@ const MediaSearchPage: React.FC = () => {
     };
     debouncedSearch(query);
   };
-
-  useEffect(() => {
-    if (!isClientReady) return;
-
-    const handleSearchResults = (response: MovieDbSearchResult[]) => {
-      setIsLoading(false);
-      setSearchResults(response);
-      console.log('Search results:', response);
-    };
-
-    client.onEvent<any>(SocketRequests.MediaSearch, handleSearchResults);
-
-    return () => {
-      client.onEventUnregiser(SocketRequests.MediaSearch);
-    };
-  }, [client, isClientReady]);
 
   function renderSearchResult(result: MovieDbSearchResult) {
     const handleClick = () => {

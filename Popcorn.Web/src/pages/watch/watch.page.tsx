@@ -6,6 +6,7 @@ import { useWebSocket } from '../../state/websocket-context';
 import { useFileContext } from '../../state/file-context';
 import { Box, Flex, Loader, TextInput } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
+import { useSocketEvents } from '../../socket/useSocketEvents.hook';
 
 export interface WatchPageProps {
   pageLoaded: () => void;
@@ -30,7 +31,12 @@ const WatchPage: React.FC<WatchPageProps> = ({ pageLoaded }) => {
 
   useEffect(() => {
     if (!isClientReady) return;
-    client.onEvent<MediaListResponse>(SocketRequests.MediaList, (response) => {
+
+    client.sendEvent<any>(SocketRequests.MediaList, {} as any);
+  }, [isClientReady]);
+
+  useSocketEvents({
+    [SocketRequests.MediaList]: (response: MediaListResponse) => {
       setRecentItems(response.recentItems);
       setNewItems(response.newItems);
       setRemovedItems(response.removedItems);
@@ -49,18 +55,11 @@ const WatchPage: React.FC<WatchPageProps> = ({ pageLoaded }) => {
         console.log('page loaded from handler');
         pageHasLoaded();
       }
-    });
-
-    client.onEvent<any>(SocketRequests.ImageFilesBatchSent, () => {
+    },
+    [SocketRequests.ImageFilesBatchSent]: () => {
       pageHasLoaded();
-    });
-
-    client.sendEvent<any>(SocketRequests.MediaList, {} as any);
-
-    return () => {
-      client.onEventUnregiser(SocketRequests.MediaList);
-    };
-  }, [isClientReady]);
+    },
+  });
 
   return (
     <>

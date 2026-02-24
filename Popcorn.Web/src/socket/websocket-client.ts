@@ -4,8 +4,10 @@ type QueuedMessage = { kind: 'text'; data: string } | { kind: 'binary'; data: Bl
 
 export class WebSocketClient {
   private ws?: WebSocket;
-  private eventHandlers: Map<string, (payload: any) => void> = new Map();
-  private blobEventHandlers: Map<string, (payload: Uint8Array<ArrayBuffer>, metadata: string[]) => void> = new Map();
+  private eventHandlers: Map<string, Set<(payload: any) => void>> = new Map();
+  private blobEventHandlers: Map<string, Set<(payload: Uint8Array<ArrayBuffer>, metadata: string[]) => void>> =
+    new Map();
+
   private readyListeners: Set<(ready: boolean) => void> = new Set();
 
   public isReady: boolean = false;
@@ -118,8 +120,8 @@ export class WebSocketClient {
       const { type, payload } = JSON.parse(event.data);
       console.log('Got event', type);
 
-      const handler = this.eventHandlers.get(type);
-      if (handler) handler(payload);
+      const handlers = this.eventHandlers.get(type);
+      handlers?.forEach((h) => h(payload));
     } else if (event.data instanceof Blob) {
       event.data.arrayBuffer().then((buffer) => {
         const bytes = new Uint8Array(buffer);
@@ -139,27 +141,37 @@ export class WebSocketClient {
         const metadata = decoder.decode(bytes.slice(0, separatorIndex)).split(',');
         const payload = bytes.slice(separatorIndex + 1);
 
-        const handler = this.blobEventHandlers!.get(metadata[0]);
-        if (handler) handler(payload, metadata.slice(1));
+        const handlers = this.blobEventHandlers.get(metadata[0]);
+        handlers?.forEach((h) => h(payload, metadata.slice(1)));
       });
     }
   }
 
   onEvent<TPayload>(type: string, handler: (payload: TPayload) => void) {
-    this.eventHandlers.set(type, handler);
+    if (!this.eventHandlers.has(type)) {
+      this.eventHandlers.set(type, new Set());
+    }
+
+    this.eventHandlers.get(type)!.add(handler as any);
+
+    // ✅ return unsubscribe (important)
+    return () => {
+      this.eventHandlers.get(type)?.delete(handler as any);
+    };
   }
 
   onBlobEvent(type: string, handler: (payload: Uint8Array<ArrayBuffer>, metadata: string[]) => void) {
-    this.blobEventHandlers.set(type, handler);
+    if (!this.blobEventHandlers.has(type)) {
+      this.blobEventHandlers.set(type, new Set());
+    }
+
+    this.blobEventHandlers.get(type)!.add(handler);
+
+    return () => {
+      this.blobEventHandlers.get(type)?.delete(handler);
+    };
   }
 
-  onEventUnregiser(type: string) {
-    this.eventHandlers.delete(type);
-  }
-
-  onBlobEventUnregiser(type: string) {
-    this.blobEventHandlers.delete(type);
-  }
   //#endregion
 
   close() {

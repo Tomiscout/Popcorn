@@ -25,6 +25,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAppStore } from './state/app.store';
 import LoadingPage from './pages/loading/loading.page';
 import MediaDetailsPage from './pages/search/media-details.page';
+import { useSocketEvents } from './socket/useSocketEvents.hook';
+import { useSocketBlobEvents } from './socket/useSocketBlobEvents.hook';
 
 const theme = createTheme({
   primaryColor: 'primaryRed',
@@ -46,7 +48,7 @@ const theme = createTheme({
 
 function AppContent() {
   const location = useLocation();
-  const { client, isClientReady } = useWebSocket();
+  const { client } = useWebSocket();
   const { addOrUpdateFileUrl } = useFileContext();
   const { fileId: playerFileId, isFloating, setIsFloating, addThumbnailFile } = usePlayerStore();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -61,56 +63,48 @@ function AppContent() {
     }
   }, [location.pathname, hasPageLoaded]);
 
-  // Global image handler
-  useEffect(() => {
-    const imageHandler = (payload: any, metadata: string[]) => {
+  useSocketBlobEvents({
+    [SocketRequests.ImageFile]: (payload: Uint8Array<ArrayBuffer>, metadata: string[]) => {
       const imageName = metadata[0];
+
       try {
         const imageFile = new File([new Uint8Array(payload)], imageName);
+
         const objectURL = URL.createObjectURL(imageFile);
         addOrUpdateFileUrl(imageName, objectURL);
       } catch (error) {
         console.error(`Error processing image blob for ${imageName}:`, error);
       }
-    };
+    },
 
-    const thumbnailHandler = (payload: any, metadata: string[]) => {
+    [SocketRequests.ThumbnailFile]: (payload: Uint8Array<ArrayBuffer>, metadata: string[]) => {
       const imageName = metadata[0];
+
       try {
         const imageFile = new File([new Uint8Array(payload.buffer)], imageName);
+
         const objectURL = URL.createObjectURL(imageFile);
+
         console.log('Received thumbnail', imageName);
         addThumbnailFile(imageName, objectURL);
       } catch (error) {
         console.error(`Error processing image blob for ${imageName}:`, error);
       }
-    };
+    },
+  });
 
-    const tagsHandler = (fileNames: Record<string, string>) => {
+  useSocketEvents({
+    [SocketRequests.ParseTags]: (fileNames: Record<string, string>) => {
       const tags = parseFilenames(fileNames);
       client.sendEvent(SocketRequests.ParseTags, tags);
-    };
+    },
 
-    const eventHandlingErrorSink = (eventName: string) => {
+    [SocketRequests.ErrorWhenHandlingEvent]: (eventName: string) => {
       const message = `Failed to handle event on server: ${eventName}`;
-      if (playerFileId) {
-        postMessage('player_error', message);
-      } else {
-        postMessage('player_error', message); //TODO app error overlay
-      }
-    };
 
-    client.onBlobEvent(SocketRequests.ImageFile, imageHandler);
-    client.onBlobEvent(SocketRequests.ThumbnailFile, thumbnailHandler);
-    client.onEvent(SocketRequests.ParseTags, tagsHandler);
-    client.onEvent(SocketRequests.ErrorWhenHandlingEvent, eventHandlingErrorSink);
-
-    return () => {
-      client.onBlobEventUnregiser(SocketRequests.ImageFile);
-      client.onBlobEventUnregiser(SocketRequests.ThumbnailFile);
-      client.onEventUnregiser(SocketRequests.ParseTags);
-    };
-  }, [isClientReady]);
+      postMessage('player_error', message);
+    },
+  });
 
   const toggleFloating = () => {
     setIsFloating(!isFloating);
