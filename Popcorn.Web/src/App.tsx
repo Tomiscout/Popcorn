@@ -114,6 +114,7 @@ function AppContent() {
     return <LoadingPage />;
   }
 
+  const noContentPadding = location.pathname.startsWith('/media-details');
   return (
     <AppShell
       className="app-root"
@@ -121,7 +122,7 @@ function AppContent() {
         width: 180,
         breakpoint: 'off',
       }}
-      padding="md"
+      padding={noContentPadding ? 0 : 'md'}
     >
       {hasPageLoaded && (
         <AppShell.Navbar bg="#201919" withBorder={false}>
@@ -182,7 +183,7 @@ function AppContent() {
           <Route path="/watch" element={<WatchPage pageLoaded={() => setHasPageLoaded(true)} />} />
           <Route path="/watch/:id" element={<ItemDetailsPage />} />
           <Route path="/media-search" element={<MediaSearchPage />} />
-          <Route path="/media-details/:id" element={<MediaDetailsPage />} />
+          <Route path="/media-details/:id/:type" element={<MediaDetailsPage />} />
           <Route path="/torrent-search" element={<TorrentSearchPage />} />
           <Route path="/folders" element={<FoldersPage />} />
           <Route path="/torrent-client" element={<DownloadsPage />} />

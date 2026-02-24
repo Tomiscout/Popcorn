@@ -61,7 +61,7 @@ const MediaSearchPage: React.FC = () => {
     const handleClick = () => {
       if (result.mediaType === MovieDbMediaType.Person) return;
 
-      navigate(`/media-details/${result.id}`);
+      navigate(`/media-details/${result.id}/${result.mediaType}`);
     };
 
     return (

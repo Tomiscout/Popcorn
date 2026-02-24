@@ -29,38 +29,14 @@ export interface MediaSearchRequest {
   isTvShow: boolean;
 }
 
+export interface MediaSearchDetailsRequest {
+  id: number;
+  type: MovieDbMediaType;
+}
+
 export interface MediaSearchDetailsResponse {
   movie?: Movie;
   tvShow?: TVShow;
-}
-
-export interface Movie {
-  id: number;
-  title: string;
-  isAdultThemed: boolean;
-  backdropPath: string;
-  movieCollectionInfo: CollectionInfo;
-  budget: number;
-  genres: Genre[];
-  homepage: string;
-  imdbId: string;
-  originalLanguage: string;
-  originalTitle: string;
-  overview: string;
-  popularity: number;
-  posterPath: string;
-  productionCompanies: ProductionCompanyInfo[];
-  productionCountries: Country[];
-  releaseDate: Date;
-  revenue: number;
-  runtime: number;
-  spokenLanguages: Language[];
-  status: string;
-  tagline: string;
-  isVideo: boolean;
-  voteAverage: number;
-  voteCount: number;
-  keywords: Keyword[];
 }
 
 export interface TVShow {
@@ -89,11 +65,40 @@ export interface TVShow {
   keywords: Keyword[];
 }
 
+export interface Movie {
+  id: number;
+  title: string;
+  isAdultThemed: boolean;
+  backdropPath: string | null;
+  movieCollectionInfo: CollectionInfo | null;
+  budget: number;
+  genres: Genre[];
+  homepage: string | null;
+  imdbId: string | null;
+  originalLanguage: string;
+  originalTitle: string;
+  overview: string;
+  popularity: number;
+  posterPath: string | null;
+  productionCompanies: ProductionCompanyInfo[];
+  productionCountries: Country[];
+  releaseDate: string; // "2001-05-18T00:00:00"
+  revenue: number;
+  runtime: number;
+  spokenLanguages: Language[];
+  status: string;
+  tagline: string;
+  isVideo: boolean;
+  voteAverage: number;
+  voteCount: number;
+  keywords: Keyword[];
+}
+
 export interface CollectionInfo {
   id: number;
   name: string;
-  posterPath: string;
-  backdropPath: string;
+  posterPath: string | null;
+  backdropPath: string | null;
 }
 
 export interface Genre {
@@ -104,17 +109,15 @@ export interface Genre {
 export interface ProductionCompanyInfo {
   id: number;
   name: string;
-  logoPath: string;
-  originCountry: string;
 }
 
 export interface Country {
-  iso3166_1: string;
+  iso3166Code: string;
   name: string;
 }
 
 export interface Language {
-  iso639_1: string;
+  iso639Code: string;
   name: string;
 }
 
