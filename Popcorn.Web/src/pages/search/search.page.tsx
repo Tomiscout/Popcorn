@@ -6,21 +6,22 @@ import { useWebSocket } from '../../state/websocket-context';
 import { SocketRequests } from '../../socket/socket-requests';
 import debounce from 'lodash.debounce';
 import { MediaSearchRequest, MovieDbMediaType, MovieDbSearchResult } from '../../model/search.contract';
-import './media-search.page.css';
+import './search.page.css';
 import { useNavigate } from 'react-router-dom';
 import { useSocketEvents } from '../../socket/useSocketEvents.hook';
+import { useSearchStore } from '../../state/search.store';
 
 const mediaTypeTextMap: Record<MovieDbMediaType, { text: string; backgroundColor: string }> = {
+  [MovieDbMediaType.Unknown]: { text: 'Unknown', backgroundColor: '#9e9e9e' },
   [MovieDbMediaType.Movie]: { text: 'Movie', backgroundColor: '#4caf50' },
   [MovieDbMediaType.TvShow]: { text: 'TV Show', backgroundColor: '#2196f3' },
   [MovieDbMediaType.Person]: { text: 'Person', backgroundColor: '#ff9800' },
 };
 
-const MediaSearchPage: React.FC = () => {
+const SearchPage: React.FC = () => {
   const { client, isClientReady } = useWebSocket();
-  const [searchText, setSearchText] = useState('');
+  const { searchResults, setSearchResults, searchQuery, setSearchQuery } = useSearchStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [searchResults, setSearchResults] = useState<MovieDbSearchResult[]>([]);
 
   const navigate = useNavigate();
 
@@ -51,7 +52,7 @@ const MediaSearchPage: React.FC = () => {
 
   const handleSearch = () => {
     const query: MediaSearchRequest = {
-      searchText,
+      searchText: searchQuery,
       isTvShow: false,
     };
     debouncedSearch(query);
@@ -102,7 +103,7 @@ const MediaSearchPage: React.FC = () => {
   }
 
   function renderMediaTypePill(mediaType: MovieDbMediaType) {
-    const { text, backgroundColor } = mediaTypeTextMap[mediaType];
+    const { text, backgroundColor } = mediaTypeTextMap[mediaType] ?? mediaTypeTextMap[MovieDbMediaType.Unknown];
     return <Pill style={{ backgroundColor, color: 'white' }}>{text}</Pill>;
   }
 
@@ -114,8 +115,8 @@ const MediaSearchPage: React.FC = () => {
 
       <Flex w="100%" align="center">
         <TextInput
-          value={searchText}
-          onChange={(event) => setSearchText(event.currentTarget.value)}
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.currentTarget.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               handleSearch();
@@ -141,4 +142,4 @@ const MediaSearchPage: React.FC = () => {
   );
 };
 
-export default MediaSearchPage;
+export default SearchPage;

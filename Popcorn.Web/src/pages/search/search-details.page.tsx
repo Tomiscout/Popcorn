@@ -7,10 +7,7 @@ import { SocketRequests } from '../../socket/socket-requests';
 import { useWebSocket } from '../../state/websocket-context';
 import { MediaSearchDetailsRequest, MediaSearchDetailsResponse, Movie, TVShow } from '../../model/search.contract';
 
-const POSTER_BASE = 'https://www.themoviedb.org/t/p/w1280/';
-const BACKDROP_BASE = 'https://image.tmdb.org/t/p/original/';
-
-const MediaDetailsPage: React.FC = () => {
+const SearchDetailsPage: React.FC = () => {
   const navigate = useNavigate();
   const { client, isClientReady } = useWebSocket();
   const { id, type } = useParams();
@@ -40,8 +37,8 @@ const MediaDetailsPage: React.FC = () => {
   const title = isMovie(data) ? data.title : data.name;
   const overview = data.overview;
   const tagline = isMovie(data) ? data.tagline : '';
-  const backdrop = `${BACKDROP_BASE}${data.backdropPath}`;
-  const poster = `${POSTER_BASE}${data.posterPath}`;
+  const backdrop = data.backdropPath || '';
+  const poster = data.posterPath || '';
   const genres = data.genres?.map((g) => g.name) ?? [];
 
   return (
@@ -106,8 +103,9 @@ const MediaDetailsPage: React.FC = () => {
           </Group>
         </Container>
       </BackgroundImage>
+      {/* <Table></Table> */}
     </div>
   );
 };
 
-export default MediaDetailsPage;
+export default SearchDetailsPage;

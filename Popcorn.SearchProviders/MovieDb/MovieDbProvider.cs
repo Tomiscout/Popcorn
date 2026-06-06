@@ -1,99 +1,133 @@
-﻿using DM.MovieApi;
-using DM.MovieApi.ApiResponse;
-using DM.MovieApi.MovieDb;
-using DM.MovieApi.MovieDb.Configuration;
-using DM.MovieApi.MovieDb.Movies;
-using DM.MovieApi.MovieDb.TV;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Net;
-using System.Runtime;
-using System.Text;
-using System.Threading.Tasks;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using DM.MovieApi.MovieDb.Genres;
+﻿
 using Popcorn.SearchProviders.Exceptions;
+using TMDbLib.Client;
+using TMDbLib.Objects.General;
+using TMDbLib.Objects.Movies;
+using TMDbLib.Objects.Search;
+using TMDbLib.Objects.TvShows;
 
 namespace Popcorn.SearchProviders.MovieDb
 {
-    public static class MovieDbProvider
+    public class MovieDbProvider
     {
-        private const string _apiKeyBearer = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiOGFmNmRkMjM1ZjBhMzRkZDg3ZDM2OTdhY2Q3OWIyOSIsInN1YiI6IjYzZGZiNTQ4Y2QyMDQ2MDA5ZDRmM2ZmOSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.-tjdZE__JgXNY6Z1Y50GtgQ5_4D23SSzPca-y_gw3DQ";
-        private static IApiMovieRequest _movieApi;
-        private static IApiTVShowRequest _tvShowApi;
-        private static IApiConfigurationRequest _configApi;
-        private static IApiGenreRequest _genreApi;
-        private static ApiConfiguration _config = null;
-        private static List<Genre> _genreCache = null;
+        private TMDbClient _client = new TMDbClient("b8af6dd235f0a34dd87d3697acd79b29");
+        private List<Genre> _genreCache = [];
 
-        public static void Initialize()
+        public async Task<List<MovieDbSearchResult>> Search(string query)
         {
-            MovieDbFactory.RegisterSettings(_apiKeyBearer);
-            _movieApi = MovieDbFactory.Create<IApiMovieRequest>().Value;
-            _tvShowApi = MovieDbFactory.Create<IApiTVShowRequest>().Value;
-            _configApi = MovieDbFactory.Create<IApiConfigurationRequest>().Value;
-            _genreApi = MovieDbFactory.Create<IApiGenreRequest>().Value;
-        }
-
-        public static async Task<List<MovieDbSearchResult>> Search(string query)
-        {
-            if (_config is null)
-            {
-                _config = (await _configApi.GetAsync()).Item;
-            }
-            if (_genreCache is null)
-            {
-                _genreCache = (await _genreApi.GetAllAsync()).Item.ToList() ?? GenreFactory.GetAll().ToList();
-            }
-
             var results = new List<MovieDbSearchResult>();
             try
             {
-                var result = await MovieDbRequests.GetMultiSearchResponse(query);
-                results.AddRange(result.Results.Select(r => new MovieDbSearchResult()
+                if (!_client.HasConfig)
                 {
-                    MediaType = GetMediaType(r.MediaType),
-                    Id = r.Id,
-                    Title = r.Title ?? r.OriginalTitle ?? r.Name ?? r.OriginalName,
-                    Description = r.Overview,
-                    ReleaseDate = r.ReleaseDate ?? r.FirstAirDate,
-                    PosterPath = string.IsNullOrWhiteSpace(r.PosterPath) ? null : $"{_config.Images.RootUrl}{_config.Images.Posters[2]}{r.PosterPath}",
-                    BackdropPath = string.IsNullOrWhiteSpace(r.BackdropPath) ? null : $"{_config.Images.RootUrl}original{r.BackdropPath}",
-                    ProfilePath = string.IsNullOrWhiteSpace(r.ProfilePath) ? null : $"{_config.Images.RootUrl}original{r.ProfilePath}",
-                    Genres = GetGenresFromIds(r.GenreIds)
-                }).ToList());
+                    await LoadInitialData();
+                }
+                
+                var searchResult = await _client.SearchMultiAsync(query);
+                
+                results.AddRange(searchResult!.Results!.Where(r => r.MediaType is MediaType.Movie or MediaType.Tv or MediaType.Person).Select(r => r switch
+                {
+                    SearchMovie m => new MovieDbSearchResult
+                    {
+                        MediaType = m.MediaType,
+                        Id = m.Id,
+                        Title = m.Title ?? m.OriginalTitle ?? string.Empty,
+                        Description = m.Overview ?? string.Empty,
+                        ReleaseDate = m.ReleaseDate,
+                        PosterPath = BuildPosterUrl(m.PosterPath),
+                        BackdropPath = BuildOriginalUrl(m.BackdropPath),
+                        Genres = GetGenresFromIds(m.GenreIds)
+                    },
+
+                    SearchTv t => new MovieDbSearchResult
+                    {
+                        MediaType = t.MediaType,
+                        Id = t.Id,
+                        Title = t.Name ?? t.OriginalName ?? string.Empty,
+                        Description = t.Overview ?? string.Empty,
+                        ReleaseDate = t.FirstAirDate,
+                        PosterPath = BuildPosterUrl(t.PosterPath),
+                        BackdropPath = BuildOriginalUrl(t.BackdropPath),
+                        Genres = GetGenresFromIds(t.GenreIds)
+                    },
+
+                    SearchPerson p => new MovieDbSearchResult
+                    {
+                        MediaType = p.MediaType,
+                        Id = p.Id,
+                        Title = p.Name ?? string.Empty,
+                        ProfilePath = BuildOriginalUrl(p.ProfilePath)
+                    },
+
+                    _ => null
+                }).ToList()!);
             }
             catch (Exception e)
             {
                 throw new MovieDbException("Error getting MovieDb search results", e);
             }
-
+        
             return results;
         }
-
-        private static MovieDbMediaType GetMediaType(string mediaType) => mediaType switch
+        
+        public async Task<Movie?> GetMovieDetails(int id)
         {
-            "movie" => MovieDbMediaType.Movie,
-            "tv" => MovieDbMediaType.TvShow,
-            "person" => MovieDbMediaType.Person,
-            _ => MovieDbMediaType.Movie
-        };
+            if (!_client.HasConfig)
+            {
+                await LoadInitialData();
+            }
+            
+            var movie = await _client.GetMovieAsync(id);
+            if (movie is null) return null;
+            
+            movie.PosterPath = BuildPosterUrl(movie.PosterPath);
+            movie.BackdropPath = BuildOriginalUrl(movie.BackdropPath);
+            return movie;
+        }
 
-        private static List<string> GetGenresFromIds(IReadOnlyList<int> ids)
+        public async Task<TvShow?> GetTvDetails(int id)
+        {
+            if (!_client.HasConfig)
+            {
+                await LoadInitialData();
+            }
+            
+            var tvShow = await _client.GetTvShowAsync(id);
+            if (tvShow is null) return null;
+            
+            tvShow.PosterPath = BuildPosterUrl(tvShow.PosterPath);
+            tvShow.BackdropPath = BuildOriginalUrl(tvShow.BackdropPath);
+            return tvShow;
+        }
+
+        private string BuildPosterUrl(string? imageUrl)
+        {
+            return $"{_client.Config.Images!.BaseUrl}{_client.Config.Images!.PosterSizes![2]}{imageUrl}";
+        }
+        
+        private string BuildOriginalUrl(string? imageUrl)
+        {
+            return $"{_client.Config.Images!.BaseUrl}original{imageUrl}";
+        }
+
+        private async Task LoadInitialData()
+        {
+            await _client.GetConfigAsync();
+            _genreCache = await _client.GetMovieGenresAsync() ?? [];
+            _genreCache.AddRange(await _client.GetTvGenresAsync() ?? []);
+        }
+        
+        private List<string> GetGenresFromIds(List<int>? ids)
         {
             if(ids is null)
             {
-                return new List<string>();
+                return [];
             }
-            var genres = new List<string>();
-            foreach(var id in ids)
+            
+            List<string> genres = [];
+            foreach (var foundGenre in ids.Select(id => _genreCache.FirstOrDefault(g => g.Id == id)))
             {
-                var foundGenre = _genreCache.FirstOrDefault(g => g.Id == id);
-                if (foundGenre is null)
+                if (foundGenre?.Name is null)
                 {
                     continue;
                 }
@@ -102,24 +136,5 @@ namespace Popcorn.SearchProviders.MovieDb
             return genres;
         }
 
-        public static async Task<Movie> GetMovieDetails(int id)
-        {
-            var details = await _movieApi.FindByIdAsync(id);
-            if(details is not null)
-            {
-                return details.Item;
-            }
-            return null;
-        }
-
-        public static async Task<TVShow> GetTvDetails(int id)
-        {
-            var tvDetails = await _tvShowApi.FindByIdAsync(id);
-            if (tvDetails is not null)
-            {
-                return tvDetails.Item;
-            }
-            return null;
-        }
     }
 }

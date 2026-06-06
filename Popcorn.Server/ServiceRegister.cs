@@ -8,6 +8,7 @@ using Popcorn.Persistence.Repositories;
 using Popcorn.PlayerServer;
 using Popcorn.PlayerServer.Linux;
 using Popcorn.PlayerServer.Windows;
+using Popcorn.SearchProviders;
 using Popcorn.SearchProviders.MovieDb;
 using Popcorn.Server.Services;
 using Popcorn.Server.Services.Disk;
@@ -47,8 +48,8 @@ public static class ServiceRegister
             services.AddSingleton<INativeProcessRunner, LinuxProcessRunner>();
         }
 
+        services.AddSearchProviders();
+        
         services.AddMemoryCache();
-
-        MovieDbProvider.Initialize();
     }
 }

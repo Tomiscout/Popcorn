@@ -28,4 +28,5 @@ public static class SocketRequests
     public const string ErrorWhenHandlingEvent = "ErrorWhenHandlingEvent";
     public const string MediaSearch = "MediaSearch";
     public const string MediaSearchDetails = "MediaSearchDetails";
+    public const string MediaSearchDetailsImdb = "MediaSearchDetailsImdb";
 }

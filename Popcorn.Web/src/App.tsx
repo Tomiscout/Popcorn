@@ -5,7 +5,7 @@ import { Routes, Route, Link, Navigate, useLocation, BrowserRouter } from 'react
 import { AppShell, Button, createTheme, MantineProvider, NavLink } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import WatchPage from './pages/watch/watch.page';
-import MediaSearchPage from './pages/search/media-search.page';
+import SearchPage from './pages/search/search.page';
 import TorrentSearchPage from './pages/search/torrent-search.page';
 import FoldersPage from './pages/folders/folders.page';
 import DownloadsPage from './pages/downloads/downloads.page';
@@ -24,7 +24,7 @@ import { usePlayerStore } from './state/player.store';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAppStore } from './state/app.store';
 import LoadingPage from './pages/loading/loading.page';
-import MediaDetailsPage from './pages/search/media-details.page';
+import SearchDetailsPage from './pages/search/search-details.page';
 import { useSocketEvents } from './socket/useSocketEvents.hook';
 import { useSocketBlobEvents } from './socket/useSocketBlobEvents.hook';
 
@@ -182,8 +182,8 @@ function AppContent() {
           <Route path="/" element={<Navigate to={'/watch'} replace />} />
           <Route path="/watch" element={<WatchPage pageLoaded={() => setHasPageLoaded(true)} />} />
           <Route path="/watch/:id" element={<ItemDetailsPage />} />
-          <Route path="/media-search" element={<MediaSearchPage />} />
-          <Route path="/media-details/:id/:type" element={<MediaDetailsPage />} />
+          <Route path="/media-search" element={<SearchPage />} />
+          <Route path="/media-details/:id/:type" element={<SearchDetailsPage />} />
           <Route path="/torrent-search" element={<TorrentSearchPage />} />
           <Route path="/folders" element={<FoldersPage />} />
           <Route path="/torrent-client" element={<DownloadsPage />} />

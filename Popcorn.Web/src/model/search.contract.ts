@@ -19,9 +19,10 @@ export interface OmdbResult {
 }
 
 export enum MovieDbMediaType {
-  Movie = 0,
-  TvShow = 1,
-  Person = 2,
+  Unknown = 0,
+  Movie = 1,
+  TvShow = 2,
+  Person = 3,
 }
 
 export interface MediaSearchRequest {
