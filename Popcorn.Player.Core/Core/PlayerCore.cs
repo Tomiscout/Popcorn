@@ -1,10 +1,10 @@
 using FFMpegCore;
+using Popcorn.Application.Extensions;
 using Popcorn.Domain.Models;
 using Popcorn.Player.Core.Player;
 using Popcorn.Player.Core.Services;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Player.Core.Contracts;
-using PopcornPlayer.Domain.Extensions;
 using PopcornPlayer.Shared.PipeEvents.Server;
 using Serilog;
 using Popcorn.Domain;

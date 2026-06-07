@@ -1,13 +1,14 @@
 ﻿using Popcorn.Domain.Enum;
 using Popcorn.Domain.Models;
-using Popcorn.Shared.Utils;
 
-namespace PopcornPlayer.Domain.Extensions;
+namespace Popcorn.Application.Extensions;
 
 public static class MediaItemExtensions
 {
     public static MediaFile GetNextMediaFile(this MediaItem item, IList<ItemHistory> history = null!)
     {
+        if (item.Files is null) throw new InvalidOperationException("Attempting to get next item, but files are null");
+        
         MediaFile result = null;
 
         history ??= item.History;

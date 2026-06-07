@@ -1,4 +1,5 @@
 using Popcorn.Application.Exceptions;
+using Popcorn.Application.Extensions;
 using Popcorn.Application.Services;
 using Popcorn.Domain;
 using Popcorn.Domain.Enum;
@@ -10,7 +11,6 @@ using Popcorn.Server.Attributes;
 using Popcorn.Server.Models;
 using Popcorn.Server.Models.Requests;
 using Popcorn.Server.Models.Responses;
-using PopcornPlayer.Domain.Extensions;
 
 namespace Popcorn.Server.Services;
 
@@ -98,6 +98,17 @@ public class FileWebService(
         if (response == null) return;
         
         await bus.SendEventAsync(SocketRequests.FolderOpenPlayer, response);
+    }
+    
+    [WebSocketEvent(SocketRequests.NextFile)]
+    public async Task PlayNextFile(Guid mediaId)
+    {
+        var item = await mediaItemRepository.GetMediaItemWithFilesAndHistory(mediaId);
+        if (item == null) return;
+        
+        var nextFile = item.GetNextMediaFile(item.History);
+
+        await bus.SendEventAsync(SocketRequests.NextFile, nextFile.Id);
     }
 
     private async Task<PlayerPlaylistResponse?> GetPlayerPlaylistResponseForDirectory(Guid fileOrMediaId)

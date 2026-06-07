@@ -1,9 +1,9 @@
+using Popcorn.Application.Extensions;
 using Popcorn.Application.Services;
 using Popcorn.Domain;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Server.Models;
 using Popcorn.Server.Models.Requests;
-using PopcornPlayer.Domain.Extensions;
 using Popcorn.Domain.Enum;
 using Popcorn.Domain.Models;
 using Popcorn.Server.Attributes;

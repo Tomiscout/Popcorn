@@ -6,7 +6,6 @@ using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
 using Popcorn.Domain.Services;
 using Popcorn.Shared.Utils;
-using PopcornPlayer.Domain.Extensions;
 using PopcornPlayer.Shared;
 
 namespace Popcorn.SegmentFinder;

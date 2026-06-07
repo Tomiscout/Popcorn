@@ -1,11 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Popcorn.Application.Extensions;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Player.Core.Contracts;
 using Popcorn.Player.Core.Player;
 using Popcorn.Shared.Utils;
-using PopcornPlayer.Domain.Extensions;
 
 namespace Popcorn.Player.Core.Core;
 public class MediaItemManager(
@@ -46,6 +46,7 @@ public class MediaItemManager(
         webSocket.Value.PostEvent("folder_loaded", @event);
     }
 
+//TODO moved to ItemHistoryService
     public async Task UpdatePlayedFile(MediaFile file)
     {
         AssertUtils.AssertGuid(file.Id);

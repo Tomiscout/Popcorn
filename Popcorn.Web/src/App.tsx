@@ -104,6 +104,11 @@ function AppContent() {
 
       postMessage('player_error', message);
     },
+    [SocketRequests.NextFile]: (fileId: string) => {
+      const { resetState, setFileId } = usePlayerStore.getState();
+      resetState();
+      setFileId(fileId);
+    },
   });
 
   const toggleFloating = () => {

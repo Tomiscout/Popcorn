@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Popcorn.Application.Services;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Utils;
 using Popcorn.Server.Controllers.Models;
@@ -13,7 +14,7 @@ namespace Popcorn.Server.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class VideoController(IMediaFileRepository mediaFileRepository, FileStreamService fileStreamService) : ControllerBase
+public class VideoController(IMediaFileRepository mediaFileRepository, FileStreamService fileStreamService, ItemHistoryService itemHistoryService) : ControllerBase
 {
     [HttpGet("{fileId}")]
     public async Task<IActionResult> Get(Guid fileId)
@@ -29,6 +30,7 @@ public class VideoController(IMediaFileRepository mediaFileRepository, FileStrea
         var streamFile = await fileStreamService.PrepareStreamFileAsync(mediaFile);
         if (streamFile != null)
         {
+            await itemHistoryService.ItemWasPlayedAsync(fileId);
             return PhysicalFile(streamFile.filePath, streamFile.mimeType, enableRangeProcessing: true);
         }
 

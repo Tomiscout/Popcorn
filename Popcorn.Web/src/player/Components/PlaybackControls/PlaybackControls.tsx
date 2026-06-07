@@ -34,7 +34,7 @@ const PlaybackControls = () => {
     postMessage('skip_seconds', 10);
   };
   const nextTrack = () => {
-    postMessage('play_next_title', 10);
+    postMessage('play_next_title');
   };
   const toggleFullscreen = () => {
     const newFullscreen = !isFullscreen;

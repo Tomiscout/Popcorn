@@ -127,13 +127,20 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
       setCurrentPlaylist(response.files);
     });
 
+    //TODO consolidate these functions
     const playFileHandler = (fileId: string) => {
       const { resetState, setFileId } = usePlayerStore.getState();
       resetState();
       setFileId(fileId);
     };
 
+    const playNextFileHandler = () => {
+      const { mediaId } = usePlayerStore.getState();
+      client?.sendEvent(SocketRequests.NextFile, mediaId);
+    };
+
     registerEventHandler('play_file', playFileHandler);
+    registerEventHandler('play_next_title', playNextFileHandler);
     registerEventHandler('set_playback_time', setPlaybackTime);
     registerEventHandler('play_status_changed', onToggle);
     registerEventHandler('skip_seconds', onSkip);
@@ -143,6 +150,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
 
     return () => {
       unregisterEventHandler('play_file', playFileHandler);
+      unregisterEventHandler('play_next_title', playNextFileHandler);
       unregisterEventHandler('set_playback_time', setPlaybackTime);
       unregisterEventHandler('play_status_changed', onToggle);
       unregisterEventHandler('skip_seconds', onSkip);

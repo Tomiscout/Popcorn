@@ -101,6 +101,18 @@ public class MediaItemRepository(ImageRepository imageRepository, DapperContext 
         await LoadSegments(connection, item);
         return item;
     }
+    
+    public async Task<MediaItem?> GetMediaItemWithFilesAndHistory(Guid id)
+    {
+        using var connection = dbContext.CreateConnection();
+
+        var item = await GetMediaItemInternal(connection, id);
+        if (item is null) return null;
+
+        await LoadItemHistory(connection, item);
+        item.Files = await mediaFileRepository.GetFilesForItemId(item.Id, true, connection);
+        return item;
+    }
 
     public List<ItemHistoryDto>? GetItemHistoryDtos(MediaItem item)
     {

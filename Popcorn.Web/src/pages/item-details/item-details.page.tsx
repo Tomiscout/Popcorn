@@ -89,6 +89,10 @@ const ItemDetailsPage: React.FC = () => {
     }
   };
 
+  function playNextFile() {
+    client.sendEvent(SocketRequests.NextFile, mediaItem?.id);
+  }
+
   function refreshFiles() {
     client.sendEvent(SocketRequests.RefreshMediaItem, mediaItem?.id);
   }
@@ -184,7 +188,7 @@ const ItemDetailsPage: React.FC = () => {
           </Text>
           <Text size="md">Description</Text>
           <Flex mt="auto" gap="sm">
-            <Button variant="filled" leftSection={<IconPlayerPlayFilled size={14} />}>
+            <Button variant="filled" leftSection={<IconPlayerPlayFilled size={14} onClick={playNextFile} />}>
               Play {nextFile?.title}
             </Button>
             <Button variant="default">Setup Intro Skipping</Button>
@@ -194,7 +198,7 @@ const ItemDetailsPage: React.FC = () => {
             <Button variant="default" leftSection={<IconRefresh size={14} />} onClick={refreshFiles}>
               Refresh files
             </Button>
-            <Button variant="default" leftSection={<IconRefresh size={14} />} onClick={openFolder}>
+            <Button variant="default" leftSection={<IconFolder size={14} />} onClick={openFolder}>
               Open folder
             </Button>
           </Flex>
