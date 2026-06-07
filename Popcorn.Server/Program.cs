@@ -8,43 +8,25 @@ public abstract class Program
     public static async Task Main(string[] args)
     {
         Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Is(Serilog.Events.LogEventLevel.Debug)
             .WriteTo.Console()
             .WriteTo.Debug()
             .WriteTo.File(Path.Combine(DirectoryUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}Popcorn.Server-.txt"), rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
-        await using var serverHost = new PopcornServerHost(args);
-
         try
         {
-            await serverHost.StartAsync(Log.Logger);
-            Console.WriteLine($"Popcorn.Server (standalone) running. Press Ctrl+C to shut down.");
-            Console.WriteLine($"Listening on: {serverHost.ListeningUrl}");
-
-            // Keep alive for standalone execution
-            var cts = new CancellationTokenSource();
-            Console.CancelKeyPress += (sender, e) =>
-            {
-                e.Cancel = true; // Prevent default termination
-                cts.Cancel();
-                Console.WriteLine("Shutting down...");
-            };
-            await Task.Delay(Timeout.Infinite, cts.Token).ContinueWith(_ => { }); // Wait for cancellation
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected on Ctrl+C
+            await using var serverHost = new PopcornServerHost(args);
+            await serverHost.RunAsync(Log.Logger);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"An error occurred: {ex.Message}");
-            // Log detailed exception with Serilog if configured in PopcornServerHost
+            Log.Fatal(ex, "Popcorn.Server terminated unexpectedly.");
         }
         finally
         {
-            Console.WriteLine("Attempting graceful shutdown of server host...");
-            // StopAsync will be called by DisposeAsync implicitly with `await using`
+            Log.CloseAndFlush();
         }
-        Console.WriteLine("Standalone server host finished.");
     }
 }

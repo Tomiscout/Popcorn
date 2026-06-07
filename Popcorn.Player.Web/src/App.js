@@ -1,11 +1,10 @@
-import React, { useEffect, useRef } from 'react';
-import './App.css';
-import ControlBar from './Components/ControlBar';
-import ErrorOverlay from './Components/ErrorOverlay';
-import CaptureClickArea from './Components/CaptureClickArea';
-import { initEvents } from './events';
-import { disableDefaultListeners } from './Utlis/helpers';
-import PlaybackNotificationControl from './Components/PlaybackNotificationControl';
+import React, { useEffect, useRef } from "react";
+import ControlBar from "./Components/ControlBar";
+import ErrorOverlay from "./Components/ErrorOverlay";
+import CaptureClickArea from "./Components/CaptureClickArea";
+import { initEvents } from "./events";
+import { disableDefaultListeners } from "./Utlis/helpers";
+import PlaybackNotificationControl from "./Components/PlaybackNotificationControl";
 
 const App = () => {
   const videoContainerRef = useRef(null);
@@ -23,7 +22,7 @@ const App = () => {
   return (
     <div
       className="video-container"
-      tabIndex="-1"  // Make the div focusable
+      tabIndex="-1" // Make the div focusable
       ref={videoContainerRef}
     >
       <CaptureClickArea />

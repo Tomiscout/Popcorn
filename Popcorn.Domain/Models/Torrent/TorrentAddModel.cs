@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Components;
 
 namespace Popcorn.Domain.Models;
 

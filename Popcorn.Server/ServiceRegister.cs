@@ -1,4 +1,6 @@
 ﻿using System.Runtime.InteropServices;
+using Popcorn.Linux.Tray;
+using Popcorn.Linux.Tray.Interfaces;
 using Popcorn.Application.Services;
 using Popcorn.Domain;
 using Popcorn.Domain.Interfaces;
@@ -46,6 +48,8 @@ public static class ServiceRegister
             services.AddSingleton<INativeFolderService, LinuxFolderService>();
             services.AddSingleton<INativeFileAssosiation, LinuxFileAssociation>();
             services.AddSingleton<INativeProcessRunner, LinuxProcessRunner>();
+            services.AddSingleton<ITrayManager, TrayManager>();
+            services.AddHostedService<ServerTrayHostedService>();
         }
 
         services.AddSearchProviders();

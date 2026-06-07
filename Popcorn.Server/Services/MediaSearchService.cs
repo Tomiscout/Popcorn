@@ -1,4 +1,4 @@
-using Popcorn.SearchProviders.Imdb;
+// using Popcorn.SearchProviders.Imdb;
 using Popcorn.SearchProviders.MovieDb;
 using Popcorn.Server.Attributes;
 using Popcorn.Server.Models;
@@ -8,7 +8,7 @@ using TMDbLib.Objects.General;
 namespace Popcorn.Server.Services;
 
 [WebSocketService]
-public class MediaSearchService(WebSocketBus bus, ILogger<MediaSearchService> logger, MovieDbProvider movieDbProvider, ImdbScoreService imdbScoreService)
+public class MediaSearchService(WebSocketBus bus, ILogger<MediaSearchService> logger, MovieDbProvider movieDbProvider/*,  ImdbScoreService imdbScoreService*/)
 {
 
     [WebSocketEvent(SocketRequests.MediaSearch)]
@@ -57,12 +57,12 @@ public class MediaSearchService(WebSocketBus bus, ILogger<MediaSearchService> lo
             var imdbId = response.Movie?.ImdbId;
             if (!string.IsNullOrWhiteSpace(imdbId))
             {
-                var imdbScore = await imdbScoreService.GetScoreAsync(imdbId);
-                await bus.SendEventAsync(SocketRequests.MediaSearchDetailsImdb, new MediaSearchDetailsImdScoreResult
-                {
-                    Id = request.Id,
-                    Score = imdbScore
-                });
+                // var imdbScore = await imdbScoreService.GetScoreAsync(imdbId);
+                // await bus.SendEventAsync(SocketRequests.MediaSearchDetailsImdb, new MediaSearchDetailsImdScoreResult
+                // {
+                //     Id = request.Id,
+                //     Score = imdbScore
+                // });
             }
         }
     }  

@@ -2,16 +2,24 @@ BLD_DIR=build
 LINUX_DIR=$(BLD_DIR)/Linux
 POPCORN_DIR_LINUX=./Popcorn.Linux
 POPCORN_PLAYER_DIR_LINUX=./Popcorn.Player.Linux
+POPCORN_SERVER_DIR=./Popcorn.Server
 MPVSHARP_DIR=./MPVSharp
 MPVSHARP_SRC_DIR=$(MPVSHARP_DIR)/src
 MPVSHARP_BIN_DIR=$(MPVSHARP_DIR)/bin
 
+DOTNET_VERSION=net10.0
 POPCORN_BIN_DIR=$(POPCORN_DIR_LINUX)/bin/$(CONFIG)/$(DOTNET_VERSION)
 POPCORN_PLAYER_BIN_DIR=$(POPCORN_PLAYER_DIR_LINUX)/bin/$(CONFIG)/$(DOTNET_VERSION)
-INSTALL_DIR=~/.local/bin/Popcorn
+INSTALL_DIR=$(HOME)/.local/bin/Popcorn
+SYSTEMD_USER_DIR=$(HOME)/.config/systemd/user
+SYSTEMD_ENV_DIR=$(HOME)/.config/popcorn
+SYSTEMD_SERVICE_NAME=popcorn-server.service
+SYSTEMD_ENV_NAME=popcorn-server.env
+SYSTEMD_SRC_DIR=$(POPCORN_SERVER_DIR)/systemd
+SYSTEMD_SERVICE_FILE=$(SYSTEMD_USER_DIR)/$(SYSTEMD_SERVICE_NAME)
+SYSTEMD_ENV_FILE=$(SYSTEMD_ENV_DIR)/$(SYSTEMD_ENV_NAME)
 
 CONFIG=Release
-DOTNET_VERSION=net9.0
 
 # Clean output folders
 clean:
@@ -50,8 +58,17 @@ bundle-linux:
 	cp -r $(POPCORN_PLAYER_BIN_DIR)/* $(LINUX_DIR)
 
 install-linux:
+	-systemctl --user stop $(SYSTEMD_SERVICE_NAME)
 	rm -rf $(INSTALL_DIR)
 	mkdir -p $(INSTALL_DIR)
 	cp -r $(LINUX_DIR)/* $(INSTALL_DIR)
+	mkdir -p $(SYSTEMD_USER_DIR) $(SYSTEMD_ENV_DIR)
+	test -f $(SYSTEMD_ENV_FILE) || cp $(SYSTEMD_SRC_DIR)/$(SYSTEMD_ENV_NAME) $(SYSTEMD_ENV_FILE)
+	sed \
+		-e 's|@INSTALL_DIR@|$(INSTALL_DIR)|g' \
+		-e 's|@ENV_FILE@|$(SYSTEMD_ENV_FILE)|g' \
+		$(SYSTEMD_SRC_DIR)/$(SYSTEMD_SERVICE_NAME) > $(SYSTEMD_SERVICE_FILE)
+	systemctl --user daemon-reload
+	systemctl --user enable --now $(SYSTEMD_SERVICE_NAME)
 
 all: clean build-popcorn-linux build-popcorn-player-linux bundle-linux

@@ -1,11 +1,13 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using GdkPixbuf;
 using Gtk;
+using Microsoft.Extensions.Hosting;
 using Popcorn.Server;
 using Popcorn.Shared.Utils;
 using Serilog;
@@ -36,14 +38,21 @@ public abstract class Program
             .WriteTo.File(Path.Combine(DirectoryUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}Popcorn-.txt"), rollingInterval: RollingInterval.Day)
             .CreateLogger();
 
-        await using var serverHost = new PopcornServerHost(args);
+        PopcornServerHost? serverHost = null;
 
         try
         {
-            await serverHost.StartAsync(Log.Logger, _globalAppCts.Token);
+            ServerUrl = await ResolveServerUrlAsync(_globalAppCts.Token);
+            if (string.IsNullOrWhiteSpace(ServerUrl))
+            {
+                serverHost = new PopcornServerHost(args);
+                await serverHost.StartAsync(Log.Logger, _globalAppCts.Token);
+                BindServerShutdownToApplication(serverHost);
+                ServerUrl = NormalizeServerUrl(serverHost.ListeningUrl) ?? GetDefaultServerUrl();
+            }
+
             Console.WriteLine($"Popcorn.Linux running. Press Ctrl+C to shut down.");
-            Console.WriteLine($"Listening on: {serverHost.ListeningUrl}");
-            ServerUrl = serverHost.ListeningUrl;
+            Console.WriteLine($"Listening on: {ServerUrl}");
 
             var gtkExitedTcs = new TaskCompletionSource<bool>();
             var gtkThread = new Thread(() =>
@@ -101,8 +110,11 @@ public abstract class Program
         }
         finally
         {
-            Console.WriteLine("Attempting graceful shutdown of server host...");
-            // StopAsync will be called by DisposeAsync implicitly with `await using`
+            if (serverHost is not null)
+            {
+                Console.WriteLine("Attempting graceful shutdown of server host...");
+                await serverHost.DisposeAsync();
+            }
         }
         Console.WriteLine("Popcorn.Linux application finished.");
     }
@@ -187,5 +199,92 @@ public abstract class Program
     private static void Dispose()
     {
         DisposeGtkComponents(); //TODO not right here
+    }
+
+    private static async Task<string?> ResolveServerUrlAsync(CancellationToken cancellationToken)
+    {
+        var configuredUrl = NormalizeServerUrl(Environment.GetEnvironmentVariable("POPCORN_SERVER_URL"));
+        if (!string.IsNullOrWhiteSpace(configuredUrl))
+        {
+            Console.WriteLine($"Using configured Popcorn server: {configuredUrl}");
+            return configuredUrl;
+        }
+
+        var defaultServerUrl = GetDefaultServerUrl();
+        if (await CanConnectAsync(defaultServerUrl, cancellationToken))
+        {
+            Console.WriteLine($"Using existing Popcorn server: {defaultServerUrl}");
+            return defaultServerUrl;
+        }
+
+        return null;
+    }
+
+    private static string GetDefaultServerUrl()
+    {
+        var portValue = Environment.GetEnvironmentVariable("POPCORN_PORT");
+        var port = int.TryParse(portValue, out var parsedPort) && parsedPort > 0
+            ? parsedPort
+            : 5000;
+
+        return $"http://localhost:{port}";
+    }
+
+    private static string? NormalizeServerUrl(string? serverUrl)
+    {
+        if (string.IsNullOrWhiteSpace(serverUrl))
+        {
+            return null;
+        }
+
+        return serverUrl.Trim().TrimEnd('/');
+    }
+
+    private static async Task<bool> CanConnectAsync(string serverUrl, CancellationToken cancellationToken)
+    {
+        if (!Uri.TryCreate(serverUrl, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        var host = uri.Host switch
+        {
+            "localhost" => "127.0.0.1",
+            _ => uri.Host
+        };
+
+        using var client = new TcpClient();
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(TimeSpan.FromMilliseconds(750));
+
+        try
+        {
+            await client.ConnectAsync(host, uri.Port, timeoutCts.Token);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void BindServerShutdownToApplication(PopcornServerHost serverHost)
+    {
+        var applicationLifetime = serverHost.Services.GetService(typeof(IHostApplicationLifetime)) as IHostApplicationLifetime;
+        if (applicationLifetime is null)
+        {
+            return;
+        }
+
+        applicationLifetime.ApplicationStopping.Register(() =>
+        {
+            if (_globalAppCts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            Console.WriteLine("Popcorn.Server shutdown detected. Closing Popcorn.Linux...");
+            _globalAppCts.Cancel();
+        });
     }
 }

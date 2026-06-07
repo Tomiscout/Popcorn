@@ -5,6 +5,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <RootNamespace>Popcorn.Server</RootNamespace>
+        <AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
     </PropertyGroup>
 
     <ItemGroup>
@@ -20,6 +21,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Popcorn.Application\Popcorn.Application.csproj" />
         <ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
+        <ProjectReference Include="..\Popcorn.Linux.Tray\Popcorn.Linux.Tray.csproj" />
         <ProjectReference Include="..\Popcorn.Persistence\Popcorn.Persistence.csproj" />
         <ProjectReference Include="..\Popcorn.PlayerServer\Popcorn.PlayerServer.csproj" />
         <ProjectReference Include="..\Popcorn.SearchProviders\Popcorn.SearchProviders.csproj" />
@@ -27,6 +29,11 @@
 
     <ItemGroup>
         <Folder Include="web\" />
+    </ItemGroup>
+    <ItemGroup>
+        <Content Include="systemd\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
     <Target Name="CopyWebToOutput" AfterTargets="Build">
         <ItemGroup>

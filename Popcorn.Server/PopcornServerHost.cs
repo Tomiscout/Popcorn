@@ -21,6 +21,7 @@ public class PopcornServerHost : IAsyncDisposable
     private ILogger<PopcornServerHost>? _logger;
 
     public string? ListeningUrl { get; private set; }
+    public IServiceProvider Services => _host?.Services ?? throw new InvalidOperationException("Host not started.");
 
     public PopcornServerHost(string[]? args = null, Action<IHostBuilder>? configureHostAction = null)
     {
@@ -43,7 +44,7 @@ public class PopcornServerHost : IAsyncDisposable
 
         hostBuilder.ConfigureWebHostDefaults(webBuilder =>
         {
-            var port = Environment.GetEnvironmentVariable("POPCORN_PORT") ?? "0"; // 0 is dynamic port
+            var port = Environment.GetEnvironmentVariable("POPCORN_PORT") ?? "5000";
             webBuilder.UseUrls($"http://127.0.0.1:{port}");
             webBuilder.ConfigureKestrel(o =>
             {
@@ -66,7 +67,7 @@ public class PopcornServerHost : IAsyncDisposable
         var serverAddressesFeature = _host.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>();
         if (serverAddressesFeature?.Addresses.FirstOrDefault() is string address)
         {
-            ListeningUrl = address;
+            ListeningUrl = NormalizeListeningUrl(address);
             _logger?.LogInformation("Popcorn.Server listening on: {ListeningUrl}", ListeningUrl);
         }
         else
@@ -74,6 +75,25 @@ public class PopcornServerHost : IAsyncDisposable
             _logger?.LogWarning("Could not determine listening URL for Popcorn.Server.");
             // Fallback or handle error if URL is critical before proceeding
             ListeningUrl = "http://localhost:5000"; // Example fallback, not ideal for dynamic
+        }
+    }
+
+    public async Task RunAsync(Serilog.ILogger logger, CancellationToken cancellationToken = default)
+    {
+        await StartAsync(logger, cancellationToken);
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(ListeningUrl))
+            {
+                Console.WriteLine($"Listening on: {ListeningUrl}");
+            }
+
+            await _host!.WaitForShutdownAsync(cancellationToken);
+        }
+        finally
+        {
+            await StopAsync(CancellationToken.None);
         }
     }
 
@@ -99,5 +119,28 @@ public class PopcornServerHost : IAsyncDisposable
         }
         _host = null;
         GC.SuppressFinalize(this);
+    }
+
+    private static string NormalizeListeningUrl(string address)
+    {
+        if (!Uri.TryCreate(address, UriKind.Absolute, out var uri))
+        {
+            return address;
+        }
+
+        var host = uri.Host switch
+        {
+            "0.0.0.0" => "localhost",
+            "::" => "localhost",
+            "[::]" => "localhost",
+            "*" => "localhost",
+            "+" => "localhost",
+            _ => uri.Host
+        };
+
+        return new UriBuilder(uri)
+        {
+            Host = host
+        }.Uri.ToString().TrimEnd('/');
     }
 }
