@@ -24,6 +24,13 @@ internal sealed class ServerTrayHostedService : IHostedService
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
-        return _trayManager.HideTray(cancellationToken);
+        try
+        {
+            return _trayManager.HideTray(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return Task.CompletedTask;
+        }
     }
 }
