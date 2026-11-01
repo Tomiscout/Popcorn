@@ -2,9 +2,10 @@
 Type=Application
 Name=Popcorn
 Comment=Media library and video player
-Exec=@INSTALL_DIR@/Popcorn.Linux -service
+Exec=@INSTALL_DIR@/Popcorn.Linux
 Path=@INSTALL_DIR@
 Icon=@INSTALL_DIR@/popcorn.png
 Terminal=false
 StartupNotify=true
 Categories=AudioVideo;Video;Player;
+StartupWMClass=popcorn

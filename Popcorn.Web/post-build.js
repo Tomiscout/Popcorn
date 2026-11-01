@@ -40,10 +40,8 @@ async function copyBundle() {
 
   const srcDir = path.join(__dirname, 'dist');
   const serverDir = path.join(__dirname, '../Popcorn.Server/web');
-  const linuxDir = path.join(__dirname, '../Popcorn.Linux/web');
 
   await fs.cp(srcDir, serverDir, { recursive: true });
-  await fs.cp(srcDir, linuxDir, { recursive: true });
 }
 
 patchAndCopy();

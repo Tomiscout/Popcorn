@@ -9,7 +9,7 @@ Everything is built around `Popcorn.Server`:
 | Variant | Entry project | What it is |
 |---|---|---|
 | Server + browser UI | `Popcorn.Server` | ASP.NET Core host. Serves `Popcorn.Web` bundle from `web/`, WebSocket RPC at `/ws`, REST video streaming at `api/video`. Runs headless / as systemd user service. Browser playback uses the web player in `Popcorn.Web/src/player`. |
-| Linux desktop app | `Popcorn.Linux` | GTK4 + WebKitGTK window (GirCore) that hosts `Popcorn.Server` in-process and shows its UI. `-service` flag: don't host server, instead `systemctl --user start popcorn.service` and connect to it. |
+| Linux desktop app | `Popcorn.Linux` | **Rust + CEF** (not .NET, not in `Popcorn.sln`). Single CEF Views window showing `{server}/index.html`. Finds the server via `POPCORN_SERVER_URL` or `localhost:$POPCORN_PORT`; if unreachable runs `systemctl --user start popcorn.service` (falls back to spawning `Popcorn.Server` from its own dir with `popcorn.env` if the unit is missing or crash-looping) and shows a waiting page until it answers. Never hosts the server in-process. Adds `PopcornDesktop/<ver>` to the User-Agent → web UI `isDesktopApp` (`Popcorn.Web/src/utils/platform.ts`) hides Float/Dock and sends `FileOpen` (server → native player / default app) instead of using the web player. `-service` is accepted and ignored (old desktop files). |
 | Linux player | `Popcorn.Player.Linux` | Separate GTK process. MPV renders into GTK `GLArea` (OpenTK); WebKit overlay shows controls from `Popcorn.Player.Web` (`web-player/`). Launched by server via `LinuxPlayerService`. |
 | Windows player | `Popcorn.Player.Windows` | WPF + WebView2 counterpart of Linux player. Launched by server via `WindowsPlayerService` from `<server dir>\Player\Popcorn.Player.Windows.exe`. |
 
@@ -31,7 +31,7 @@ PopcornPlayer.Shared    IPC contracts (IPipeClient/IPipeServer)
 Popcorn.Player.Core     Shared player logic: MpvPlayer, PlayerCore, AudioSubtitlesService, ThumbnailService, web bridges, DI root
 Popcorn.Player.Linux    GTK player app (see above)
 Popcorn.Player.Windows  WPF player app (see above)
-Popcorn.Linux           GTK desktop shell (see above)
+Popcorn.Linux           Rust + CEF desktop shell (Cargo crate, see above): src/main.rs (CEF subprocess dispatch), browser.rs (window/handlers), server.rs, log.rs
 Popcorn.Linux.Tray      StatusNotifier/DBus tray icon used by server on Linux (ServerTrayHostedService)
 Popcorn.Domain.Tests    NUnit tests (tiny)
 Popcorn.Web             Main UI: React 19 + TypeScript + Vite (SWC) + Mantine 8 + TanStack Query + zustand
@@ -54,18 +54,20 @@ Dependency direction: `Server → Application/PlayerServer/SearchProviders → P
 
 ## Build & run
 
-Prereqs: .NET SDK 10 (`global.json`), Node/npm, libmpv, ffmpeg, GTK4 + WebKitGTK 6 (Linux). `make` / `build_windows.ps1` run `npm ci` in `Popcorn.Web/` and `Popcorn.Player.Web/` before building (`make npm-ci` to run it alone).
+Prereqs: .NET SDK 10 (`global.json`), Node/npm, Rust toolchain + cmake (Popcorn.Linux), libmpv, ffmpeg, GTK4 + WebKitGTK 6 (Linux player). `make` / `build_windows.ps1` run `npm ci` in `Popcorn.Web/` and `Popcorn.Player.Web/` before building (`make npm-ci` to run it alone).
 
 ```sh
 make mpvsharp                  # init submodule (Tomiscout fork, pinned commit) + build MPVSharp DLL if missing; `all` does this automatically
 make update-mpvsharp           # move submodule to latest fork main and rebuild the DLL
-make all                       # clean + build both web UIs + Popcorn.Linux + Popcorn.Player.Linux, bundle into build/Linux/
+make all                       # clean + build both web UIs + Popcorn.Server + Popcorn.Linux (cargo) + Popcorn.Player.Linux, bundle into build/Linux/ (incl. CEF runtime, stripped libcef.so)
 make install-linux             # copy bundle to ~/.local/bin/Popcorn, install + enable systemd user service, add ~/.local/share/applications/popcorn.desktop if missing
-make build-popcorn-web         # Popcorn.Web only (post-build copies dist/ to Popcorn.Server/web and Popcorn.Linux/web)
+make build-popcorn-web         # Popcorn.Web only (post-build copies dist/ to Popcorn.Server/web)
+make build-popcorn-linux       # desktop shell only: cargo build --release with CEF_PATH (default ~/.cache/popcorn/cef; first build downloads ~1.5 GB CEF)
 make build-player-web          # Popcorn.Player.Web only (post-build copies to Popcorn.Player.Linux/web-player)
 
 dotnet run --project Popcorn.Server       # dev server, port from POPCORN_PORT (default 5000), listens on all interfaces
 cd Popcorn.Web && npm run dev             # Vite dev server on :5173 against running Popcorn.Server
+make build-popcorn-linux bundle-linux && build/Linux/Popcorn.Linux   # desktop shell against running server (needs libcef.so + CEF resources next to it, so run from the bundle)
 dotnet test Popcorn.Domain.Tests
 cd Popcorn.Web && npm run lint            # eslint; prettier config in .prettierrc
 ```
@@ -78,7 +80,8 @@ Web bundles (`*/web`, `*/web-player`) are gitignored build artifacts — rebuild
 
 - Data folder: `DirectoryUtils.DataFolder` = `LocalApplicationData/Popcorn/` (`~/.local/share/Popcorn/` on Linux): SQLite DB, `logs/`, `ThumbnailsCache/`, `StreamCache/`.
 - Logging: Serilog everywhere, daily rolling files in `logs/`.
-- Desktop entry: `Popcorn.Linux/popcorn.desktop` template (`@INSTALL_DIR@` substituted), installed only if missing; launches `Popcorn.Linux -service`.
+- Desktop entry: `Popcorn.Linux/popcorn.desktop` template (`@INSTALL_DIR@` substituted), installed only if missing; launches `Popcorn.Linux`. Window app_id / WM_CLASS is `popcorn` so it matches this file.
+- Popcorn.Linux: CEF profile (localStorage, cookies; also the single-instance lock) in `<data>/cef/`, logs in `logs/Popcorn.Linux-YYYYMMDD.txt` + `logs/cef.log`. Env: `POPCORN_SERVER_URL`, `POPCORN_PORT`, `POPCORN_OZONE=x11|wayland`, `POPCORN_NO_SANDBOX=1`.
 - systemd: `Popcorn.Server/systemd/popcorn.service` (template, `@INSTALL_DIR@`/`@ENV_FILE@` substituted by make) + `popcorn.env` (copied to `~/.config/popcorn/popcorn.env` only if missing).
 
 ## Conventions
@@ -88,6 +91,7 @@ Web bundles (`*/web`, `*/web-player`) are gitignored build artifacts — rebuild
 - Repositories and most services are singletons; `FileStreamService`, `VideoService` scoped.
 - DB schema changes: add a new FluentMigrator class in `Popcorn.Persistence/Migrations/` named `<Name>_<yyyyMMdd>.cs`, plus Dapper map updates in `Persistence/Dapper/`. Migrations run on startup only when environment != Development.
 - New WebSocket feature: add constant to `SocketRequests.cs` + `socket-requests.ts`, request model under `Popcorn.Server/Models/Requests`, handler method on a `[WebSocketService]` class in `Popcorn.Server/Services`, TS contract under `Popcorn.Web/src/model`.
+- The web player (`src/player`) is a lazy chunk (`React.lazy` in `App.tsx`): keep it out of static imports from non-player code (type-only `import type` is fine) so the desktop app never downloads it.
 - `Popcorn.Web` path alias `@` → `src/`. Pages in `src/pages/*`, state in `src/state/*` (zustand stores + contexts).
 - Both web projects' `post-build.js` also emit `index-chrome.html` / `index-linux.html` with `<base href>` for `app.local` custom-scheme loading in embedded webviews.
 
@@ -98,6 +102,7 @@ Web bundles (`*/web`, `*/web-player`) are gitignored build artifacts — rebuild
 - `Popcorn.Player.*` / `Popcorn.Player.Core` fail to compile (when built directly with dotnet) until `make mpvsharp` has produced `MPVSharp/Nickvision.MPVSharp.dll`. `Popcorn.Server` / `Popcorn.Linux` build without it.
 - `Popcorn.Domain.csproj` (Dapper) and `Popcorn.Application.csproj` (Serilog) contain stale `<Reference HintPath="..\..\..\.nuget\...">` entries; they produce MSB3245 warnings and should be replaced by PackageReferences.
 - `WindowsPlayerService.GetPlayerExePath` dev fallback walks up to a directory literally named `Popcorn` — depends on repo checkout folder name.
+- `Directory.Build.targets` pins net10.0 targeting/apphost packs to 10.0.0 and uses the portable `linux-x64` apphost: distro SDKs (Arch) otherwise fail restore with `NU1101 Microsoft.NETCore.App.Host.arch-x64` whenever the SDK patch and `dotnet-targeting-pack` patch differ. Runtime requirement stays 10.0.0 + roll-forward.
 - Build emits ~200 nullable warnings; not treated as errors.
 - `README.md` holds a personal TODO list and a SQL snippet for migrating a Windows DB to Linux paths.
 

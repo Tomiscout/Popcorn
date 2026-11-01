@@ -1,0 +1,18 @@
+[package]
+name = "popcorn-linux"
+description = "Popcorn desktop shell: a CEF window that shows the UI served by Popcorn.Server"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+# Keep exact: the CEF binary distribution (libcef.so + resources) is tied to this version.
+# Bump together with the CEF cache directory used by the makefile.
+cef = { version = "=156.3.0", default-features = false }
+libc = "0.2"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"

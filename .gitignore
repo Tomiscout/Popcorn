@@ -15,6 +15,6 @@ Popcorn.Player.Linux/web-player/build/**/*.*
 /node_modules
 /MPVSharp/bin
 /MPVSharp/Nickvision.MPVSharp*.*
-/Popcorn.Linux/web
+/Popcorn.Linux/target
 /Popcorn.Server/web
 /Popcorn.Player.Linux/web-player

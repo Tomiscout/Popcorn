@@ -23,7 +23,7 @@ Media server + player. .NET 10 backend, React frontends, cross-platform (Windows
 
 - **`Popcorn.Server`** — ASP.NET Core host. Serves static `web/` bundle, exposes REST controllers + WebSocket API at `/ws`.
 - **`Popcorn.Web`** — React 19 + Vite + Mantine v8 + TanStack Query. Main UI. Connects to server WebSocket.
-- **`Popcorn.Linux`** — GTK + WebKit wrapper. Embeds `Popcorn.Web` UI. Can run standalone or in `-service` mode (spawns server as systemd service).
+- **`Popcorn.Linux`** — Rust + CEF desktop shell (not .NET). One window showing the UI served by `Popcorn.Server`; starts `popcorn.service` via systemd if the server isn't running. Never hosts the server itself.
 - **`Popcorn.Player.Linux`** — Separate GTK app. Renders video via MPV (OpenGL in GTK `GLArea`) with WebKit overlay for player controls (`web-player/`).
 - **`Popcorn.Player.Core`** — Shared player logic: `MpvPlayer`, `PlayerCore`, `AudioSubtitlesService`, `ThumbnailService`, pipe/socket event handlers.
 - **`Popcorn.Player.Windows`** — WPF player counterpart.
@@ -36,14 +36,14 @@ Media server + player. .NET 10 backend, React frontends, cross-platform (Windows
 
 ## Build & Run
 
-- `make all` — builds web UIs + both Linux apps and bundles into `build/Linux/`.
+- `make all` — builds web UIs + server + desktop shell (cargo, downloads CEF to `~/.cache/popcorn/cef`) + Linux player and bundles into `build/Linux/`.
 - `make install-linux` — copies to `~/.local/bin/Popcorn`, installs/enables systemd user service.
 - `make build-popcorn-web` / `make build-player-web` — npm builds only.
 - `make update-mpvsharp` — pulls git submodule and builds `Nickvision.MPVSharp` (archived upstream, referenced as local DLL).
 - `make clean` — wipes build outputs.
 
 Run dev server: `dotnet run --project Popcorn.Server` (port from `POPCORN_PORT` or 5000).  
-Run Linux app with service: `./Popcorn.Linux -service`
+Run Linux desktop shell: `make build-popcorn-linux bundle-linux && build/Linux/Popcorn.Linux` (CEF files must sit next to the exe; needs a running server, `POPCORN_SERVER_URL` overrides the URL).
 
 ## Key Patterns
 

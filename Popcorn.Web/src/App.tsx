@@ -12,12 +12,11 @@ import DownloadsPage from './pages/downloads/downloads.page';
 import SettingsPage from './pages/settings/settings.page';
 import ItemDetailsPage from './pages/item-details/item-details.page';
 import { SocketRequests } from './socket/socket-requests';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useWebSocket, WebSocketProvider } from './state/websocket-context';
 import { FileProvider, useFileContext } from './state/file-context';
 import { parseFilenames } from './utils/tags.parser';
 import { ModalsProvider } from '@mantine/modals';
-import { PopcornPlayer } from './player/PopcornPlayer';
 import { initEvents, postMessage } from './utils/events';
 import { disableDefaultListeners } from './player/Utlis/listener.utils';
 import { usePlayerStore } from './state/player.store';
@@ -27,6 +26,10 @@ import LoadingPage from './pages/loading/loading.page';
 import SearchDetailsPage from './pages/search/search-details.page';
 import { useSocketEvents } from './socket/useSocketEvents.hook';
 import { useSocketBlobEvents } from './socket/useSocketBlobEvents.hook';
+import { isDesktopApp } from './utils/platform';
+
+// Separate chunk, only fetched when a file is played in the browser (never in the desktop app).
+const PopcornPlayer = lazy(() => import('./player/PopcornPlayer').then((m) => ({ default: m.PopcornPlayer })));
 
 const theme = createTheme({
   primaryColor: 'primaryRed',
@@ -105,6 +108,10 @@ function AppContent() {
       postMessage('player_error', message);
     },
     [SocketRequests.NextFile]: (fileId: string) => {
+      if (isDesktopApp) {
+        client.sendEvent(SocketRequests.FileOpen, fileId);
+        return;
+      }
       const { resetState, setFileId } = usePlayerStore.getState();
       resetState();
       setFileId(fileId);
@@ -174,13 +181,19 @@ function AppContent() {
             leftSection={<IconSettings size={24} stroke={1.5} />}
           />
 
-          <Button variant="light" fullWidth mt="md" onClick={toggleFloating}>
-            {isFloating ? 'Dock Player' : 'Float Player'}
-          </Button>
+          {!isDesktopApp && (
+            <Button variant="light" fullWidth mt="md" onClick={toggleFloating}>
+              {isFloating ? 'Dock Player' : 'Float Player'}
+            </Button>
+          )}
         </AppShell.Navbar>
       )}
 
-      {playerFileId && <PopcornPlayer videoRef={videoRef} />}
+      {!isDesktopApp && playerFileId && (
+        <Suspense fallback={null}>
+          <PopcornPlayer videoRef={videoRef} />
+        </Suspense>
+      )}
 
       <AppShell.Main className="app-content">
         <Routes>

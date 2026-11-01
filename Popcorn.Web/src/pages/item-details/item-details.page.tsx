@@ -25,6 +25,7 @@ import { useFileUrl } from '../../state/file-context';
 import './item-details.page.css';
 import { useModals } from '@mantine/modals';
 import { usePlayerStore } from '../../state/player.store';
+import { isDesktopApp } from '../../utils/platform';
 
 const ItemDetailsPage: React.FC = () => {
   const { id } = useParams();
@@ -77,10 +78,13 @@ const ItemDetailsPage: React.FC = () => {
       setBreadcrumbs((prev) => [...prev, { id: file.id, title: file.title }]);
       client.sendEvent(SocketRequests.FolderOpen, fileId);
     } else {
-      //TODO setting
-      //client.sendEvent(SocketRequests.FileOpen, fileId);
-      setPlayerMediaId(id!);
-      setPlayerFileId(fileId);
+      if (isDesktopApp) {
+        // No web player in the desktop app: server opens it (native player / default app).
+        client.sendEvent(SocketRequests.FileOpen, fileId);
+      } else {
+        setPlayerMediaId(id!);
+        setPlayerFileId(fileId);
+      }
 
       //Sets as played locally
       setCurrentMediaFiles((prev) =>

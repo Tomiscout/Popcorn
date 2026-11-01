@@ -3,6 +3,7 @@ import { Settings } from '../../model/settings.contract';
 import { SocketRequests } from '../../socket/socket-requests';
 import { useWebSocket } from '../../state/websocket-context';
 import { Button, Checkbox, Group, Skeleton } from '@mantine/core';
+import { isDesktopApp } from '../../utils/platform';
 
 const SettingsPage: React.FC = () => {
   const { client, isClientReady } = useWebSocket();
@@ -43,11 +44,14 @@ const SettingsPage: React.FC = () => {
         <>
           <Button onClick={openProgramFolder}>Open Program Folder</Button>
           <Group mt={20}>
-            <Checkbox
-              label="Use Internal Player"
-              checked={settings.useInternalPlayer}
-              onChange={(e) => handleCheckboxChange('useInternalPlayer', e.target.checked)}
-            />
+            {/* Browser-only for now; the desktop app has no web player (per-client settings later). */}
+            {!isDesktopApp && (
+              <Checkbox
+                label="Use Internal Player"
+                checked={settings.useInternalPlayer}
+                onChange={(e) => handleCheckboxChange('useInternalPlayer', e.target.checked)}
+              />
+            )}
             <Checkbox
               label="Use Internal Torrent Client"
               checked={settings.useInternalTorrentClient}

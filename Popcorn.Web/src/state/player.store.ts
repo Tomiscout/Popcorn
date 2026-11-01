@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { AudioTrackDto, MediaFileMetadata, SubtitleTrackDto } from '../query/models/video.models';
-import { AdditionalAudioFile } from '../player/Components/VideoPlayer';
+import type { AdditionalAudioFile } from '../player/Components/VideoPlayer';
 import { FolderLoadedNavigation, MediaFile } from '../model/media.contract';
 
 interface PlayerState {
