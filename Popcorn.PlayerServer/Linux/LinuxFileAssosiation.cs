@@ -48,15 +48,60 @@ public class LinuxFileAssociation(ILogger<LinuxFileAssociation> logger, INativeP
         return command;
     }
 
-    private string? FindDesktopFile(string desktopFileName)
-    {
-        var envPaths = processRunner.ExecuteCommandRead("printenv XDG_DATA_DIRS")?.Split(':');
-        if (envPaths == null || envPaths.Length == 0) return null;
+    private static readonly string[] VideoMimeTypes = ["video/x-matroska", "video/mp4"];
 
-        foreach (var path in envPaths!)
+    public string? GetDefaultVideoPlayerName()
+    {
+        foreach (var mime in VideoMimeTypes)
         {
-            var appPath = $"{path}/applications/{desktopFileName}";
+            var desktopFileName = processRunner.ExecuteCommandRead($"xdg-mime query default {mime}");
+            if (string.IsNullOrWhiteSpace(desktopFileName)) continue;
+
+            var desktopPath = FindDesktopFile(desktopFileName);
+            var name = desktopPath == null ? null : ExtractDesktopEntryValue(desktopPath, "Name");
+            return name ?? Path.GetFileNameWithoutExtension(desktopFileName);
+        }
+        return null;
+    }
+
+    private static string? FindDesktopFile(string desktopFileName)
+    {
+        // Same lookup order as xdg-mime: $XDG_DATA_HOME first, then $XDG_DATA_DIRS (may be unset under systemd).
+        var home = Environment.GetEnvironmentVariable("HOME") ?? "";
+        var dataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+        if (string.IsNullOrWhiteSpace(dataHome)) dataHome = Path.Join(home, ".local/share");
+
+        var dataDirs = Environment.GetEnvironmentVariable("XDG_DATA_DIRS");
+        if (string.IsNullOrWhiteSpace(dataDirs)) dataDirs = "/usr/local/share:/usr/share";
+
+        var searchPaths = new[] { dataHome }
+            .Concat(dataDirs.Split(':', StringSplitOptions.RemoveEmptyEntries))
+            .Concat([Path.Join(home, ".local/share/flatpak/exports/share"), "/var/lib/flatpak/exports/share"])
+            .Distinct();
+
+        foreach (var path in searchPaths)
+        {
+            var appPath = Path.Join(path, "applications", desktopFileName);
             if (File.Exists(appPath)) return appPath;
+        }
+        return null;
+    }
+
+    /// <summary>Reads an unlocalized key from the [Desktop Entry] group.</summary>
+    private static string? ExtractDesktopEntryValue(string filePath, string key)
+    {
+        var inDesktopEntry = false;
+        foreach (var line in File.ReadLines(filePath))
+        {
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith('['))
+            {
+                if (inDesktopEntry) break;
+                inDesktopEntry = trimmed == "[Desktop Entry]";
+                continue;
+            }
+            if (inDesktopEntry && trimmed.StartsWith(key + "="))
+                return trimmed[(key.Length + 1)..].Trim();
         }
         return null;
     }

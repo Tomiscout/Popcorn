@@ -1,29 +1,48 @@
-import React, { useEffect, useState } from 'react';
-import { Settings } from '../../model/settings.contract';
+import React, { useEffect, useRef, useState } from 'react';
+import { PlayerOption, Settings } from '../../model/settings.contract';
 import { SocketRequests } from '../../socket/socket-requests';
 import { useWebSocket } from '../../state/websocket-context';
-import { Button, Checkbox, Group, Skeleton } from '@mantine/core';
+import { Button, Checkbox, Group, Skeleton, Stack, Text, Title } from '@mantine/core';
 import { isDesktopApp } from '../../utils/platform';
+import PlayerList, { newPlayerId } from './player-list';
 
 const SettingsPage: React.FC = () => {
   const { client, isClientReady } = useWebSocket();
 
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [defaultPlayerName, setDefaultPlayerName] = useState<string>();
+  // Latest settings for socket callbacks (the program picker answers asynchronously).
+  const settingsRef = useRef<Settings | null>(null);
+  settingsRef.current = settings;
+
+  const saveSettings = (updatedSettings: Settings) => {
+    settingsRef.current = updatedSettings;
+    setSettings(updatedSettings);
+    client.sendEvent(SocketRequests.UpdateSettings, updatedSettings);
+  };
 
   useEffect(() => {
     if (!isClientReady) return;
 
-    client.onEvent<Settings>(SocketRequests.GetSettings, setSettings);
+    const unsubs = [
+      client.onEvent<Settings>(SocketRequests.GetSettings, setSettings),
+      client.onEvent<string>(SocketRequests.DefaultPlayerName, setDefaultPlayerName),
+      client.onEvent<string>(SocketRequests.PickPlayerProgram, (path) => {
+        const current = settingsRef.current;
+        if (!current) return;
+        const program: PlayerOption = { id: newPlayerId(), type: 'Program', path, enabled: true };
+        saveSettings({ ...current, players: [...current.players, program] });
+      }),
+    ];
 
     client.sendEvent(SocketRequests.GetSettings);
+    client.sendEvent(SocketRequests.DefaultPlayerName);
+
+    return () => unsubs.forEach((unsub) => unsub());
   }, [isClientReady]);
 
-  const handleCheckboxChange = (key: keyof Settings, value: boolean) => {
-    if (settings) {
-      const updatedSettings = { ...settings, [key]: value };
-      setSettings(updatedSettings);
-      client.sendEvent(SocketRequests.UpdateSettings, updatedSettings);
-    }
+  const handleCheckboxChange = (key: 'useInternalTorrentClient', value: boolean) => {
+    if (settings) saveSettings({ ...settings, [key]: value });
   };
 
   const openProgramFolder = () => {
@@ -44,20 +63,29 @@ const SettingsPage: React.FC = () => {
         <>
           <Button onClick={openProgramFolder}>Open Program Folder</Button>
           <Group mt={20}>
-            {/* Browser-only for now; the desktop app has no web player (per-client settings later). */}
-            {!isDesktopApp && (
-              <Checkbox
-                label="Use Internal Player"
-                checked={settings.useInternalPlayer}
-                onChange={(e) => handleCheckboxChange('useInternalPlayer', e.target.checked)}
-              />
-            )}
             <Checkbox
               label="Use Internal Torrent Client"
               checked={settings.useInternalTorrentClient}
               onChange={(e) => handleCheckboxChange('useInternalTorrentClient', e.target.checked)}
             />
           </Group>
+
+          <Stack mt={30} maw={720} gap="xs">
+            <Title order={3}>Video players</Title>
+            <Text size="sm" c="dimmed">
+              {isDesktopApp
+                ? 'Players used to open videos, in order of preference.'
+                : 'Players used when a video is opened on the server machine (desktop app, Folders page). The browser always uses its built-in web player.'}{' '}
+              The first enabled player that starts is used; if it fails (not installed, no program associated, exits
+              with an error) the next one is tried.
+            </Text>
+            <PlayerList
+              players={settings.players ?? []}
+              defaultPlayerName={defaultPlayerName}
+              onChange={(players) => saveSettings({ ...settings, players })}
+              onAddProgram={() => client.sendEvent(SocketRequests.PickPlayerProgram)}
+            />
+          </Stack>
         </>
       )}
     </div>

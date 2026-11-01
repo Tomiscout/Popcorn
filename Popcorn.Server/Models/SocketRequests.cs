@@ -13,6 +13,7 @@ public static class SocketRequests
     public const string ThumbnailFile = "ThumbnailFile";
     public const string ImageFilesBatchSent = "ImageFilesBatchSent";
     public const string FileOpen = "FileOpen";
+    public const string FileOpenWith = "FileOpenWith";
     public const string FolderOpen = "FolderOpen";
     public const string FolderOpenPlayer = "FolderOpenPlayer";
     public const string NextFile = "NextFile";
@@ -24,6 +25,8 @@ public static class SocketRequests
     public const string CreateMediaItem = "CreateMediaItem";
     public const string GetSettings = "GetSettings";
     public const string UpdateSettings = "UpdateSettings";
+    public const string DefaultPlayerName = "DefaultPlayerName";
+    public const string PickPlayerProgram = "PickPlayerProgram";
     public const string OpenProgramFolder = "OpenProgramFolder";
     public const string ErrorWhenHandlingEvent = "ErrorWhenHandlingEvent";
     public const string MediaSearch = "MediaSearch";

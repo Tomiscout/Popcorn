@@ -60,7 +60,7 @@ Prereqs: .NET SDK 10 (`global.json`), Node/npm, Rust toolchain + cmake (Popcorn.
 make mpvsharp                  # init submodule (Tomiscout fork, pinned commit) + build MPVSharp DLL if missing; `all` does this automatically
 make update-mpvsharp           # move submodule to latest fork main and rebuild the DLL
 make all                       # clean + build both web UIs + Popcorn.Server + Popcorn.Linux (cargo) + Popcorn.Player.Linux, bundle into build/Linux/ (incl. CEF runtime, stripped libcef.so)
-make install-linux             # copy bundle to ~/.local/bin/Popcorn, install + enable systemd user service, add ~/.local/share/applications/popcorn.desktop if missing
+make install-linux             # stop running instances (make kill-popcorn), copy bundle to ~/.local/bin/Popcorn, install + enable systemd user service, add ~/.local/share/applications/popcorn.desktop if missing
 make build-popcorn-web         # Popcorn.Web only (post-build copies dist/ to Popcorn.Server/web)
 make build-popcorn-linux       # desktop shell only: cargo build --release with CEF_PATH (default ~/.cache/popcorn/cef; first build downloads ~1.5 GB CEF)
 make build-player-web          # Popcorn.Player.Web only (post-build copies to Popcorn.Player.Linux/web-player)
@@ -88,6 +88,7 @@ Web bundles (`*/web`, `*/web-player`) are gitignored build artifacts — rebuild
 
 - `net10.0`, nullable + implicit usings enabled. Primary constructors common in newer code.
 - Platform-specific DI via `RuntimeInformation.IsOSPlatform` in `Popcorn.Server/ServiceRegister.cs` and `Popcorn.Player.Core/ServiceRegister.cs`. Native abstractions live in `Popcorn.Domain/Interfaces` (`IPlayerService`, `INativeFolderService`, `INativeFileAssosiation` — note spelling) with Linux/Windows impls in `Popcorn.PlayerServer` / `Popcorn.Shared`.
+- Native players: `SettingsModel.Players` is an ordered `PlayerOption` list (built-ins `Popcorn` + `Default`, user-added `Program` = executable gets the file path as its argument, `Script` = shell line with `%args` → quoted path). `PlayerLaunchService.OpenAsync` (used by `FileOpen`) tries enabled entries in order and falls through on failure. `SettingsModel.NormalizePlayers()` (run on load/save) keeps the built-ins present; legacy `UseInternalPlayer` only seeds the initial order.
 - Repositories and most services are singletons; `FileStreamService`, `VideoService` scoped.
 - DB schema changes: add a new FluentMigrator class in `Popcorn.Persistence/Migrations/` named `<Name>_<yyyyMMdd>.cs`, plus Dapper map updates in `Persistence/Dapper/`. Migrations run on startup only when environment != Development.
 - New WebSocket feature: add constant to `SocketRequests.cs` + `socket-requests.ts`, request model under `Popcorn.Server/Models/Requests`, handler method on a `[WebSocketService]` class in `Popcorn.Server/Services`, TS contract under `Popcorn.Web/src/model`.
@@ -97,7 +98,7 @@ Web bundles (`*/web`, `*/web-player`) are gitignored build artifacts — rebuild
 
 ## Known issues / gotchas
 
-- **Windows server DI is incomplete**: `Popcorn.Server/ServiceRegister.cs` registers only `INativeFileAssosiation` on Windows — `IPlayerService` (`WindowsPlayerService`), `INativeFolderService`, `INativeProcessRunner` are missing, so `FileWebService` cannot resolve on Windows.
+- **Windows server is untested**: `ServiceRegister.cs` now registers `WindowsPlayerService`, `WindowsFolderService` (pickers via STA PowerShell WinForms dialogs), `WindowsFileAssociation`, `WindowsProcessRunner`, but the Windows server path has not been run end to end; the Linux tray registrations have no Windows counterpart.
 - **`Popcorn.Player.Windows` targets `net8.0-windows`** while `Popcorn.Player.Core` is `net10.0` — it will not build until bumped to `net10.0-windows10.0.19041.0` (also update path in `build_windows.ps1`). Its post-build uses `xcopy` (Windows only).
 - `Popcorn.Player.*` / `Popcorn.Player.Core` fail to compile (when built directly with dotnet) until `make mpvsharp` has produced `MPVSharp/Nickvision.MPVSharp.dll`. `Popcorn.Server` / `Popcorn.Linux` build without it.
 - `Popcorn.Domain.csproj` (Dapper) and `Popcorn.Application.csproj` (Serilog) contain stale `<Reference HintPath="..\..\..\.nuget\...">` entries; they produce MSB3245 warnings and should be replaced by PackageReferences.

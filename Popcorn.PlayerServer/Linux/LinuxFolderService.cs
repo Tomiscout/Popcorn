@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Shared.Interfaces;
@@ -22,6 +22,11 @@ public class LinuxFolderService(INativeProcessRunner processRunner, ILogger<Linu
     public Task<string?> PickImageFile() //TODO use desktop portal if exists first
     {
         return RunZenity("--file-selection --file-filter=\"Image files (png, jpg, jpeg) | *.png *.jpg *.jpeg\"");
+    }
+
+    public Task<string?> PickExecutableFile()
+    {
+        return RunZenity("--file-selection --title=\"Select video player program\"");
     }
 
     private async Task<string?> RunZenity(string args)

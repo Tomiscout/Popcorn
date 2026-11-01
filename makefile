@@ -34,7 +34,7 @@ CEF_DIR=$(CEF_PATH)/$(CEF_VERSION)/cef_linux_$(shell uname -m)
 CEF_RUNTIME_FILES=libcef.so chrome-sandbox chrome_100_percent.pak chrome_200_percent.pak resources.pak \
 	icudtl.dat v8_context_snapshot.bin libvk_swiftshader.so libvulkan.so.1 vk_swiftshader_icd.json
 
-.PHONY: clean mpvsharp update-mpvsharp npm-ci npm-ci-popcorn-web npm-ci-player-web build-popcorn-web build-popcorn-server build-popcorn-linux build-player-web build-popcorn-player-linux bundle-linux install-linux all
+.PHONY: clean kill-popcorn mpvsharp update-mpvsharp npm-ci npm-ci-popcorn-web npm-ci-player-web build-popcorn-web build-popcorn-server build-popcorn-linux build-player-web build-popcorn-player-linux bundle-linux install-linux all
 
 # Clean output folders
 clean:
@@ -87,19 +87,35 @@ build-popcorn-player-linux: build-player-web $(MPVSHARP_DLL)
 bundle-linux:
 	rm -rf $(LINUX_DIR)
 	mkdir -p $(LINUX_DIR)/locales
-	cp -r $(POPCORN_SERVER_BIN_DIR)/* $(LINUX_DIR)
+	# Player first, server last: both ship Popcorn.Application/Domain/Persistence/Shared.dll and the server's
+	# copies must win (a stale player build would otherwise break the server with MissingMethodException).
 	cp -r $(POPCORN_PLAYER_BIN_DIR)/* $(LINUX_DIR)
+	cp -r $(POPCORN_SERVER_BIN_DIR)/* $(LINUX_DIR)
 	cp $(POPCORN_LINUX_EXE) $(LINUX_DIR)/Popcorn.Linux
 	cd $(CEF_DIR) && cp $(CEF_RUNTIME_FILES) $(CURDIR)/$(LINUX_DIR)/
 	cp $(CEF_DIR)/locales/*.pak $(LINUX_DIR)/locales/
 	strip --strip-unneeded $(LINUX_DIR)/libcef.so
 	@test -x $(LINUX_DIR)/Popcorn.Server || { echo "Popcorn.Server executable missing from bundle"; exit 1; }
 
+# Stop running installed instances: desktop shell (+ CEF subprocesses, same exe), native player and a server the
+# shell spawned outside systemd. Replacing the files under them otherwise leaves the app frozen.
+# The pattern is anchored to argv[0] so it never matches this recipe's own shell.
+POPCORN_PROCS='^$(INSTALL_DIR)/Popcorn\.(Linux|Player\.Linux|Server)( |$$)'
+kill-popcorn:
+	@if pgrep -f $(POPCORN_PROCS) >/dev/null; then \
+		echo "Stopping running Popcorn instances"; \
+		pkill -TERM -f $(POPCORN_PROCS); \
+		for i in 1 2 3 4 5 6; do pgrep -f $(POPCORN_PROCS) >/dev/null || exit 0; sleep 0.5; done; \
+		echo "Still running after 3s, killing"; \
+		pkill -KILL -f $(POPCORN_PROCS) || true; \
+	fi
+
 install-linux:
 	@test -x $(LINUX_DIR)/Popcorn.Server || { echo "$(LINUX_DIR)/Popcorn.Server missing, run 'make all' first"; exit 1; }
 	@dotnet --list-runtimes | grep -q '^Microsoft.AspNetCore.App 10\.' || \
 		{ echo "ASP.NET Core 10 runtime missing (needed by Popcorn.Server). Arch: sudo pacman -S aspnet-runtime"; exit 1; }
 	systemctl --user stop $(SYSTEMD_SERVICE_NAME) 2>/dev/null || true
+	$(MAKE) --no-print-directory kill-popcorn
 	rm -rf $(INSTALL_DIR)
 	mkdir -p $(INSTALL_DIR)
 	cp -r $(LINUX_DIR)/* $(INSTALL_DIR)

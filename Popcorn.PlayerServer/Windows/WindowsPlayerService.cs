@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -23,41 +23,45 @@ public class WindowsPlayerService : IPlayerService
         _mediaItemRefreshService = mediaItemRefreshService;
     }
 
-    public async Task OpenFile(Guid fileId)
+    public async Task<bool> OpenFile(Guid fileId)
     {
         try
         {
             if (ServerPipeManager.IsConnected())
             {
                 await ServerPipeManager.LoadMediaEvent(fileId);
-                return;
+                return true;
             }
 
             Task.Run(async () => await ServerPipeManager.StartServer(_mediaItemRepository, _mediaItemRefreshService)).ConfigureAwait(false); //TODO is this okay?
             LaunchPlayer(fileId.ToString());
+            return true;
         }
         catch (Exception e)
         {
             _logger.LogError(e, "Failed to open file with internal player");
+            return false;
         }
     }
 
-    public async Task OpenFile(string filePath)
+    public async Task<bool> OpenFile(string filePath)
     {
         try
         {
             if (ServerPipeManager.IsConnected())
             {
                 await ServerPipeManager.LoadMediaEventPath(filePath);
-                return;
+                return true;
             }
 
             Task.Run(async () => await ServerPipeManager.StartServer(_mediaItemRepository, _mediaItemRefreshService)).ConfigureAwait(false); //TODO is this okay?
             LaunchPlayer(filePath);
+            return true;
         }
         catch (Exception e)
         {
             _logger.LogError(e, "Failed to open file with internal player");
+            return false;
         }
     }
 

@@ -1,4 +1,3 @@
-using Popcorn.Application.Exceptions;
 using Popcorn.Application.Extensions;
 using Popcorn.Application.Services;
 using Popcorn.Domain;
@@ -20,16 +19,34 @@ public class FileWebService(
     IMediaFileRepository mediaFileRepository,
     ImageRepository imageRepository,
     IMediaItemRepository mediaItemRepository,
-    IPlayerService playerService,
-    IFileService fileService,
-    SettingsRepository settingsRepository,
+    PlayerLaunchService playerLaunchService,
     ItemHistoryService itemHistoryService,
     ILogger<FileWebService> logger
     )
 {
 
     [WebSocketEvent(SocketRequests.FileOpen)]
-    public async Task OpenFile(Guid fileId)
+    public Task OpenFile(Guid fileId) => OpenFileWithPlayer(fileId, null);
+
+    [WebSocketEvent(SocketRequests.FileOpenWith)]
+    public async Task OpenFileWith(FileOpenWithRequest request)
+    {
+        var fileId = request.FileId;
+        if (fileId == null && request.MediaId != null)
+        {
+            var item = await mediaItemRepository.GetMediaItemWithFilesAndHistory(request.MediaId.Value);
+            fileId = item?.GetNextMediaFile(item.History)?.Id;
+        }
+        if (fileId == null)
+        {
+            logger.LogError("FileOpenWith: no file to open (file {fileId}, media {mediaId})", request.FileId, request.MediaId);
+            return;
+        }
+
+        await OpenFileWithPlayer(fileId.Value, request.PlayerId);
+    }
+
+    private async Task OpenFileWithPlayer(Guid fileId, string? playerId)
     {
         var mediaFile = await mediaFileRepository.GetFileById(fileId);
         if (mediaFile == null)
@@ -38,8 +55,18 @@ public class FileWebService(
             return;
         }
 
-        var settings = await settingsRepository.GetSettingsAsync();
-        if (!settings.UseInternalPlayer)
+        if(!File.Exists(mediaFile.Path))
+        {
+            //TODO notificaiton
+            logger.LogError($"File \"{Path.GetFileName(mediaFile.Path)}\" not found");
+            return;
+        }
+
+        var player = await playerLaunchService.OpenAsync(mediaFile, playerId);
+        if (player == null) return; //TODO notification
+
+        // The Popcorn player reports its own history (with playback position); external players can't.
+        if (player.Type != PlayerOptionType.Popcorn)
         {
             await mediaItemRepository.AddHistoryItem(mediaFile.ItemId, new ItemHistory
             {
@@ -47,36 +74,7 @@ public class FileWebService(
                 PlaybackTime = DateTime.Now
             });
         }
-        
-        if(!File.Exists(mediaFile.Path))
-        {
-            //TODO notificaiton
-            logger.LogError($"File \"{Path.GetFileName(mediaFile.Path)}\" not found");
-            //Snackbar.Add($"File \"{Path.GetFileName(file.Path)}\" not found", Severity.Error);
-            return;
-        }
 
-        if(settings.UseInternalPlayer)
-        {
-            await playerService.OpenFile(mediaFile.Id);
-        } else
-        {
-            try
-            {
-                fileService.LaunchMediaFileDefault(mediaFile.Path);
-            }
-            catch (UnknownAssociatedProgramException e)
-            {
-                logger.LogWarning($"Program not found for extension: {e.Message}");
-                //Snackbar.Add($"Program not found for extension: {e.Message}", Severity.Error);
-            }
-            catch (Exception e)
-            {
-                logger.LogWarning($"Unable to open file: {e.Message}");
-                //Snackbar.Add($"Unable to open file: {e.Message}", Severity.Error);
-            }
-        }
-        
         await mediaFileRepository.SetFileAsPlayed(mediaFile.Id);
         var historyItems = await itemHistoryService.GetItemHistoryAsync(mediaFile.ItemId);
         await bus.SendEventAsync(SocketRequests.MediaItemHistory, historyItems);

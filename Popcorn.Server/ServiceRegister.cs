@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using Popcorn.Linux.Tray;
 using Popcorn.Linux.Tray.Interfaces;
 using Popcorn.Application.Services;
@@ -16,6 +16,7 @@ using Popcorn.Server.Services;
 using Popcorn.Server.Services.Disk;
 using Popcorn.Shared.Interfaces;
 using Popcorn.Shared.Linux;
+using Popcorn.Shared.Windows;
 
 namespace Popcorn.Server;
 
@@ -35,13 +36,17 @@ public static class ServiceRegister
         services.AddSingleton<MediaItemRefreshService>();
         // services.AddSingleton<SegmentFinderService>();
         services.AddSingleton<IFileService, FileService>();
+        services.AddSingleton<PlayerLaunchService>();
         services.AddScoped<FileStreamService>();
         
         services.AddScoped<VideoService>();
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
+            services.AddSingleton<IPlayerService, WindowsPlayerService>();
+            services.AddSingleton<INativeFolderService, WindowsFolderService>();
             services.AddSingleton<INativeFileAssosiation, WindowsFileAssociation>();
+            services.AddSingleton<INativeProcessRunner, WindowsProcessRunner>();
         } else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
             services.AddSingleton<IPlayerService, LinuxPlayerService>();

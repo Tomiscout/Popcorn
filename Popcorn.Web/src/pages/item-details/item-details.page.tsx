@@ -11,7 +11,7 @@ import {
   NextFileResponse,
 } from '../../model/media.contract';
 import { useWebSocket } from '../../state/websocket-context';
-import { Button, Flex, Table, Tabs, Text, Pill, Breadcrumbs, Anchor } from '@mantine/core';
+import { ActionIcon, Button, Flex, Group, Menu, Table, Tabs, Text, Pill, Breadcrumbs, Anchor } from '@mantine/core';
 import {
   IconFile,
   IconHistory,
@@ -20,12 +20,20 @@ import {
   IconMovie,
   IconTrash,
   IconRefresh,
+  IconChevronDown,
 } from '@tabler/icons-react';
 import { useFileUrl } from '../../state/file-context';
 import './item-details.page.css';
 import { useModals } from '@mantine/modals';
 import { usePlayerStore } from '../../state/player.store';
 import { isDesktopApp } from '../../utils/platform';
+import { PlayerMenuItems, usePlayerOptions, WEB_PLAYER_ID } from '../../components/player-menu/player-menu';
+
+interface FileContextMenu {
+  fileId: string;
+  x: number;
+  y: number;
+}
 
 const ItemDetailsPage: React.FC = () => {
   const { id } = useParams();
@@ -40,6 +48,8 @@ const ItemDetailsPage: React.FC = () => {
   const [nextFile, setNextFile] = useState<NextFileResponse>();
   const [isOpeningFolder, setIsOpeningFolder] = useState(false);
   const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; title: string }[]>([]);
+  const [contextMenu, setContextMenu] = useState<FileContextMenu | null>(null);
+  const { players, defaultPlayerName } = usePlayerOptions();
 
   const imageUrl = useFileUrl(mediaItem?.imagePath);
 
@@ -78,19 +88,40 @@ const ItemDetailsPage: React.FC = () => {
       setBreadcrumbs((prev) => [...prev, { id: file.id, title: file.title }]);
       client.sendEvent(SocketRequests.FolderOpen, fileId);
     } else {
-      if (isDesktopApp) {
-        // No web player in the desktop app: server opens it (native player / default app).
-        client.sendEvent(SocketRequests.FileOpen, fileId);
-      } else {
-        setPlayerMediaId(id!);
-        setPlayerFileId(fileId);
-      }
-
-      //Sets as played locally
-      setCurrentMediaFiles((prev) =>
-        prev?.map((mediaFile) => (mediaFile.id === fileId ? { ...mediaFile, played: true } : mediaFile))
-      );
+      // No web player in the desktop app: server opens it with the first working player from settings.
+      openFileWith(fileId, isDesktopApp ? null : WEB_PLAYER_ID);
     }
+  };
+
+  /** `playerId` null = server picks from the ordered player list. */
+  const openFileWith = (fileId: string, playerId: string | null) => {
+    if (playerId === WEB_PLAYER_ID) {
+      setPlayerMediaId(id!);
+      setPlayerFileId(fileId);
+    } else if (playerId === null) {
+      client.sendEvent(SocketRequests.FileOpen, fileId);
+    } else {
+      client.sendEvent(SocketRequests.FileOpenWith, { fileId, playerId });
+    }
+
+    //Sets as played locally
+    setCurrentMediaFiles((prev) =>
+      prev?.map((mediaFile) => (mediaFile.id === fileId ? { ...mediaFile, played: true } : mediaFile))
+    );
+  };
+
+  const playNextWith = (playerId: string) => {
+    if (playerId === WEB_PLAYER_ID) {
+      playNextFile(); // App's NextFile handler starts the web player in the browser
+    } else {
+      client.sendEvent(SocketRequests.FileOpenWith, { mediaId: mediaItem?.id, playerId });
+    }
+  };
+
+  const openContextMenu = (e: React.MouseEvent, file: MediaFile) => {
+    if (file.type !== FileType.File) return;
+    e.preventDefault();
+    setContextMenu({ fileId: file.id, x: e.clientX, y: e.clientY });
   };
 
   function playNextFile() {
@@ -142,7 +173,12 @@ const ItemDetailsPage: React.FC = () => {
         </Table.Thead>
         <Table.Tbody>
           {currentMediaFiles?.map((file) => (
-            <Table.Tr key={file.id} style={{ cursor: 'pointer' }} onClick={() => fileRowClicked(file.id)}>
+            <Table.Tr
+              key={file.id}
+              style={{ cursor: 'pointer' }}
+              onClick={() => fileRowClicked(file.id)}
+              onContextMenu={(e) => openContextMenu(e, file)}
+            >
               <Table.Td>
                 <Flex gap="xs">
                   {file.type === FileType.File ? <IconMovie /> : <IconFolder />}
@@ -171,7 +207,15 @@ const ItemDetailsPage: React.FC = () => {
         </Table.Thead>
         <Table.Tbody>
           {mediaHistory?.map((item) => (
-            <Table.Tr key={item.playbackTime} onClick={() => fileRowClicked(item.fileId)}>
+            <Table.Tr
+              key={item.playbackTime}
+              style={{ cursor: 'pointer' }}
+              onClick={() => fileRowClicked(item.fileId)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setContextMenu({ fileId: item.fileId, x: e.clientX, y: e.clientY });
+              }}
+            >
               <Table.Td>{item.title}</Table.Td>
               <Table.Td>{dayjs(item.playbackTime).format('YYYY-MM-DD HH:mm')}</Table.Td>
             </Table.Tr>
@@ -192,9 +236,35 @@ const ItemDetailsPage: React.FC = () => {
           </Text>
           <Text size="md">Description</Text>
           <Flex mt="auto" gap="sm">
-            <Button variant="filled" leftSection={<IconPlayerPlayFilled size={14} onClick={playNextFile} />}>
-              Play {nextFile?.title}
-            </Button>
+            <Group gap={0} wrap="nowrap">
+              <Button
+                variant="filled"
+                leftSection={<IconPlayerPlayFilled size={14} />}
+                onClick={playNextFile}
+                style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+              >
+                Play {nextFile?.title}
+              </Button>
+              <Menu position="bottom-end" withinPortal>
+                <Menu.Target>
+                  <ActionIcon
+                    variant="filled"
+                    size={36}
+                    aria-label="Play with…"
+                    style={{
+                      borderTopLeftRadius: 0,
+                      borderBottomLeftRadius: 0,
+                      borderLeft: '1px solid var(--mantine-color-body)',
+                    }}
+                  >
+                    <IconChevronDown size={16} stroke={1.5} />
+                  </ActionIcon>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <PlayerMenuItems players={players} defaultPlayerName={defaultPlayerName} onSelect={playNextWith} />
+                </Menu.Dropdown>
+              </Menu>
+            </Group>
             <Button variant="default">Setup Intro Skipping</Button>
             <Button variant="default" leftSection={<IconTrash size={14} />} onClick={removeMediaItem}>
               Remove
@@ -233,6 +303,28 @@ const ItemDetailsPage: React.FC = () => {
           {renderHistory()}
         </Tabs.Panel>
       </Tabs>
+
+      {/* Right-click menu: an invisible target pinned at the cursor anchors the dropdown. */}
+      <Menu
+        opened={contextMenu !== null}
+        onChange={(opened) => !opened && setContextMenu(null)}
+        position="bottom-start"
+        offset={2}
+        withinPortal
+      >
+        <Menu.Target>
+          <div
+            style={{ position: 'fixed', left: contextMenu?.x ?? 0, top: contextMenu?.y ?? 0, width: 0, height: 0 }}
+          />
+        </Menu.Target>
+        <Menu.Dropdown onContextMenu={(e) => e.preventDefault()}>
+          <PlayerMenuItems
+            players={players}
+            defaultPlayerName={defaultPlayerName}
+            onSelect={(playerId) => contextMenu && openFileWith(contextMenu.fileId, playerId)}
+          />
+        </Menu.Dropdown>
+      </Menu>
     </Flex>
   );
 };

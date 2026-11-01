@@ -1,4 +1,4 @@
-﻿using Popcorn.Domain.Models;
+using Popcorn.Domain.Models;
 
 namespace Popcorn.Persistence;
 
@@ -19,12 +19,14 @@ public class SettingsRepository
         if(_cachedSettings is null)
         {
             _cachedSettings = await _repository.LoadJsonAsync<SettingsModel>(_settingsFile);
+            _cachedSettings.NormalizePlayers();
         }
         return _cachedSettings;
     }
 
     public async Task SaveSettings(SettingsModel settings)
     {
+        settings.NormalizePlayers();
         await _repository.SaveJsonAsync(settings, _settingsFile);
         _cachedSettings = settings;
     }
@@ -33,7 +35,7 @@ public class SettingsRepository
     {
         if(!File.Exists(Path.Join(_repository.GetDataFolder(), _settingsFile)))
         {
-            await SaveSettings(new SettingsModel());
+            await SaveSettings(new SettingsModel { UseInternalPlayer = true }); // fresh install: Popcorn player first
         }
     }
 }

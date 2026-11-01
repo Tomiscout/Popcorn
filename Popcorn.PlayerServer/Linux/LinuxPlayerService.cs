@@ -21,7 +21,7 @@ public class LinuxPlayerService(
 
     private PlayerBridgeServer? _server;
 
-    public async Task OpenFile(Guid fileId)
+    public async Task<bool> OpenFile(Guid fileId)
     {
         try
         {
@@ -29,7 +29,7 @@ public class LinuxPlayerService(
             {
                 logger.LogTrace("Opening file {fileId} and sending it to {sessionCount} socket clients", fileId, _server?.ConnectedSessions);
                 _server?.Multicast(JsonSerializer.Serialize(new LoadMediaEvent { FileId = fileId }));
-                return;
+                return true;
             }
 
             if (_server == null)
@@ -37,19 +37,21 @@ public class LinuxPlayerService(
                 StartPlayerServer();
             }
             LaunchPlayer(fileId.ToString());
+            return true;
         } catch(Exception e)
         {
             logger.LogError(e, "Failed to open file with internal player");
+            return false;
         }
     }
-    public async Task OpenFile(string filePath)
+    public async Task<bool> OpenFile(string filePath)
     {
         try
         {
             if (_server?.ConnectedSessions > 0)
             {
                 _server.Multicast(JsonSerializer.Serialize(new LoadMediaEvent { FilePath = filePath }));
-                return;
+                return true;
             }
 
             if (_server == null)
@@ -57,10 +59,12 @@ public class LinuxPlayerService(
                 StartPlayerServer();
             }
             LaunchPlayer(filePath);
+            return true;
         }
         catch (Exception e)
         {
             logger.LogError(e, "Failed to open file with internal player");
+            return false;
         }
     }
 
@@ -92,15 +96,8 @@ public class LinuxPlayerService(
             CreateNoWindow = true // Prevents a new terminal window from opening
         };
         
-        try
-        {
-            logger.LogTrace("Running player process: {command} {args}", startInfo.FileName, startInfo.Arguments);
-            using var process = Process.Start(startInfo);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to launch player as detached process");
-        }
+        logger.LogTrace("Running player process: {command} {args}", startInfo.FileName, startInfo.Arguments);
+        using var process = Process.Start(startInfo); // throws -> OpenFile reports failure
     }
 
     private string GetPlayerElfPath()
@@ -114,7 +111,7 @@ public class LinuxPlayerService(
         //In development, player bundle is in different folder
         var debugPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, 
             "..", "..", "..", "..", 
-            "Popcorn.Player.Linux", "bin", "Debug", "net9.0", "Popcorn.Player.Linux");
+            "Popcorn.Player.Linux", "bin", "Debug", "net10.0", "Popcorn.Player.Linux");
 
         return File.Exists(debugPath) ? debugPath : string.Empty;
     }

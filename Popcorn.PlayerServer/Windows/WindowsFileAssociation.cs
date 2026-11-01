@@ -12,6 +12,19 @@ public class WindowsFileAssociation : INativeFileAssosiation
         return execPath == null ? null : $"{execPath} \"{filePath}\" {args}";
     }
     
+    public string? GetDefaultVideoPlayerName()
+    {
+        foreach (var ext in new[] { ".mkv", ".mp4" })
+        {
+            var exe = GetExecCommandAssociatedToExtension(ext);
+            if (string.IsNullOrEmpty(exe)) continue;
+
+            var name = FileExtentionInfo(AssocStr.FriendlyAppName, ext, "open");
+            return string.IsNullOrWhiteSpace(name) ? Path.GetFileNameWithoutExtension(exe.Trim('"')) : name;
+        }
+        return null;
+    }
+
     /// <summary>
     /// Calls windows methods to get program executable
     /// </summary>
