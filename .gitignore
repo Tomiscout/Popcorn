@@ -6,10 +6,6 @@
 
 */**/node_modules/
 
-/Popcorn.Installer/lib
-/Popcorn.Installer/Releases
-/Popcorn.Installer/*.nupkg
-
 /Bundle
 !/Bundle/AppManifest.xml
 /Installer/**/*.*

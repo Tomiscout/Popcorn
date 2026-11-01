@@ -14,9 +14,8 @@ Subtitle box adjusting
 
 # Development environment #
 
-Run npm install in these folders:
-/Popcorn/
-/Popcorn/NpmJS
+Run `npm install` in `Popcorn.Web/` and `Popcorn.Player.Web/`.
+See `CLAUDE.md` for project structure, build and run instructions.
 
 
 

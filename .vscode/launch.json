@@ -17,14 +17,14 @@
       // Use IntelliSense to find out which attributes exist for C# debugging
       // Use hover for the description of the existing attributes
       // For further information visit https://github.com/dotnet/vscode-csharp/blob/main/debugger-launchjson.md
-      "name": ".NET Core Launch (console)",
+      "name": "Popcorn.Server",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
       // If you have changed target frameworks, make sure to update the program path.
-      "program": "${workspaceFolder}/Popcorn/bin/Debug/net8.0-windows10.0.19041.0/win10-x64/Popcorn.dll",
+      "program": "${workspaceFolder}/Popcorn.Server/bin/Debug/net10.0/Popcorn.Server.dll",
       "args": [],
-      "cwd": "${workspaceFolder}/Popcorn",
+      "cwd": "${workspaceFolder}/Popcorn.Server",
       // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
       "console": "internalConsole",
       "stopAtEntry": false

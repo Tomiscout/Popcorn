@@ -97,7 +97,6 @@ Serilog everywhere. Logs roll daily to `~/.local/share/Popcorn/logs/` (Linux) or
 - `Popcorn.Player.Core/ServiceRegister.cs` — DI composition root for player.
 - `Popcorn.Domain/MediaLoader.cs` — Folder scanning logic for video/subtitle formats.
 - `makefile` — Primary build orchestration.
-- `Directory.Build.targets` — Conditionally removes Windows-only project refs on Linux.
 
 ## Conventions
 
