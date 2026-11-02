@@ -6,7 +6,9 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "dev:player": "vite --mode player --open /player.html",
     "build": "tsc -b && vite build && node post-build.js",
+    "build:player": "tsc -b && vite build --mode player && node post-build-player.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },

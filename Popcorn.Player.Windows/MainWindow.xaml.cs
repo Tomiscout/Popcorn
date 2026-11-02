@@ -94,7 +94,7 @@ public partial class MainWindow : Window
             if (useLocalWeb)
             {
                 Log.Information("Using devloper web-player from localhost");
-                WebView.Source = new Uri("http://localhost:3000/");
+                WebView.Source = new Uri("http://localhost:5173/player.html"); // Popcorn.Web: npm run dev:player
             }
             else
             {

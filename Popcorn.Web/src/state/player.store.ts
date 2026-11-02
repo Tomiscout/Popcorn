@@ -3,6 +3,15 @@ import { AudioTrackDto, MediaFileMetadata, SubtitleTrackDto } from '../query/mod
 import type { AdditionalAudioFile } from '../player/Components/VideoPlayer';
 import { FolderLoadedNavigation, MediaFile } from '../model/media.contract';
 
+/** Intro/outro segment, in ms. A negative `start` counts from the end of the file. */
+export interface PlayerSegment {
+  start: number;
+  length: number;
+}
+
+/** Key of a seek-bar thumbnail in `thumbnailFiles` (also the server's ThumbnailFile blob name). */
+export const thumbnailKey = (fileId: string | null, timeMs: number) => `thumbnail_${fileId}_${timeMs / 1000}`;
+
 interface PlayerState {
   mediaId: string | null;
   fileId: string | null; // If set - renders the player
@@ -21,6 +30,7 @@ interface PlayerState {
   additionalAudioFiles: AdditionalAudioFile[];
   currentPlaylist: MediaFile[] | null;
   currentPlaylistNavigation: FolderLoadedNavigation[] | null;
+  segments: PlayerSegment[];
   setFileId: (v: string | null) => void;
   setMediaId: (v: string | null) => void;
   setIsPlaying: (v: boolean) => void;
@@ -33,6 +43,7 @@ interface PlayerState {
   setCurrentAudio: (v: AudioTrackDto | null) => void;
   setCurrentPlaylist: (v: MediaFile[] | null) => void;
   setCurrentPlaylistNavigation: (v: FolderLoadedNavigation[] | null) => void;
+  setSegments: (v: PlayerSegment[]) => void;
   addSubtitleTrack: (newTrack: SubtitleTrackDto) => void;
   setIsAudioLoading: (v: boolean) => void;
   addSubtitleFile: (key: string, file: string) => void;
@@ -63,6 +74,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   currentAudio: null,
   currentPlaylist: [],
   currentPlaylistNavigation: [],
+  segments: [],
   setMediaId: (v) => set({ mediaId: v }),
   setFileId: (v) => set({ fileId: v }),
   setIsPlaying: (v) => set({ isPlaying: v }),
@@ -76,6 +88,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   setCurrentAudio: (v) => set({ currentAudio: v }),
   setCurrentPlaylist: (v) => set({ currentPlaylist: v }),
   setCurrentPlaylistNavigation: (v) => set({ currentPlaylistNavigation: v }),
+  setSegments: (v) => set({ segments: v }),
   addSubtitleTrack: (newTrack) =>
     set((state) => {
       if (!state.metadata) {
@@ -139,6 +152,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
       subtitleFiles: {},
       thumbnailFiles: {},
       additionalAudioFiles: [],
+      segments: [],
     });
   },
   closePlayer: () => {

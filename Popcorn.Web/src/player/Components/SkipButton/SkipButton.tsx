@@ -1,7 +1,7 @@
 import { useState, useEffect, memo, useRef } from 'react';
 import './SkipButton.css';
 import { useEventListeners } from '../../Utlis/listener.utils';
-import { registerEventHandler } from '../../../utils/events';
+import { usePlayerStore } from '../../../state/player.store';
 
 type SkipButtonProps = {
   text: string;
@@ -16,12 +16,9 @@ const SkipButton = memo(
     const [progress, setProgress] = useState(0);
     const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
     const [loadingCanceled, setLoadingCanceled] = useState(false);
-    const [isPaused, setIsPaused] = useState(false);
+    const isPaused = !usePlayerStore((s) => s.isPlaying);
     const isPausedRef = useRef(isPaused);
-
-    useEffect(() => {
-      isPausedRef.current = isPaused;
-    }, [isPaused]);
+    isPausedRef.current = isPaused;
 
     useEffect(() => {
       if (!isVisible) {
@@ -48,8 +45,9 @@ const SkipButton = memo(
           if (oldProgress >= 100) {
             clearInterval(id);
             setLoadingCanceled(false);
+            // Not from inside the state updater: skipping updates the player store.
             if (onSkip) {
-              onSkip();
+              setTimeout(onSkip, 0);
             }
             return 100;
           }
@@ -62,10 +60,6 @@ const SkipButton = memo(
       setTimeout(() => setProgress((100 / duration) * 0.2), 10);
       return () => clearInterval(id);
     }, [text, duration, onSkip, isVisible]);
-
-    registerEventHandler('play_status_changed', (isPlaying) => {
-      setIsPaused(!isPlaying);
-    });
 
     const cancelAutoSkip = () => {
       if (intervalId) {

@@ -1,15 +1,11 @@
-using System.Diagnostics;
-using System.IO;
+using System.Globalization;
+using System.Text.Json;
 using FFMpegCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Nickvision.MPVSharp;
-using Nickvision.MPVSharp.Internal;
 using Popcorn.Player.Core.Contracts;
 using Popcorn.Player.Core.Core;
 using Popcorn.Player.Core.Services;
 using Popcorn.Player.Core.WebSocket;
-using Popcorn.Shared.Interfaces;
 
 namespace Popcorn.Player.Core.Player;
 
@@ -19,84 +15,67 @@ public class MpvPlayer : IPlayer
     private readonly Lazy<AudioSubtitlesService> _audioSubtitlesService;
     private readonly FFmpegService _ffmpegService;
     private readonly ILogger<MpvPlayer> _logger;
+    private readonly IMpvClient _player;
     private IMediaAnalysis? _currentMediaAnalysis;
     private string? _currentFilePath;
     private List<MediaTrack>? _mediaTracks;
 
-    public Client _player { get; }
+    public double Duration { get; private set; } = -1;
+    public double? Position => _player.GetDouble("time-pos");
+    public bool IsPaused => _player.GetString("pause") == "yes";
 
-    public MpvPlayer(Lazy<WebEventHandler> webSocket, ILogger<MpvPlayer> logger, FFmpegService ffmpegService, Lazy<AudioSubtitlesService> audioSubtitlesService)
+    public MpvPlayer(IMpvClient player, Lazy<WebEventHandler> webSocket, ILogger<MpvPlayer> logger, FFmpegService ffmpegService, Lazy<AudioSubtitlesService> audioSubtitlesService)
     {
+        _player = player;
         _webSocket = webSocket;
         _audioSubtitlesService = audioSubtitlesService;
         _ffmpegService = ffmpegService;
-        _player = new Client();
-        _player.SetProperty("vo", "libmpv");
-        _player.SetProperty("hwdec", "auto");
-        _player.SetProperty("osd-level", "0");
-        //_player.SetOption("deinterlace", "auto"); // Should find a way to enable this by updating MPV to 0.38. Nickvision.MPVSharp is archived.
-        _player.SetOption("sub-border-size", "1");
         _logger = logger;
-        //_player.SetProperty("log-file", "mpv_log.log");
 
-        //_player.RequestLogMessages("debug");
-        _player.LogMessageReceived += (sender, e) =>
+        _player.LogMessage += (_, text) => logger.LogInformation("{mpvLog}", text);
+        _player.DoublePropertyChanged += (_, e) =>
         {
-            logger.LogInformation($"[{e.Prefix}] {e.Text}"); // Log messages (e.Text) end with newline char
+            if (e.Name == "time-pos") _webSocket.Value.PostEvent("current_time", e.Value);
         };
-
-        _player.PropertyChanged += (sender, e) =>
-        {
-            logger.LogInformation($"PropertyChanged {e.Name}: {e.Node?.ToString()}");
-
-            if (e.Node == null) return;
-
-            switch (e.Name)
-            {
-                case "time-pos":
-                    _webSocket.Value.PostEvent("current_time", (double)e.Node.Value!);
-                    return;
-                //case "media-title":
-            }
-        };
-        _player.FileLoaded += PlayerFileLoaded;
+        _player.FileLoaded += (_, _) => PlayerFileLoaded();
+        _player.EndOfFile += (_, _) => MediaEnded?.Invoke(this, EventArgs.Empty);
     }
 
-    public Client Client => _player;
-
+    /// <summary>Settings shared by every platform. The video output itself is chosen by whoever created the core.</summary>
     public void Initialize()
     {
-        _player.Initialize();
+        _player.SetProperty("hwdec", "auto");
+        _player.SetProperty("osd-level", "0");
+        _player.SetProperty("sub-border-size", "1");
+        _player.ObserveDouble("time-pos");
         // _player.SetProperty("osd-level", "3");
-        // _player.Command(new string[] { "script-binding", "stats/display-stats-toggle"});
+        // _player.Command("script-binding", "stats/display-stats-toggle");
     }
 
     public void InitializeWindows(string wid)
     {
-        _player.SetProperty("vo", "gpu");
-        _player.SetOption("wid", wid);
+        _player.InitializeWindows(wid);
         Initialize();
     }
 
-    public async Task<bool> LoadMedia(string path, IMediaAnalysis mediaAnalysis)
+    public Task<bool> LoadMedia(string path, IMediaAnalysis mediaAnalysis)
     {
         try
         {
             Stop();
-            _player.Command(new string[] { "loadfile", path });
-        } catch (Exception ex)
+            _player.Command("loadfile", path);
+        }
+        catch (Exception ex)
         {
             var message = "Failed to open file: " + path;
             _logger.LogError(ex, message);
             _webSocket.Value.PostError(message, ex);
-            return false;
+            return Task.FromResult(false);
         }
-        _player.ObserveProperty("time-pos");
-        _player.ObserveProperty("duration");
 
         _currentMediaAnalysis = mediaAnalysis;
         _currentFilePath = path;
-        return true;
+        return Task.FromResult(true);
     }
 
     private void PlayerFileLoaded()
@@ -113,32 +92,35 @@ public class MpvPlayer : IPlayer
         double duration = -1;
         if (_currentFilePath == null)
         {
+            Duration = duration;
             _webSocket.Value.PostEvent("duration_update", duration);
             return;
         }
 
-        try
+        var mpvDuration = _player.GetDouble("duration");
+        if (mpvDuration is null)
         {
-            _player.GetProperty("duration", out duration);
-        } catch(Exception ex)
-        {
-            _logger.LogWarning(ex, "No duration field in the file {path}", _currentFilePath);
+            _logger.LogWarning("No duration field in the file {path}", _currentFilePath);
         }
+        duration = mpvDuration ?? -1;
+
         if (duration < 10) //When Mpv can't parse duration - it's always the current time
         {
             if (_currentMediaAnalysis != null && _currentMediaAnalysis.PrimaryVideoStream?.Duration.TotalSeconds > 0)
             {
                 duration = _currentMediaAnalysis.PrimaryVideoStream?.Duration.TotalSeconds ?? _currentMediaAnalysis.Duration.TotalSeconds;
-            } else
+            }
+            else
             {
                 var fileSize = new FileInfo(_currentFilePath).Length;
-                if(fileSize <= 1024 * 1024 * 100) //Clamp to small file sizes
+                if (fileSize <= 1024 * 1024 * 100) //Clamp to small file sizes
                 {
                     duration = _ffmpegService.GetFileDurationFullDecode(_currentFilePath) ?? -1;
                 }
             }
         }
 
+        Duration = duration;
         _webSocket.Value.PostEvent("duration_update", duration);
     }
 
@@ -152,80 +134,92 @@ public class MpvPlayer : IPlayer
         _currentMediaAnalysis = null;
         _currentFilePath = null;
         _mediaTracks = null;
+        Duration = -1;
         _player.Command("stop");
     }
 
     public void SetPlaybackTime(long time)
     {
-        _player.Command($"seek {time / 1000} absolute");
+        _player.Command("seek", (time / 1000).ToString(CultureInfo.InvariantCulture), "absolute");
     }
 
     public void SkipTime(long time)
     {
-        _player.Command($"seek {time}");
+        _player.Command("seek", time.ToString(CultureInfo.InvariantCulture));
     }
 
     public void SetVolume(double volume)
     {
-        _player.SetProperty("ao-volume", (int)Math.Floor(volume * 100));
+        _player.SetProperty("ao-volume", ((int)Math.Floor(volume * 100)).ToString(CultureInfo.InvariantCulture));
     }
 
     public event EventHandler? MediaEnded;
     public event EventHandler<long>? TimeChanged;
     public event EventHandler<long>? LengthChanged;
     public event EventHandler? MediaPlaying;
+
+    /// <summary>mpv returns node properties as JSON when read as a string.</summary>
     private void LoadMediaTracks()
     {
-        _player.GetProperty("track-list", out MPVNode trackListNode);
+        var json = _player.GetString("track-list") ?? throw new Exception("track-list is not available.");
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Array) throw new Exception("track-list is not an array.");
 
-        if (trackListNode.Format != MPVFormat.NodeArray) throw new Exception("track-list is not an array.");
-
-        var trackNodes = (MPVNode[])trackListNode;
         var mediaTracks = new List<MediaTrack>();
-
-        foreach (var trackNode in trackNodes)
+        foreach (var track in doc.RootElement.EnumerateArray())
         {
-            if (trackNode.Format != MPVFormat.NodeMap) continue;
+            if (track.ValueKind != JsonValueKind.Object) continue;
 
-            var trackNodeList = (MPVNodeList)trackNode;
-
-            var trackDict = MPVNodeList.ToDictionary(trackNodeList);
-            if (trackDict == null) continue;
-
-            var type = trackDict.ContainsKey("type") ? MediaTrack.ParseTrackType((string)trackDict["type"]) : MediaTrackType.Unknown;
-            if ( type == MediaTrackType.Unknown)
+            var type = track.TryGetProperty("type", out var typeProp) && typeProp.ValueKind == JsonValueKind.String
+                ? MediaTrack.ParseTrackType(typeProp.GetString()!)
+                : MediaTrackType.Unknown;
+            if (type == MediaTrackType.Unknown)
             {
                 _logger.LogWarning("Unknown media type for file {path}", _currentFilePath);
             }
 
-            var mediaTrack = new MediaTrack
+            mediaTracks.Add(new MediaTrack
             {
-                Id = trackDict.ContainsKey("id") ? (int)trackDict["id"] : 0,
+                Id = track.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number ? id.GetInt32() : 0,
                 Type = type,
-                Language = trackDict.ContainsKey("lang") ? (string)trackDict["lang"] : string.Empty,
-                Description = trackDict.ContainsKey("title") ? (string)trackDict["title"] : string.Empty,
-                Selected = trackDict.ContainsKey("selected") && (bool)trackDict["selected"]
-            };
-
-            mediaTracks.Add(mediaTrack);
+                Language = StringOrEmpty(track, "lang"),
+                Description = StringOrEmpty(track, "title"),
+                Selected = track.TryGetProperty("selected", out var selected) && selected.ValueKind == JsonValueKind.True,
+            });
         }
 
         _mediaTracks = mediaTracks;
     }
 
+    private static string StringOrEmpty(JsonElement element, string name) =>
+        element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString()! : string.Empty;
+
     public void AudioTrackSelected(int track)
     {
-        _player.SetProperty("aid", track);
+        _player.SetProperty("aid", track.ToString(CultureInfo.InvariantCulture));
+        MarkSelected(MediaTrackType.Audio, track);
     }
 
+    /// <summary>A negative id turns subtitles off.</summary>
     public void SubtitleTrackSelected(int track)
     {
-        _player.SetProperty("sid", track);
+        _player.SetProperty("sid", track < 0 ? "no" : track.ToString(CultureInfo.InvariantCulture));
+        MarkSelected(MediaTrackType.Subtitle, track);
+    }
+
+    /// <summary>track-list is read once per file; keep its selection current for the overlay's track lists.</summary>
+    private void MarkSelected(MediaTrackType type, int id)
+    {
+        if (_mediaTracks is null) return;
+        foreach (var track in _mediaTracks.Where(t => t.Type == type))
+        {
+            track.Selected = track.Id == id;
+        }
     }
 
     public void SubtitleSetDelay(double delay)
     {
-        _player.SetProperty("sub-delay", delay);
+        _player.SetProperty("sub-delay", delay.ToString(CultureInfo.InvariantCulture));
     }
 
     public List<MediaTrack> GetSubtitleTracks()
@@ -239,7 +233,7 @@ public class MpvPlayer : IPlayer
 
     public void AddSubtitleTrack(string path)
     {
-        _player.Command(new string[] { "sub-add", path });
+        _player.Command("sub-add", path);
 
         LoadMediaTracks();
         _audioSubtitlesService.Value.SendAudioAndSubtitles();
@@ -247,8 +241,7 @@ public class MpvPlayer : IPlayer
 
     public void Dispose()
     {
-        _player.CommandString("quit"); // Quits in async way, sends MPV_EVENT_SHUTDOWN event
-        //_player.Dispose();  mpv deadlocks when using dispose on linux
+        _player.Dispose();
     }
 
     private static string YesNo(bool val) => val ? "yes" : "no";

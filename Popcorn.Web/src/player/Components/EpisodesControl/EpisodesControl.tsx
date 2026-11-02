@@ -9,15 +9,12 @@ import {
 
 import './EpisodesControl.css';
 import { usePlayerStore } from '../../../state/player.store';
-import { useWebSocket } from '../../../state/websocket-context';
-import { SocketRequests } from '../../../socket/socket-requests';
 import { FileType, MediaFile } from '../../../model/media.contract';
 
 const EpisodesControl = () => {
   const episodesPopupWidth = 400;
 
-  const { client } = useWebSocket();
-  const { currentPlaylist, currentPlaylistNavigation, mediaId } = usePlayerStore();
+  const { currentPlaylist, currentPlaylistNavigation } = usePlayerStore();
   const [showPopup, setShowPopup] = useState(false);
   const episodesRef = useRef<HTMLDivElement | null>(null);
   const episodesPopupRef = useRef<HTMLDivElement | null>(null);
@@ -46,19 +43,20 @@ const EpisodesControl = () => {
 
   const fileClick = (file: MediaFile) => {
     if (file.type === FileType.Folder) {
-      openFolder(file.id);
+      openFolder(file.id, file.path);
       return;
     }
 
     postMessage('play_file', file.id);
   };
 
-  const openFolder = (fileId: string) => {
-    client.sendEvent(SocketRequests.FolderOpenPlayer, fileId);
+  // The host resolves the folder: the server by id, the native player by path.
+  const openFolder = (fileId: string, path: string) => {
+    postMessage('folder_open', { fileId, path });
   };
 
   const openRootFolder = () => {
-    client.sendEvent(SocketRequests.FolderOpenPlayer, mediaId);
+    postMessage('folder_open_root');
   };
 
   return (
@@ -80,7 +78,7 @@ const EpisodesControl = () => {
                 <span>
                   <IconChevronRight className="white ml" />
                 </span>
-                <p className="ml nav-item" onClick={() => openFolder(navFolder.fileId)}>
+                <p className="ml nav-item" onClick={() => openFolder(navFolder.fileId, navFolder.path)}>
                   {navFolder.title}
                 </p>
               </React.Fragment>

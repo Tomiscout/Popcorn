@@ -24,6 +24,8 @@ public class WebEventHandler
     private List<string>? _pendingMessages = new();
 
     public event EventHandler<bool> OnFullscreen;
+    /// <summary>The overlay's close button.</summary>
+    public event EventHandler? OnCloseRequested;
 
     public WebEventHandler(IPlayer player, PlayerCore playerCore, MediaItemManager mediaItemManager, AudioSubtitlesService audioSubtitlesService, ThumbnailService thumbnailService)
     {
@@ -54,8 +56,10 @@ public class WebEventHandler
             case "play_next_title":
                 _playerCore.PlayNextTitle(); break;
             case "initialized":
+                var reconnected = _playerInitialized;
                 _playerInitialized = true;
                 SendPendingMessages();
+                if (reconnected) _playerCore.ResendState();
                 break;
             case "audio_track_selected":
                 _player.AudioTrackSelected(message.Data!.GetJsonInt32()); break;
@@ -73,6 +77,8 @@ public class WebEventHandler
                 _playerCore.OpenFolder(_mediaItemManager.CurrentMediaItem?.FolderDirectory ?? Path.GetDirectoryName(_playerCore.CurrentMediaFile.Path)); break;
             case "thumb_requested":
                 _thumbnailService.OnThumbnailRequest(message.Data!.GetJsonInt64()); break;
+            case "player_close":
+                OnCloseRequested?.Invoke(this, EventArgs.Empty); break;
             default:
                 throw new NotImplementedException($"Event from _player not supported: {message.Name}");
         }
@@ -166,9 +172,9 @@ public class WebEventHandler
     //Hacky way to fix webview race condition, but whatever, it works
     private void SendPendingMessages()
     {
-        if (_pendingMessages?.Count < 0) return;
+        if (_pendingMessages is null) return; // Overlay reloaded: already flushed
 
-        foreach (var msg in _pendingMessages!)
+        foreach (var msg in _pendingMessages)
         {
             _webBridge.SendMessage(msg);
         }

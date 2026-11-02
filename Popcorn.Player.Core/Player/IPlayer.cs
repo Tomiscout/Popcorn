@@ -23,4 +23,10 @@ public interface IPlayer : IDisposable
     void SubtitleTrackSelected(int track);
     void SubtitleSetDelay(double delay);
     void AddSubtitleTrack(string path);
+
+    /// <summary>Duration in seconds as last reported to the overlay, -1 if unknown.</summary>
+    double Duration { get; }
+    /// <summary>Playback position in seconds, null without a file.</summary>
+    double? Position { get; }
+    bool IsPaused { get; }
 }

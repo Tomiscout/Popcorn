@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   IconPlayerPlayFilled as PlayButton,
   IconPlayerPauseFilled as PauseButton,
@@ -21,7 +21,7 @@ import { usePlayerStore } from '../../../state/player.store';
 
 const PlaybackControls = () => {
   const { isFloating, isFullscreen, isPlaying, setIsFullscreen, setIsFloating } = usePlayerStore();
-  const [floatingBeforeFullscreen, setFloatingBeforeFullscreen] = useState(false);
+  const floatingBeforeFullscreen = useRef(false);
 
   const playPause = () => {
     const { isPlaying } = usePlayerStore.getState();
@@ -36,17 +36,20 @@ const PlaybackControls = () => {
   const nextTrack = () => {
     postMessage('play_next_title');
   };
+  // Read the store at call time: these also run from handlers registered once on mount.
   const toggleFullscreen = () => {
+    const { isFullscreen, isFloating } = usePlayerStore.getState();
     const newFullscreen = !isFullscreen;
     if (newFullscreen) {
-      setFloatingBeforeFullscreen(isFloating);
+      floatingBeforeFullscreen.current = isFloating;
       setIsFloating(false);
     }
     setIsFullscreen(newFullscreen);
   };
   const exitFullscreen = () => {
+    if (!usePlayerStore.getState().isFullscreen) return;
     setIsFullscreen(false);
-    setIsFloating(floatingBeforeFullscreen);
+    setIsFloating(floatingBeforeFullscreen.current);
   };
 
   useEventListeners('keyup', {
@@ -58,17 +61,12 @@ const PlaybackControls = () => {
   });
 
   useEffect(() => {
-    // registerWebviewEventHandler('track_loaded', trackLoadedHandler);
-    // registerWebviewEventHandler('fullscreen', fullscreenHandler);
     registerEventHandler('playback_toggle', playPause);
     registerEventHandler('request_fullscreen_toggle', toggleFullscreen);
 
     return () => {
-      // unregisterWebviewEventHandler('track_loaded', trackLoadedHandler);
-      // unregisterWebviewEventHandler('fullscreen', fullscreenHandler);
       unregisterEventHandler('playback_toggle', playPause);
       unregisterEventHandler('request_fullscreen_toggle', toggleFullscreen);
-      unregisterEventHandler('floating_window', toggleFullscreen);
     };
   }, []);
 

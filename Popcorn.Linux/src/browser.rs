@@ -167,7 +167,8 @@ wrap_app! {
             set_switch(cmd, "autoplay-policy", "no-user-gesture-required");
             // Don't touch KWallet / gnome-keyring.
             set_switch(cmd, "password-store", "basic");
-            append_list_switch(cmd, "disable-features", "Translate,MediaRouter,OptimizationHints");
+            // NetworkTimeServiceQuerying: stops clients2.google.com/time requests.
+            append_list_switch(cmd, "disable-features", "Translate,MediaRouter,OptimizationHints,NetworkTimeServiceQuerying");
 
             if let Some(platform) = ozone_platform() {
                 set_switch(cmd, "ozone-platform", platform.as_str());

@@ -1,19 +1,14 @@
 import React, { ReactPortal, useEffect, useRef, useState } from 'react';
 import Draggable from 'react-draggable';
 import './PopcornPlayer.css';
-import ErrorOverlay from './Components/ErrorOverlay/ErrorOverlay';
-import { disableDefaultListeners, useEventListeners } from './Utlis/listener.utils';
-import PlaybackNotificationControl from './Components/PlaybackNotificationControl/PlaybackNotificationControl';
-import { CaptureClickArea } from './Components/CaptureClickArea/CaptureClickArea';
-import { ControlBar } from './Components/ControlBar/ControlBar';
+import { disableDefaultListeners } from './Utlis/listener.utils';
 import { initEvents, registerEventHandler, unregisterEventHandler } from '../utils/events';
 import { usePlayerStore } from '../state/player.store';
 import { createPortal } from 'react-dom';
 import { VideoPlayer as RawVideoPlayer } from './Components/VideoPlayer';
-import { TopBar } from './Components/TopBar/TopBar';
 import { getVideoMetadata } from '../query/video.query';
-import { Loader } from '@mantine/core';
 import { postMessage } from '../utils/events';
+import { PlayerOverlay } from './PlayerOverlay';
 import SubtitleOverlay from './Components/Subtitles/SubtitleOverlay';
 import { useWebSocket } from '../state/websocket-context';
 import { SocketRequests } from '../socket/socket-requests';
@@ -46,7 +41,6 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
   } = usePlayerStore();
 
   const { data: videoMetadata, isFetching: isFetchingMetadata, error: metadataError } = getVideoMetadata(fileId || '');
-  const [showControls, setShowControls] = useState(true);
 
   useEffect(() => {
     if (metadataError) {
@@ -139,8 +133,32 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
       client?.sendEvent(SocketRequests.NextFile, mediaId);
     };
 
+    const folderOpenHandler = (folder: { fileId: string }) => {
+      client?.sendEvent(SocketRequests.FolderOpenPlayer, folder.fileId);
+    };
+
+    const folderOpenRootHandler = () => {
+      const { mediaId } = usePlayerStore.getState();
+      client?.sendEvent(SocketRequests.FolderOpenPlayer, mediaId);
+    };
+
+    const thumbnailRequestHandler = (timeMs: number) => {
+      const { fileId: currentFileId } = usePlayerStore.getState();
+      client?.sendEvent(SocketRequests.ThumbnailFile, { fileId: currentFileId, timeSeconds: timeMs / 1000 });
+    };
+
+    const closeHandler = () => {
+      const { resetState, closePlayer } = usePlayerStore.getState();
+      resetState();
+      closePlayer();
+    };
+
     registerEventHandler('play_file', playFileHandler);
     registerEventHandler('play_next_title', playNextFileHandler);
+    registerEventHandler('folder_open', folderOpenHandler);
+    registerEventHandler('folder_open_root', folderOpenRootHandler);
+    registerEventHandler('thumb_requested', thumbnailRequestHandler);
+    registerEventHandler('player_close', closeHandler);
     registerEventHandler('set_playback_time', setPlaybackTime);
     registerEventHandler('play_status_changed', onToggle);
     registerEventHandler('skip_seconds', onSkip);
@@ -151,6 +169,10 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
     return () => {
       unregisterEventHandler('play_file', playFileHandler);
       unregisterEventHandler('play_next_title', playNextFileHandler);
+      unregisterEventHandler('folder_open', folderOpenHandler);
+      unregisterEventHandler('folder_open_root', folderOpenRootHandler);
+      unregisterEventHandler('thumb_requested', thumbnailRequestHandler);
+      unregisterEventHandler('player_close', closeHandler);
       unregisterEventHandler('set_playback_time', setPlaybackTime);
       unregisterEventHandler('play_status_changed', onToggle);
       unregisterEventHandler('skip_seconds', onSkip);
@@ -160,57 +182,22 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
     };
   }, []);
 
-  const controlsTimeoutRef = useRef<NodeJS.Timeout>(null);
-
-  const displayControls = () => {
-    setShowControls(true);
-    videoContainerRef.current!.style.cursor = 'initial';
-
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-
-    controlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-      if (videoContainerRef.current) {
-        videoContainerRef.current.style.cursor = 'none';
-      }
-    }, 4000);
-  };
-
-  useEventListeners('keyup', { default: displayControls });
-  useEventListeners('mousemove', { default: displayControls });
-
   // global init once
   useEffect(() => {
     disableDefaultListeners();
     initEvents();
-    videoContainerRef.current?.focus();
   }, []);
-
-  const loadingSpinner = () => {
-    return (
-      <div className="spinner-wrapper">
-        <Loader color="red" />
-      </div>
-    );
-  };
 
   // This is the one-and-only "container" tree you'll ever mount.
   const container = (
-    <div className={`video-container ${mode}`} tabIndex={-1} ref={videoContainerRef}>
-      <CaptureClickArea isFloating={mode === 'floating'} />
-      <TopBar showControls={showControls} />
-      <ErrorOverlay />
-      {isFetchingMetadata && loadingSpinner()}
-      {videoMetadata && (
-        <>
-          <ControlBar showControls={showControls} metadata={videoMetadata} />
-          <PlaybackNotificationControl />
-          <SubtitleOverlay videoRef={videoRef} />
-        </>
-      )}
-    </div>
+    <PlayerOverlay
+      ref={videoContainerRef}
+      className={mode}
+      isFloating={mode === 'floating'}
+      isLoading={isFetchingMetadata}
+    >
+      <SubtitleOverlay videoRef={videoRef} />
+    </PlayerOverlay>
   );
 
   const wrapped = (

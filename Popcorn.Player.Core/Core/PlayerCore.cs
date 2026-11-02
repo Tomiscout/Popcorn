@@ -142,18 +142,42 @@ public class PlayerCore
     private void PlayingStarted(object sender, EventArgs e)
     {
         if (!_isLoadingTrack) return;
-        _webSocket.Value.PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
-        {
-            FileName = CurrentMediaFile.Path,
-            Title = CurrentMediaFile.Title,
-            ShortTitle = CurrentMediaFile.GetDisplayTitle(),
-        });
+        PostTrackLoaded(CurrentMediaFile);
         OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
         _audioSubtitlesService.AutoSelectAudioAndSubtitles();
         _audioSubtitlesService.SendAudioAndSubtitles();
         _audioSubtitlesService.SendAudioSegments(CurrentMediaFile);
 
         _isLoadingTrack = false;
+    }
+
+    private void PostTrackLoaded(MediaFile file)
+    {
+        _webSocket.Value.PostEvent("track_loaded", new TrackLoadedEvent() //TODO episodes, seasons and such
+        {
+            FileName = file.Path,
+            Title = file.Title,
+            ShortTitle = file.GetDisplayTitle(),
+        });
+    }
+
+    /// <summary>
+    /// The overlay connected again after it got the state of the current file (page reload, DevTools, the Vite dev
+    /// server attached to a running player): send that state again.
+    /// </summary>
+    public void ResendState()
+    {
+        var file = CurrentMediaFile;
+        if (file is null || _isLoadingTrack) return;
+
+        var socket = _webSocket.Value;
+        PostTrackLoaded(file);
+        socket.PostEvent("duration_update", _player.Duration);
+        if (_player.Position is { } position) socket.PostEvent("current_time", position);
+        socket.PostEvent("play_state", !_player.IsPaused);
+        _audioSubtitlesService.SendAudioAndSubtitles();
+        _audioSubtitlesService.SendAudioSegments(file);
+        OpenFolder(Path.GetDirectoryName(file.Path));
     }
 
     private void PlaybackEndReached(object sender, EventArgs e)

@@ -3,7 +3,6 @@
 $ServerDir = "./Popcorn.Server"
 $PopcornWebDir = "./Popcorn.Web"
 $PlayerDir = "./Popcorn.Player.Windows"
-$PlayerWebDir = "./Popcorn.Player.Web"
 $BundleDir = "./Bundle/Windows"
 $PlayerBundleDir = "./Bundle/Windows/Player"
 $Config = "Release"
@@ -17,11 +16,11 @@ function Ensure-Directory {
 }
 
 function Build-Npm {
-    param ([string]$dir)
-    Write-Output "Building $dir..."
+    param ([string]$dir, [string]$script = "build")
+    Write-Output "Building $dir ($script)..."
     Push-Location $dir
     npm ci
-    npm run build
+    npm run $script
     Pop-Location
 }
 
@@ -61,8 +60,8 @@ Write-Output "Starting build process..."
 
 Clean-Directory -dir $BundleDir
 
-Build-Npm -dir $PopcornWebDir      # post-build copies dist/ into Popcorn.Server/web
-Build-Npm -dir $PlayerWebDir       # Player.Windows post-build copies build/ into web-player
+Build-Npm -dir $PopcornWebDir                       # post-build copies dist/ into Popcorn.Server/web
+Build-Npm -dir $PopcornWebDir -script "build:player" # player overlay -> dist-player/, Player.Windows post-build copies it into web-player
 Build-Dotnet -dir $ServerDir
 Build-Dotnet -dir $PlayerDir
 Bundle-Windows

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { postMessage } from '../../../utils/events';
 import NumberStepper from '../NumberStepper/NumberStepper';
 import './TrackControl.css';
@@ -6,23 +6,29 @@ import { IconPlus as AddIcon, IconBadgeCc as Subtitles } from '@tabler/icons-rea
 import { usePlayerStore } from '../../../state/player.store';
 import { useFileDialog } from '@mantine/hooks';
 import { subtitleFormats } from '../../../utils/file.utils';
+import { usePlayerFeatures } from '../../player-features';
 
 interface TrackEntry {
   id: string;
   description: string;
   language: string;
-  selected: boolean;
 }
+
+/** Subtitle "None" entry; hosts get -1 in `subtitle_track_selected` and turn subtitles off. */
+export const NO_SUBTITLE_ID = '-1';
+
+const toEntry = (t: { index: number; label: string; language?: string }): TrackEntry => ({
+  description: t.label,
+  language: t.language ?? '',
+  id: t.index.toString(),
+});
 
 const TrackControl = () => {
   const subtitlePopupWidth = 500;
 
-  const { metadata } = usePlayerStore();
+  const { metadata, currentAudio, currentSubtitle } = usePlayerStore();
+  const { addSubtitle, subtitleDelay } = usePlayerFeatures();
 
-  const [audioTracks, setAudioTracks] = useState<TrackEntry[]>([]);
-  const [subtitleTracks, setSubtitleTracks] = useState<TrackEntry[]>([]);
-  const [selectedAudio, setSelectedAudio] = useState<string>();
-  const [selectedSubtitle, setSelectedSubtitle] = useState<string>();
   const [showPopup, setShowPopup] = useState(false);
   const [resetSubtitleDelay, setResetSubtitleDelay] = useState(false);
   const subtitleRef = useRef<HTMLDivElement>(null);
@@ -38,54 +44,33 @@ const TrackControl = () => {
     },
   });
 
-  useEffect(() => {
-    if (!metadata) return;
+  const audioTracks = useMemo(() => (metadata?.audioTracks ?? []).map(toEntry), [metadata]);
+  const subtitleTracks = useMemo(
+    () => [{ id: NO_SUBTITLE_ID, description: '', language: '' }, ...(metadata?.subtitleTracks ?? []).map(toEntry)],
+    [metadata]
+  );
 
-    setAudioTracks(
-      metadata.audioTracks.map(
-        (t) =>
-          ({
-            description: t.label,
-            language: t.language,
-            id: t.index.toString(),
-            selected: false,
-          }) as TrackEntry
-      )
-    );
-
-    setSubtitleTracks(
-      metadata.subtitleTracks.map(
-        (t) =>
-          ({
-            description: t.label,
-            language: t.language,
-            id: t.index.toString(),
-            selected: false,
-          }) as TrackEntry
-      )
-    );
-  }, [metadata]);
-
-  useEffect(() => {
-    if (audioTracks.length) {
-      setSelectedAudio(audioTracks.find((t) => t.selected)?.id || audioTracks[0].id);
-    }
-    if (subtitleTracks.length) {
-      setSelectedSubtitle(subtitleTracks.find((t) => t.selected)?.id || subtitleTracks[0].id);
-    }
-    console.log('Updated tracks', audioTracks, subtitleTracks);
-  }, [audioTracks, subtitleTracks]);
+  // The host owns the selection (store); before it reports one, the first audio track is the one playing.
+  const selectedAudio = currentAudio?.index.toString() ?? audioTracks[0]?.id;
+  const selectedSubtitle = currentSubtitle?.index.toString() ?? NO_SUBTITLE_ID;
 
   const handleAudioChange = (value: string) => {
     if (selectedAudio === value) return;
-    setSelectedAudio(value);
     postMessage('audio_track_selected', value);
   };
 
   const handleSubtitleChange = (value: string) => {
-    setSelectedSubtitle(value);
+    if (selectedSubtitle === value) return;
     postMessage('subtitle_track_selected', value);
     subtitleDelayReset();
+  };
+
+  const handleAddSubtitle = () => {
+    if (addSubtitle === 'browser') {
+      fileDialog.open();
+    } else {
+      postMessage('subtitle_file_select');
+    }
   };
 
   const subtitleDelayStep = 0.05;
@@ -139,8 +124,8 @@ const TrackControl = () => {
           </div>
           {
             <span className={`option-text ${selectedValue === track.id ? 'bold' : ''}`}>
-              {!track.id ? 'None' : track.language + ' '}
-              <span className={`option-desc-text`}>{!track.id ? '' : track.description}</span>
+              {track.id === NO_SUBTITLE_ID ? 'None' : track.language + ' '}
+              <span className={`option-desc-text`}>{track.description}</span>
             </span>
           }
         </li>
@@ -171,18 +156,24 @@ const TrackControl = () => {
               <p className="titles">Subtitles</p>
             </div>
             {renderCustomSelector(subtitleTracks, selectedSubtitle, handleSubtitleChange)}
-            <div className="subtitles-footer">
-              <button className="add-subtitle-button" onClick={fileDialog.open}>
-                <AddIcon />
-                <span>Add</span>
-              </button>
-              <NumberStepper
-                initialValue={0}
-                onNumberChanged={handleSubtitleDelayChanged}
-                step={subtitleDelayStep}
-                reset={resetSubtitleDelay}
-              />
-            </div>
+            {(addSubtitle || subtitleDelay) && (
+              <div className="subtitles-footer">
+                {addSubtitle && (
+                  <button className="add-subtitle-button" onClick={handleAddSubtitle}>
+                    <AddIcon />
+                    <span>Add</span>
+                  </button>
+                )}
+                {subtitleDelay && (
+                  <NumberStepper
+                    initialValue={0}
+                    onNumberChanged={handleSubtitleDelayChanged}
+                    step={subtitleDelayStep}
+                    reset={resetSubtitleDelay}
+                  />
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

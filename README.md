@@ -14,7 +14,7 @@ Subtitle box adjusting
 
 # Development environment #
 
-Run `npm install` in `Popcorn.Web/` and `Popcorn.Player.Web/`.
+Run `npm install` in `Popcorn.Web/` (main UI and the native players' overlay, `npm run build:player`).
 See `CLAUDE.md` for project structure, build and run instructions.
 
 

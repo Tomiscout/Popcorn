@@ -57,6 +57,12 @@
     <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Only the Windows player still uses MPVSharp (Linux talks to libmpv directly, see LibMpvClient). -->
+    <Reference Include="Nickvision.MPVSharp">
+      <HintPath>..\MPVSharp\Nickvision.MPVSharp.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
     <Content Include="popcorn.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -76,7 +82,7 @@
   </ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="Build">
-    <Exec Command="xcopy /e /i /y &quot;$(ProjectDir)..\Popcorn.Player.Web\build&quot; &quot;$(TargetDir)\web-player&quot;" />
+    <Exec Command="xcopy /e /i /y &quot;$(ProjectDir)..\Popcorn.Web\dist-player&quot; &quot;$(TargetDir)\web-player&quot;" />
   </Target>
 
 </Project>

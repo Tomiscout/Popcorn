@@ -2,11 +2,9 @@ import React from 'react';
 import ProgressBar from '../ProgressBar/ProgressBar';
 import PlaybackControls from '../PlaybackControls/PlaybackControls';
 import './ControlBar.css';
-import { MediaFileMetadata } from '../../../query/models/video.models';
 
 export interface ControlBarProps {
   showControls: boolean;
-  metadata: MediaFileMetadata;
 }
 
 export const ControlBar: React.FC<ControlBarProps> = ({ showControls }) => {

@@ -5,6 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- LibraryImport (LibMpvClient) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,12 +22,6 @@
     <ProjectReference Include="..\Popcorn.Persistence\Popcorn.Persistence.csproj" />
     <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
     <ProjectReference Include="..\PopcornPlayer.Shared\PopcornPlayer.Shared.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Nickvision.MPVSharp">
-      <HintPath>..\MPVSharp\Nickvision.MPVSharp.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
 </Project>

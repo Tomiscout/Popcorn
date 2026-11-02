@@ -46,17 +46,13 @@ public class Startup
         scratchFilesService.InitialCleanup();
         
         var webPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "web");
-        if (Directory.Exists(webPath))
+        var webFiles = Directory.Exists(webPath)
+            ? new Microsoft.Extensions.FileProviders.PhysicalFileProvider(webPath)
+            : null;
+        if (webFiles != null)
         {
-            app.UseDefaultFiles(new DefaultFilesOptions
-            {
-                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(webPath)
-            });
-
-            app.UseStaticFiles(new StaticFileOptions
-            {
-                FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(webPath)
-            });
+            app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = webFiles });
+            app.UseStaticFiles(new StaticFileOptions { FileProvider = webFiles });
         }
         else
         {
@@ -80,6 +76,13 @@ public class Startup
         app.UseEndpoints(endpoints =>
         {
             endpoints.MapControllers();
+            // SPA fallback: client-side routes (/watch, /watch/123, ...) have no file on disk, so serve
+            // index.html and let React Router handle them. Only matches paths without a file extension,
+            // so missing assets still 404.
+            if (webFiles != null)
+            {
+                endpoints.MapFallbackToFile("index.html", new StaticFileOptions { FileProvider = webFiles });
+            }
         });
     }
     

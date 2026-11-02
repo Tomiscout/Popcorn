@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
-import { registerEventHandler } from '../../../utils/events';
+import { registerEventHandler, unregisterEventHandler } from '../../../utils/events';
 import './ErrorOverlay.css';
 
 const ErrorOverlay = () => {
   const [errors, setErrors] = useState<any[]>([]);
 
   useEffect(() => {
+    const addError = (error: unknown) => {
+      setErrors((prevErrors) => [...prevErrors, error]);
+    };
     registerEventHandler('player_error', addError);
+    return () => unregisterEventHandler('player_error', addError);
   }, []);
-
-  const addError = (error: string) => {
-    setErrors((prevErrors) => [...prevErrors, error]);
-  };
 
   const removeError = (index: number) => {
     setErrors((prevErrors) => prevErrors.filter((_, i) => i !== index));
@@ -42,8 +42,7 @@ const ErrorOverlay = () => {
     <div className="error-overlay">
       {errors.map((error, index) => (
         <div key={index} className="error-message">
-          <div className="error-container"></div>
-          {renderError(error)}
+          <div className="error-container">{renderError(error)}</div>
           <button onClick={() => removeError(index)}>X</button>
         </div>
       ))}

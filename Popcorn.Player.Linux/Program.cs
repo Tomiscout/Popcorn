@@ -1,186 +1,195 @@
-﻿using GdkPixbuf.Internal;
-using Gtk;
+using System.Runtime.InteropServices;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Popcorn.Persistence;
 using Popcorn.Player.Core;
 using Popcorn.Player.Core.Core;
-using Popcorn.Player.Linux.Gtk;
 using Popcorn.Player.Core.Player;
-using Serilog;
 using Popcorn.Player.Core.WebSocket;
+using Popcorn.Player.Linux.Native;
 using Popcorn.Shared.Utils;
-using WebKit;
+using Serilog;
 
 namespace Popcorn.Player.Linux;
 
+/// <summary>
+/// Linux player (Wayland only). The window, video output and CEF overlay are native (libpopcorn_player.so,
+/// Popcorn.Player.Native); this process hosts the player logic: DB, file navigation, mpv control, the overlay's
+/// WebSocket bridge and the link to Popcorn.Server. Works standalone when the server isn't running.
+/// </summary>
 public class Program
 {
-    private static ApplicationWindow _window;
-    private static WebView _webView;
-    public static IServiceProvider Services { get; private set; }
-    
+    public static IServiceProvider Services { get; private set; } = null!;
+
     public static int Main(string[] args)
     {
         Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
             .WriteTo.Console()
             .WriteTo.Debug()
-            .WriteTo.File(Path.Combine(DirectoryUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}Popcorn.Player-.txt"), rollingInterval: RollingInterval.Day)
+            .WriteTo.File(Path.Combine(DirectoryUtils.DataFolder, "logs", "Popcorn.Player-.txt"),
+                rollingInterval: RollingInterval.Day,
+                restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information)
             .CreateLogger();
-
         AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionTrapper;
-        GLib.UnhandledException.SetHandler(GtkUnhandledException);
-        var services = new ServiceCollection();
-        services.AddPopcornDatabase();
-        services.AddPopcornPlayer();
-        Services = services.BuildServiceProvider();
-        
-        _ = Task.Run(ConnectToSocketAsync);
-        WebKit.Module.Initialize();
 
-        var application = global::Gtk.Application.New("tomiscout.popcorn.player", Gio.ApplicationFlags.FlagsNone);
-
-        application.OnActivate += OnActivate;
-        application.OnShutdown += OnShutdown;
-
+        var cacheDir = CreateCefCacheDir();
         try
         {
-            return application.RunWithSynchronizationContext(null);
+            return Run(args, cacheDir);
         }
         catch (Exception ex)
         {
-            GtkUnhandledException(ex);
-            return -1;
+            Log.Fatal(ex, "Player failed");
+            return 1;
+        }
+        finally
+        {
+            TryDeleteDirectory(cacheDir);
+            Log.CloseAndFlush();
         }
     }
 
-    private static void OnActivate(Gio.Application app, EventArgs args)
+    private static int Run(string[] args, string cacheDir)
     {
-        Log.Information("Building player window");
-    
-        _window = global::Gtk.ApplicationWindow.New((global::Gtk.Application)app);
-        _window.Title = "Popcorn player";
-        _window.SetDefaultSize(1280, 720);
+        var services = new ServiceCollection();
+        services.AddPopcornDatabase();
+        services.AddPopcornPlayer();
+        // The mpv core is created by the native layer (it owns the video output); we only attach a client.
+        services.AddSingleton<IMpvClient>(sp => new LibMpvClient(PlayerNative.MpvCore, sp.GetRequiredService<ILogger<LibMpvClient>>()));
+        Services = services.BuildServiceProvider();
 
-        var overlay = global::Gtk.Overlay.New();
-        _window.SetChild(overlay);
-    
-        overlay.SetChild(MpvGtk.CreateGlArea());
+        var webEventHandler = Services.GetRequiredService<WebEventHandler>();
+        var wsAddress = webEventHandler.StartServer();
 
-        _webView = WebviewGtk.CreateWebView();
-        overlay.AddOverlay(_webView);
-    
+        var baseDir = AppContext.BaseDirectory;
+        PlayerNative.Init(new PlayerNativeOptions
+        {
+            OverlayDir = Path.Combine(baseDir, "web-player"),
+            OverlayPage = "index-chrome.html",
+            InjectScript = $"window.wsAddress = {JsonSerializer.Serialize(wsAddress)};",
+            CacheDir = cacheDir,
+            CefLogFile = Path.Combine(DirectoryUtils.DataFolder, "logs", "cef-player.log"),
+            SubprocessPath = Path.Combine(baseDir, "popcorn-player-cef"),
+            DevToolsPort = int.TryParse(Environment.GetEnvironmentVariable("POPCORN_PLAYER_DEVTOOLS_PORT"), out var port) ? port : 0,
+        });
+
+        webEventHandler.OnFullscreen += (_, fullscreen) => PlayerNative.SetFullscreen(fullscreen);
+        webEventHandler.OnCloseRequested += (_, _) => PlayerNative.Quit();
+        // Also F11 and compositor-initiated changes, so the overlay's fullscreen button stays right.
+        PlayerNative.FullscreenChanged += fullscreen => webEventHandler.PostEvent("fullscreen", fullscreen);
+        PlayerNative.CloseRequested += () => Log.Information("Player window closing");
+
+        var player = Services.GetRequiredService<IPlayer>();
+        player.Initialize();
+
+        // Close the window the normal way (overlay, mpv and CEF shut down in order) on kill/Ctrl+C.
+        using var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, OnQuitSignal);
+        using var sigint = PosixSignalRegistration.Create(PosixSignal.SIGINT, OnQuitSignal);
+
+        // Only after CEF start-up: loading runs ffprobe/ffmpeg, see PlayerNative.Ready. The server link comes after it
+        // too, so a LoadMediaEvent can't arrive before the player is usable.
+        PlayerNative.Ready += () =>
+        {
+            Log.Information("Player ready");
+            StartPlayer(args);
+            _ = Task.Run(ConnectToSocketAsync);
+        };
+
         Log.Information("Showing player window");
-        _window.Show();
+        var exitCode = PlayerNative.Run();
+        Log.Information("Player window closed ({exitCode})", exitCode);
 
-        StartPlayer();
+        Services.GetService<PlayerCore>()?.Dispose();
+        player.Dispose();
+        PlayerNative.Destroy();
+        return exitCode;
     }
 
-    private static void StartPlayer()
+    private static void OnQuitSignal(PosixSignalContext context)
+    {
+        context.Cancel = true;
+        Log.Information("Received {signal}, closing", context.Signal);
+        PlayerNative.Quit();
+    }
+
+    private static void StartPlayer(string[] args)
     {
         Task.Run(async () =>
         {
-            var webEventHandler = Services.GetRequiredService<WebEventHandler>();
-            webEventHandler.OnFullscreen += SetFullscreen;
-            
             var player = Services.GetRequiredService<PlayerCore>();
-            
-            var envPaths = Environment.GetCommandLineArgs().Skip(1).ToList();
-            if (envPaths.Count >= 1)
+
+            var paths = args.Where(arg => !arg.StartsWith('-')).ToList();
+            if (paths.Count >= 1 && Guid.TryParse(paths[0], out var fileId))
             {
-                if (Guid.TryParse(envPaths[0], out var guidOutput))
-                {
-                    Log.Information("Loading from file id: {fileId}", guidOutput);
-                    await player.LoadFileId(guidOutput);
-                }
-                else
-                {
-                    var paths = envPaths.Where(arg => !arg.StartsWith("-")).ToList();
-                    Log.Information($"Loading from file path: {string.Join(",", paths)}");
-                    await player.LoadFilesFromInput(paths);
-                }
+                Log.Information("Loading from file id: {fileId}", fileId);
+                await player.LoadFileId(fileId);
+            }
+            else if (paths.Count >= 1)
+            {
+                Log.Information("Loading from file path: {paths}", string.Join(",", paths));
+                await player.LoadFilesFromInput(paths);
             }
             else
             {
-                Log.Information("Loading default file");
-                await player.LoadFilesFromInput([
-                    @"/home/tom/Downloads/Torrent/Bobs Burgers S01-S14 Complete + Movie [1080p WEB-DL x265 HEVC]-CAPT/Series/Season 1/S01E01.mkv"
-                ]);
-                //player.LoadMedia(@"/mnt/data/Downloads/Sex.Education.S04.COMPLETE.1080p.NF.WEB-DL.DDP5.1.H.264-Archie[TGx]/Sex.Education.S04E01.Episode.1.1080p.NF.WEB-DL.DDP5.1.H.264-Archie.mkv");
-                //player.LoadMedia(@"/home/tom/Videos/4K60p.mov");
+                Log.Information("No file to load, waiting for one");
             }
         }).ContinueWith(t =>
         {
-            if (t.IsFaulted)
-            {
-                Log.Error(t.Exception, "Unhandled exception occured while loading player");
-            }
-            else if (t.IsCanceled)
-            {
-                Log.Warning("StartPlayer was canceled.");
-            }
+            if (t.IsFaulted) Log.Error(t.Exception, "Unhandled exception occured while loading player");
         });
     }
-    
+
+    /// <summary>
+    /// A CEF profile can only be used by one process at a time and the overlay keeps no state, so every player
+    /// process gets a throwaway one.
+    /// </summary>
+    private static string CreateCefCacheDir()
+    {
+        var runtimeDir = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+        var root = string.IsNullOrEmpty(runtimeDir) ? Path.GetTempPath() : runtimeDir;
+        var dir = Path.Combine(root, $"popcorn-player-cef-{Environment.ProcessId}");
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
+
+    private static void TryDeleteDirectory(string dir)
+    {
+        try
+        {
+            if (Directory.Exists(dir)) Directory.Delete(dir, true);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not delete {dir}", dir);
+        }
+    }
+
     private static void UnhandledExceptionTrapper(object sender, UnhandledExceptionEventArgs e)
     {
         Log.Fatal((Exception)e.ExceptionObject, "An unhandled exception occurred.");
         Log.CloseAndFlush();
         Environment.Exit(1);
     }
-    
-    private static void GtkUnhandledException(Exception ex)
+
+    private const string SocketPath = "/tmp/popcorn_bridge.sock";
+    public static PopcornSocketClient? PopcornClient { get; private set; }
+
+    private static Task ConnectToSocketAsync()
     {
-        Log.Fatal(ex, "An unhandled exception occurred on the GTK thread.");
-        Log.CloseAndFlush();
-        Environment.Exit(1);
-    }
-
-    public static void SetTitle(string title) => _window.Title = title;
-
-    private static bool _isFullscreen = false;
-    public static void SetFullscreen(object? sender, bool fullscreen)
-    {
-        switch (fullscreen)
-        {
-            case true when !_isFullscreen:
-                _window.Fullscreen();
-                _isFullscreen = true;
-                break;
-            case false when _isFullscreen:
-                _window.Unfullscreen();
-                _isFullscreen = false;
-                break;
-        }
-    }
-
-    public static int GetScaleFactor() => _window.GetScaleFactor();
-
-    private static void OnShutdown(Gio.Application app, EventArgs args)
-    {
-        _webView.Dispose();
-        Services.GetService<PlayerCore>()?.Dispose();
-    }
-
-    private const string _socketPath = "/tmp/popcorn_bridge.sock";
-    public static PopcornSocketClient PopcornClient { get; private set; }
-    private static async Task ConnectToSocketAsync()
-    {
-        if (!File.Exists(_socketPath))
+        if (!File.Exists(SocketPath))
         {
             Log.Information("Could not find popcorn socket file, Popcorn is not started.");
-            return;
+            return Task.CompletedTask;
         }
 
-        PopcornClient = new PopcornSocketClient(_socketPath);
-        
-        // Important! If main client sends an event on player startup - it messes up mpv opengl context, and it becomes blue
-        // We can fix that with GLib.Functions.IdleAdd, but since the lambda then runs as a native function - we can't handle exceptions, and it crashes without any logs.
-        // Setting GLib.UnhandledException should handle this case - but it doesn't :) so let's just not send events on startup
-        PopcornClient.MessageReceived += (sender, @event) =>
+        PopcornClient = new PopcornSocketClient(SocketPath);
+        PopcornClient.MessageReceived += (_, @event) =>
         {
-            _ = Task.Run(() => Services.GetRequiredService<PopcornPipeEventHandler>().Handle(@event)); 
+            _ = Task.Run(() => Services.GetRequiredService<PopcornPipeEventHandler>().Handle(@event));
         };
-        
+
         try
         {
             PopcornClient.Start();
@@ -189,5 +198,6 @@ public class Program
         {
             Log.Error(ex, "Popcorn socket client error");
         }
+        return Task.CompletedTask;
     }
 }

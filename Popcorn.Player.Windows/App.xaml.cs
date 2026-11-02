@@ -15,6 +15,7 @@ using Popcorn.Player.Core.Player;
 using Popcorn.Player.Core.Core;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Player.Windows.Pipe;
+using Popcorn.Player.Windows.Mpv;
 
 namespace Popcorn.Player.Windows;
 
@@ -37,6 +38,7 @@ public partial class App : Application
         var services = new ServiceCollection();
         services.AddPopcornDatabase();
         services.AddPopcornPlayer();
+        services.AddSingleton<IMpvClient, MpvSharpClient>();
         services.AddSingleton<ClientPipeManager>();
         
         Services = services.BuildServiceProvider();
@@ -104,6 +106,10 @@ public partial class App : Application
         Services.GetService<WebEventHandler>().OnFullscreen += (object sender, bool isFullscreen) =>
         {
             ((MainWindow)Current.MainWindow).ChangeFullscreen(isFullscreen);
+        };
+        Services.GetService<WebEventHandler>().OnCloseRequested += (_, _) =>
+        {
+            Current.Dispatcher.Invoke(() => Current.MainWindow.Close());
         };
     }
 }

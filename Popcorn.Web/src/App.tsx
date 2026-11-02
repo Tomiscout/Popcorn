@@ -2,7 +2,8 @@ import { IconDeviceTv, IconDownload, IconFolderOpen, IconSearch, IconSettings } 
 
 import './App.css';
 import { Routes, Route, Link, Navigate, useLocation, BrowserRouter } from 'react-router-dom';
-import { AppShell, Button, createTheme, MantineProvider, NavLink } from '@mantine/core';
+import { AppShell, Button, MantineProvider, NavLink } from '@mantine/core';
+import { theme } from './theme';
 import { Notifications } from '@mantine/notifications';
 import WatchPage from './pages/watch/watch.page';
 import SearchPage from './pages/search/search.page';
@@ -30,24 +31,6 @@ import { isDesktopApp } from './utils/platform';
 
 // Separate chunk, only fetched when a file is played in the browser (never in the desktop app).
 const PopcornPlayer = lazy(() => import('./player/PopcornPlayer').then((m) => ({ default: m.PopcornPlayer })));
-
-const theme = createTheme({
-  primaryColor: 'primaryRed',
-  colors: {
-    primaryRed: [
-      '#f0d7d7',
-      '#e9c3c3',
-      '#e1afaf',
-      '#da9b9b',
-      '#d28686',
-      '#cb7272',
-      '#c35e5e',
-      '#bc4a4a',
-      '#b43636', //Main
-      '#a23131',
-    ],
-  },
-});
 
 function AppContent() {
   const location = useLocation();

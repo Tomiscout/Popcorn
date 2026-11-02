@@ -40,7 +40,7 @@ public class ThumbnailService(Lazy<PlayerCore> playerCore, Lazy<WebEventHandler>
                 if (currentFile == null) return Task.CompletedTask;
 
                 var bytes = GetThumbnailBytes(currentFile.Path, playerCore.Value.CurrentMediaProbe, currentFile.Id.ToString(), time, FfmpegCts.Token);
-                if (!bytes.Any()) return Task.CompletedTask;
+                if (bytes is null || bytes.Length == 0) return Task.CompletedTask;
 
                 webSocket.Value.PostBinaryEvent(bytes);
             }
@@ -64,7 +64,7 @@ public class ThumbnailService(Lazy<PlayerCore> playerCore, Lazy<WebEventHandler>
     // TODO argument caching, since for file it would be reused, except of output file path and timestamp
     // But need to benchmark if it's necessary at all, since caching may be too complex.
     // Although it would be beneficial, because if some method fails to generate, fallback would be faster and multiple ffmpeg instances / file checks wouldnt be called
-    public byte[] GetThumbnailBytes(string inputFilePath, IMediaAnalysis metadata, string id, long timeInSeconds, CancellationToken ct)
+    public byte[]? GetThumbnailBytes(string inputFilePath, IMediaAnalysis metadata, string id, long timeInSeconds, CancellationToken ct)
     {
         var outputFilePath = $"{OutputFolder + Path.DirectorySeparatorChar + id}-{timeInSeconds}.jpg"; // HDR generates png output, but jpg is kept for now
         var thumbFile = new FileInfo(outputFilePath);

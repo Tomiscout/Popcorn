@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Popcorn.Player.Linux</RootNamespace>
+    <!-- Function pointers / LibraryImport for libpopcorn_player.so (Native/PlayerNative.cs) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,8 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="GirCore.WebKit-6.0" Version="0.6.3" />
-    <PackageReference Include="OpenTK" Version="4.8.2" />
     <PackageReference Include="FFMpegCore" Version="5.2.0" />
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
@@ -29,17 +29,13 @@
     <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="Nickvision.MPVSharp">
-      <HintPath>..\MPVSharp\Nickvision.MPVSharp.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
 
   <Target Name="CopyWebPlayerToOutput" AfterTargets="Build">
     <ItemGroup>
       <FilesToCopy Include="web-player/\**\*.*" />
     </ItemGroup>
+    <!-- Replace, not merge: file names are content-hashed, old bundles would pile up. -->
+    <RemoveDir Directories="$(OutputPath)web-player" />
     <Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(OutputPath)web-player\%(RecursiveDir)" />
   </Target>
 </Project>

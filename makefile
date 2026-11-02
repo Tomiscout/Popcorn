@@ -2,7 +2,9 @@ BLD_DIR=build
 LINUX_DIR=$(BLD_DIR)/Linux
 POPCORN_DIR_LINUX=./Popcorn.Linux
 POPCORN_PLAYER_DIR_LINUX=./Popcorn.Player.Linux
+POPCORN_PLAYER_NATIVE_DIR=./Popcorn.Player.Native
 POPCORN_SERVER_DIR=./Popcorn.Server
+# MPVSharp: only used by the Windows player now (build_windows.ps1); kept here for building it on Linux.
 MPVSHARP_DIR=./MPVSharp
 MPVSHARP_SRC_DIR=$(MPVSHARP_DIR)/src
 MPVSHARP_BIN_DIR=$(MPVSHARP_DIR)/bin
@@ -29,12 +31,18 @@ CONFIG=Release
 # matching its version into $(CEF_PATH)/<cef version>/cef_linux_<arch> on first build.
 CEF_PATH ?= $(HOME)/.cache/popcorn/cef
 POPCORN_LINUX_EXE=$(POPCORN_DIR_LINUX)/target/release/popcorn-linux
+# Player native layer (Rust): libpopcorn_player.so (P/Invoked by Popcorn.Player.Linux) + CEF helper executable
+# Optional libmpv with the DMA-BUF render API (render_dmabuf.h), e.g. MPV_LIB=../mpv/build/libmpv.so.2. Bundled next
+# to libpopcorn_player.so (found through its $$ORIGIN rpath); without it the player uses the system libmpv and falls
+# back to the OpenGL video output.
+MPV_LIB ?=
+POPCORN_PLAYER_NATIVE_FILES=$(POPCORN_PLAYER_NATIVE_DIR)/target/release/libpopcorn_player.so $(POPCORN_PLAYER_NATIVE_DIR)/target/release/popcorn-player-cef
 CEF_VERSION=$(shell awk '/^name = "cef-dll-sys"/ { getline; sub(/.*\+/, ""); sub(/"/, ""); print }' $(POPCORN_DIR_LINUX)/Cargo.lock)
 CEF_DIR=$(CEF_PATH)/$(CEF_VERSION)/cef_linux_$(shell uname -m)
 CEF_RUNTIME_FILES=libcef.so chrome-sandbox chrome_100_percent.pak chrome_200_percent.pak resources.pak \
 	icudtl.dat v8_context_snapshot.bin libvk_swiftshader.so libvulkan.so.1 vk_swiftshader_icd.json
 
-.PHONY: clean kill-popcorn mpvsharp update-mpvsharp npm-ci npm-ci-popcorn-web npm-ci-player-web build-popcorn-web build-popcorn-server build-popcorn-linux build-player-web build-popcorn-player-linux bundle-linux install-linux all
+.PHONY: clean kill-popcorn mpvsharp update-mpvsharp npm-ci npm-ci-popcorn-web build-popcorn-web build-popcorn-server build-popcorn-linux build-player-web build-popcorn-player-native build-popcorn-player-linux bundle-linux install-linux all
 
 # Clean output folders
 clean:
@@ -61,10 +69,7 @@ update-mpvsharp:
 npm-ci-popcorn-web:
 	cd ./Popcorn.Web && npm ci
 
-npm-ci-player-web:
-	cd ./Popcorn.Player.Web && npm ci
-
-npm-ci: npm-ci-popcorn-web npm-ci-player-web
+npm-ci: npm-ci-popcorn-web
 
 build-popcorn-web: npm-ci-popcorn-web
 	cd ./Popcorn.Web && npm run build
@@ -77,12 +82,18 @@ build-popcorn-server: build-popcorn-web
 build-popcorn-linux:
 	cd $(POPCORN_DIR_LINUX) && CEF_PATH=$(CEF_PATH) cargo build --release
 
-build-player-web: npm-ci-player-web
-	cd ./Popcorn.Player.Web && npm run build
+# Player overlay: Popcorn.Web's player UI as a standalone page (player.html), post-build copies it to Popcorn.Player.Linux/web-player
+build-player-web: npm-ci-popcorn-web
+	cd ./Popcorn.Web && npm run build:player
 
-build-popcorn-player-linux: build-player-web $(MPVSHARP_DLL)
+# Player window / video / CEF overlay (Rust cdylib, shares the CEF runtime with Popcorn.Linux)
+build-popcorn-player-native:
+	cd $(POPCORN_PLAYER_NATIVE_DIR) && CEF_PATH=$(CEF_PATH) cargo build --release
+
+build-popcorn-player-linux: build-player-web build-popcorn-player-native
 	dotnet restore $(POPCORN_PLAYER_DIR_LINUX)
 	dotnet build $(POPCORN_PLAYER_DIR_LINUX) --configuration $(CONFIG)
+
 # Bundle server, desktop shell (+ CEF runtime) and player together
 bundle-linux:
 	rm -rf $(LINUX_DIR)
@@ -92,6 +103,8 @@ bundle-linux:
 	cp -r $(POPCORN_PLAYER_BIN_DIR)/* $(LINUX_DIR)
 	cp -r $(POPCORN_SERVER_BIN_DIR)/* $(LINUX_DIR)
 	cp $(POPCORN_LINUX_EXE) $(LINUX_DIR)/Popcorn.Linux
+	cp $(POPCORN_PLAYER_NATIVE_FILES) $(LINUX_DIR)/
+	$(if $(MPV_LIB),cp -L $(MPV_LIB) $(LINUX_DIR)/libmpv.so.2)
 	cd $(CEF_DIR) && cp $(CEF_RUNTIME_FILES) $(CURDIR)/$(LINUX_DIR)/
 	cp $(CEF_DIR)/locales/*.pak $(LINUX_DIR)/locales/
 	strip --strip-unneeded $(LINUX_DIR)/libcef.so

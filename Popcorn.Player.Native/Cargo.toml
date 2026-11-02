@@ -1,0 +1,33 @@
+[package]
+name = "popcorn-player-native"
+description = "Native layer of the Linux player: Wayland window, mpv video surface and CEF overlay, loaded by Popcorn.Player.Linux (C#)"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+# libpopcorn_player.so, P/Invoked from Popcorn.Player.Linux (see src/lib.rs for the C ABI).
+name = "popcorn_player"
+crate-type = ["cdylib"]
+
+[[bin]]
+# CEF re-launches this for its renderer/GPU/utility processes (Settings::browser_subprocess_path),
+# so .NET never starts in those.
+name = "popcorn-player-cef"
+path = "src/bin/popcorn-player-cef.rs"
+
+[dependencies]
+# Keep exact and in sync with Popcorn.Linux: both use the CEF runtime bundled next to them.
+cef = { version = "=156.3.0", default-features = false }
+libc = "0.2"
+smithay-client-toolkit = { version = "0.20", default-features = false, features = ["calloop", "xkbcommon"] }
+wayland-client = "0.31"
+# client_system: raw wl_display / wl_surface pointers for EGL and libmpv.
+wayland-backend = { version = "0.3", features = ["client_system"] }
+wayland-protocols = { version = "0.32", features = ["client", "staging"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"

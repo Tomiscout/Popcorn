@@ -3,6 +3,7 @@ import './CaptureClickArea.css';
 import { postMessage } from '../../../utils/events';
 import { Text } from '@mantine/core';
 import { isAudioFormat, isSubtitleFormat } from '../../../utils/file.utils';
+import { usePlayerFeatures } from '../../player-features';
 
 export interface CaptureClickAreaProps {
   isFloating: boolean;
@@ -11,6 +12,7 @@ export interface CaptureClickAreaProps {
 export const CaptureClickArea: React.FC<CaptureClickAreaProps> = ({ isFloating }) => {
   const clickTimeoutRef = useRef<NodeJS.Timeout>(null);
   const [isFileDragging, setIsFileDragging] = React.useState(false);
+  const { fileDrop } = usePlayerFeatures();
 
   const handleClick = () => {
     if (clickTimeoutRef.current) {
@@ -70,9 +72,7 @@ export const CaptureClickArea: React.FC<CaptureClickAreaProps> = ({ isFloating }
       tabIndex={-1}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      {...(fileDrop && { onDragOver: handleDragOver, onDragLeave: handleDragLeave, onDrop: handleDrop })}
     >
       {isFileDragging && (
         <div className="drop-text" style={{ color: 'white' }}>
