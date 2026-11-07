@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Radarr (Movies/) and Sonarr (Tv/) parser fixtures, run against the unified parser. See ../Popcorn.FilenameParser/README.md. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="4.2.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+    <!-- 7.x is the last Apache-2.0 release; 8.x is commercially licensed. -->
+    <PackageReference Include="FluentAssertions" Version="[7.2.0,8.0.0)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Popcorn.FilenameParser\Popcorn.FilenameParser.csproj" />
+  </ItemGroup>
+
+
+</Project>

@@ -1,0 +1,87 @@
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 5;
+  transition: opacity 0.2s linear;
+  /* Only the buttons take clicks; the rest of the bar lets clicks through to the video. */
+  pointer-events: none;
+}
+
+.top-bar__background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 160px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.1) 80%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.top-bar__content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: clamp(8px, 2cqh, 24px) clamp(8px, 1.5cqw, 32px) 0;
+}
+
+.top-bar__content .control-button {
+  pointer-events: auto;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  color: #fff;
+}
+
+.top-bar__title {
+  min-width: 0;
+  flex: 1;
+  padding: 0 clamp(4px, 1cqw, 16px);
+  color: #fefefe;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* Only as wide as the text, so the empty rest of the bar still lets clicks through to the video. */
+.top-bar__title-text {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.top-bar__name {
+  font-size: clamp(16px, 2cqw, 32px);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-bar__episode {
+  display: flex;
+  gap: 0.75em;
+  margin-top: 2px;
+  font-size: clamp(12px, 1.2cqw, 20px);
+  color: #b8b8b8;
+}
+
+.top-bar__file-name {
+  margin-top: 2px;
+  font-size: clamp(12px, 1.2cqw, 20px);
+  color: #b8b8b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-bar__episode span + span::before {
+  content: '·';
+  margin-right: 0.75em;
+}

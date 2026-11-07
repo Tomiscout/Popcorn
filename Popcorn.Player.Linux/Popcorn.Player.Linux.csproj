@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Popcorn.Player.Linux</RootNamespace>
+    <!-- Function pointers / LibraryImport for libpopcorn_player.so (Native/PlayerNative.cs) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Utils\**" />
+    <EmbeddedResource Remove="Utils\**" />
+    <None Remove="Utils\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FFMpegCore" Version="5.2.0" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Popcorn.Player.Core\Popcorn.Player.Core.csproj" />
+    <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
+  </ItemGroup>
+
+
+  <!-- Added as content in a target (globbed when building, not when the project is loaded), so both the build output
+       and `dotnet publish` (make) get it. -->
+  <Target Name="IncludeWebPlayer" BeforeTargets="BeforeBuild">
+    <!-- Replace, not merge: file names are content-hashed, old bundles would pile up. -->
+    <RemoveDir Directories="$(OutDir)web-player" />
+    <ItemGroup>
+      <Content Remove="web-player\**" />
+      <WebPlayerFile Include="web-player\**\*.*" />
+      <Content Include="@(WebPlayerFile)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+</Project>

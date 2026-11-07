@@ -1,0 +1,20 @@
+{
+  "name": "popcorn-plugin-tmdb-ui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && vite build"
+  },
+  "devDependencies": {
+    "@mantine/core": "^8.3.13",
+    "@mantine/hooks": "^8.3.13",
+    "@popcorn/plugin-sdk": "file:../../../Popcorn.Web/plugin-sdk",
+    "@types/react": "^19.2.10",
+    "@vitejs/plugin-react-swc": "^3.8.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "typescript": "~5.7.2",
+    "vite": "^7.3.1"
+  }
+}

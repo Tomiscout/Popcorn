@@ -1,0 +1,54 @@
+.plugin-card {
+  border: 1px solid var(--mantine-color-dark-4);
+  border-radius: 8px;
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+}
+
+.plugin-file-card {
+  border: 1px solid var(--mantine-color-dark-4);
+  border-radius: 8px;
+}
+
+.plugin-card--clickable {
+  cursor: pointer;
+}
+
+.plugin-card--clickable:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-5px);
+}
+
+.plugin-small-card {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.plugin-small-card.plugin-card--clickable:hover {
+  transform: translateY(-4px);
+}
+
+.plugin-details-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.03);
+  transition:
+    opacity 0.8s ease,
+    transform 1.2s ease-out;
+}
+
+.plugin-details-backdrop[data-loaded] {
+  opacity: 1;
+  transform: none;
+}
+
+.plugin-details-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.85) 30%, rgba(0, 0, 0, 0.4) 100%);
+}

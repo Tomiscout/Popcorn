@@ -1,0 +1,73 @@
+.icon-wrapper {
+  position: relative;
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.icon-wrapper:focus {
+  outline: none;
+}
+
+.pulsate {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+.shake-wrapper {
+  display: inline-block;
+  transform-origin: 50% 85%; /* center, slightly above bottom */
+}
+
+/* One upward toss of the box: up, drops back with a small overshoot, slight tilt. */
+.shake {
+  animation: shake-rotate 0.35s ease-out;
+}
+
+@keyframes shake-rotate {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-16px) rotate(-2deg);
+  }
+  55% {
+    transform: translateY(3px) rotate(1.5deg);
+  }
+  75% {
+    transform: translateY(-2px) rotate(-0.5deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
+.particle {
+  position: absolute;
+  pointer-events: none;
+  width: clamp(64px, 4vw, 80px);
+  height: auto;
+
+  opacity: 1;
+  animation: particle-fade 0.6s linear 0.3s forwards;
+}
+
+@keyframes particle-fade {
+  to {
+    opacity: 0;
+  }
+}

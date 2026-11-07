@@ -1,0 +1,17 @@
+# Meson "cross" file for the native Windows build, see build_windows.sh.
+[binaries]
+c = 'gcc'
+cpp = 'g++'
+ar = 'ar'
+strip = 'strip'
+windres = 'windres'
+pkg-config = 'pkg-config'
+
+[host_machine]
+system = 'windows'
+cpu_family = 'x86_64'
+cpu = 'x86_64'
+endian = 'little'
+
+[properties]
+needs_exe_wrapper = true

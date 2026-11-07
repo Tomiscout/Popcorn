@@ -1,0 +1,114 @@
+.rounded-image-header {
+  height: 256px;
+  width: auto;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 8px;
+}
+
+.itemDetailsRoot {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.scrollablePanel {
+  max-height: calc(100vh - 60px - 256px - 48px);
+  overflow-y: auto;
+}
+
+/* Header over the item's backdrop: image fills the header, shade keeps the text readable. */
+.item-header {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.item-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+}
+
+.item-backdrop-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.85) 25%, rgba(0, 0, 0, 0.35) 100%),
+    linear-gradient(0deg, var(--mantine-color-body) 0%, transparent 35%);
+}
+
+.item-header-content,
+.item-poster-button {
+  position: relative;
+}
+
+.item-header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Top-right corner of the header (scoped selector: Mantine's Group styles would win over a lone class). */
+.item-header .item-actions {
+  position: absolute;
+  top: var(--mantine-spacing-sm);
+  right: var(--mantine-spacing-sm);
+  z-index: 1;
+}
+
+/* Keeps a long title out from under .item-actions. */
+.item-title {
+  flex-shrink: 0;
+  padding-right: 340px;
+}
+
+/* Takes the height the title and play block leave; a long text scrolls. */
+.item-description {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-width: 80ch;
+  overflow-y: auto;
+}
+
+.item-play {
+  flex-shrink: 0;
+}
+
+.item-poster-button {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+
+.item-poster-edit {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.item-poster-button:hover .item-poster-edit,
+.item-poster-button:focus-visible .item-poster-edit {
+  opacity: 1;
+}
+
+/* "Continue: S01 E11", episode name and saved position under the play button. */
+.item-continue {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 320px;
+  max-width: 100%;
+}

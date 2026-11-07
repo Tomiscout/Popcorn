@@ -1,0 +1,64 @@
+<!doctype html>
+<!-- Waiting page while Popcorn.Server starts. Copy of Popcorn.Linux's (src/browser.rs, WAIT_PAGE_*), which copies the
+     web UI's components/popcorn-box: keep them in step. The ICON, KERNEL and STATUS placeholders are filled in by MainForm. -->
+<html><head><meta charset="utf-8"><title>Popcorn</title><style>
+html,body{height:100%;margin:0;background:#242424;color:#ddd;font:15px system-ui,sans-serif;overflow:hidden}
+body{display:flex;align-items:center;justify-content:center}
+.icon-wrapper{position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;touch-action:manipulation}
+.shake-wrapper{display:inline-block;transform-origin:50% 85%}
+.shake{animation:shake-rotate .35s ease-out}
+@keyframes shake-rotate{0%{transform:translateY(0) rotate(0)}25%{transform:translateY(-16px) rotate(-2deg)}55%{transform:translateY(3px) rotate(1.5deg)}75%{transform:translateY(-2px) rotate(-.5deg)}100%{transform:translateY(0) rotate(0)}}
+.pulsate{display:block;width:256px;height:256px;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.05);opacity:1}}
+.particle{position:absolute;pointer-events:none;width:clamp(64px,4vw,80px);height:auto;animation:particle-fade .6s linear .3s forwards}
+@keyframes particle-fade{to{opacity:0}}
+#text{position:fixed;left:0;right:0;bottom:12%;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:0 24px;pointer-events:none}
+#status{opacity:.6;max-width:70ch}
+</style></head><body>
+<div id="box" class="icon-wrapper"><div class="shake-wrapper"><img class="pulsate" src="data:image/png;base64,{{ICON}}" alt="" draggable="false"></div></div>
+<img id="kernel" hidden src="data:image/png;base64,{{KERNEL}}" alt="">
+<div id="text"><div>Connecting to Popcorn server…</div><div id="status">{{STATUS}}</div></div>
+<script>
+const GRAVITY = 3000;
+const box = document.getElementById('box');
+const shaker = box.querySelector('.shake-wrapper');
+const kernelSrc = document.getElementById('kernel').src;
+let particles = [];
+const rand = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
+box.addEventListener('click', (e) => {
+  shaker.classList.remove('shake');
+  void shaker.offsetWidth;
+  shaker.classList.add('shake');
+  const rect = box.getBoundingClientRect();
+  const localX = e.clientX - rect.left, localY = e.clientY - rect.top;
+  const fromTop = localY > rect.height * 0.4;
+  const el = document.createElement('img');
+  el.src = kernelSrc;
+  el.className = 'particle';
+  el.style.transform = `rotate(${rand() * 360}deg)`;
+  box.appendChild(el);
+  particles.push({
+    el,
+    x: fromTop ? rect.width * 0.5 + (rand() - 0.5) * rect.width * 0.35 : localX,
+    y: fromTop ? 0 : localY,
+    vx: (rand() - 0.5) * (fromTop ? 300 : 600),
+    vy: -900 - rand() * 200,
+  });
+});
+let last = performance.now();
+const tick = (now) => {
+  const dt = (now - last) / 1000;
+  last = now;
+  particles = particles.filter((p) => {
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += GRAVITY * dt;
+    if (p.y >= 600) { p.el.remove(); return false; }
+    p.el.style.left = `${p.x}px`;
+    p.el.style.top = `${p.y}px`;
+    return true;
+  });
+  requestAnimationFrame(tick);
+};
+requestAnimationFrame(tick);
+</script></body></html>

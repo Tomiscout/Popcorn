@@ -1,0 +1,46 @@
+[package]
+name = "popcorn-installer"
+description = "Popcorn installer (Windows, Linux): installs Popcorn, replaces an installed bundle with a GitHub release (or a package zip), uninstalls it"
+version = "1.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+anyhow = "1"
+eframe = "0.37"
+image = { version = "0.25", default-features = false, features = ["png"] }
+semver = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.11"
+ureq = { version = "3", default-features = false, features = ["gzip", "json", "native-tls"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
+
+# Linux: signals / flock / local time, and BtbN's Linux FFmpeg builds come as .tar.xz (pure Rust xz: no C library).
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+lzma-rust2 = { version = "0.25", default-features = false, features = ["std", "xz", "optimization"] }
+tar = { version = "0.4", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Console",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Registry",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+# Exe icon (Explorer, taskbar before the window sets its own): the Windows SDK's rc.exe, or windres on windows-gnu.
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+opt-level = "s"

@@ -1,0 +1,13 @@
+{
+  "name": "@popcorn/plugin-sdk",
+  "version": "1.0.0",
+  "description": "Types and Vite build preset for Popcorn plugin UI modules. See Docs/Plugins.md.",
+  "private": true,
+  "type": "module",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": { "types": "./index.d.ts" },
+    "./vite": { "types": "./vite.d.ts", "default": "./vite.js" },
+    "./shared": { "types": "./shared.d.ts", "default": "./shared.js" }
+  }
+}

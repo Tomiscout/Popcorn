@@ -1,0 +1,30 @@
+<Project>
+  <!--
+    Build against the net10.0 baseline (10.0.0) instead of whatever patch the installed SDK bundles.
+
+    By default the SDK wants the targeting/apphost packs of *its own* patch (SDK 10.0.114 -> 10.0.14).
+    Distro SDKs (Arch: dotnet-sdk + dotnet-targeting-pack) can ship packs of a different patch, and
+    their apphost pack uses a distro RID (arch-x64) that does not exist on nuget.org, so restore fails
+    with NU1101 Microsoft.NETCore.App.Host.arch-x64.
+
+    - Packs are pinned to 10.0.0 -> identical build on any 10.0.x SDK.
+    - The apphost comes from the portable RID (linux-x64) pack, available on nuget.org.
+    The runtime requirement is unaffected: runtimeconfig.json asks for 10.0.0 and rolls forward to
+    any installed 10.0.x runtime.
+  -->
+  <PropertyGroup Condition="'$(AppHostRuntimeIdentifier)' == '' and '$(RuntimeIdentifier)' == ''
+                            and '$(NETCoreSdkPortableRuntimeIdentifier)' != ''
+                            and '$(DefaultAppHostRuntimeIdentifier)' == '$(NETCoreSdkRuntimeIdentifier)'
+                            and '$(NETCoreSdkRuntimeIdentifier)' != '$(NETCoreSdkPortableRuntimeIdentifier)'">
+    <AppHostRuntimeIdentifier>$(NETCoreSdkPortableRuntimeIdentifier)</AppHostRuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <KnownFrameworkReference Update="@(KnownFrameworkReference)">
+      <TargetingPackVersion Condition="'%(TargetFramework)' == 'net10.0'">10.0.0</TargetingPackVersion>
+    </KnownFrameworkReference>
+    <KnownAppHostPack Update="@(KnownAppHostPack)">
+      <AppHostPackVersion Condition="'%(TargetFramework)' == 'net10.0'">10.0.0</AppHostPackVersion>
+    </KnownAppHostPack>
+  </ItemGroup>
+</Project>

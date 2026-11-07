@@ -1,0 +1,31 @@
+.app-root {
+  /* background: linear-gradient(to bottom, #0b090e 0%, #20191c 10%, #2b2125); */
+  /* background: linear-gradient(to bottom, #0b090e 0%, #242424 10%, #323232); */
+  /* background: linear-gradient(to bottom, #0b090e 0%, #20191c 10%, #2b2125, 95%, #3d2f35); */
+  /* background: linear-gradient(to bottom, #0e0909 0%, #201919 10%, #2b2121, 95%, #3d2f2f); */
+  background: #322929;
+  background-attachment: fixed;
+}
+
+.app-content {
+  max-height: 100vh;
+  overflow: auto;
+}
+
+/* Does not take pointer events: the drag stays over the page below it. */
+.torrent-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: var(--mantine-font-size-xl);
+  color: white;
+  background: rgba(0, 0, 0, 0.6);
+  outline: 2px dashed var(--mantine-primary-color-filled);
+  outline-offset: -12px;
+  pointer-events: none;
+}

@@ -1,0 +1,13 @@
+[Unit]
+Description=Popcorn Server
+
+[Service]
+Type=simple
+WorkingDirectory=@INSTALL_DIR@
+EnvironmentFile=@ENV_FILE@
+ExecStart=@INSTALL_DIR@/Popcorn.Server
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

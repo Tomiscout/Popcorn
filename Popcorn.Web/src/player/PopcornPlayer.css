@@ -1,0 +1,213 @@
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: none;
+  font-family: 'Rubik', sans-serif;
+}
+
+input:focus {
+  outline: none;
+}
+
+.video-container {
+  position: relative;
+  width: 640px;
+  height: 360px;
+  background: black;
+  overflow: hidden;
+}
+
+.video-container.floating {
+  position: fixed !important;
+  top: 20px;
+  left: 20px;
+  width: 480px;
+  aspect-ratio: 16 / 9;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.video-container.fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  margin: 0;
+  padding: 0;
+}
+.video-container.inline {
+  position: fixed !important;
+  transform: translate(0px, 0px) !important;
+  top: 0;
+  left: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9998; /* just below your floating if needed */
+  background: black;
+}
+
+.video-container video {
+  width: 100%;
+  height: 100%;
+  outline: none !important;
+}
+
+/* Remove focus outline and box-shadow */
+.video-container,
+.video-container:focus,
+.video-container:focus-visible,
+.video-container:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/*Volume slider*/
+.App {
+  font-family: sans-serif;
+  text-align: center;
+  margin-top: 50px;
+}
+
+.red-slider {
+  background: #5b5b5b;
+  display: flex;
+  cursor: pointer;
+}
+
+.red-slider .watched-bar,
+.red-slider .playhead {
+  background: #e31221;
+  /* display: inline-block; */
+  transition: all 0.1s;
+}
+
+.watched-bar-horizontal {
+  height: 110%;
+  width: 20%;
+}
+
+.playhead-horizontal {
+  transform: translateX(-50%);
+}
+
+.playhead {
+  height: 3vw;
+  width: 3vw;
+  max-height: 25px;
+  max-width: 25px;
+  border-radius: 50%;
+}
+
+.video-container .playback-controls {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8cqh;
+}
+
+.main-button {
+  opacity: 0.4;
+}
+
+.video-container *:focus {
+  /* Note - bad for accesability, but fixes some bugs */
+  outline: none;
+}
+
+.playback-controls__spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.white {
+  fill: #ffffff;
+  fill-rule: evenodd;
+}
+
+#volume-control {
+  margin: auto auto;
+  width: inherit;
+  height: 130px;
+  width: 5px;
+  background: #555;
+}
+
+#volume-popup {
+  width: 40px;
+  height: 140px;
+  padding-top: 10px;
+}
+
+.popup {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.737);
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.ui-slider-range-min {
+  height: 140px;
+  width: 5px;
+  bottom: 10px;
+  background: red;
+  position: absolute;
+  border: none;
+  outline: none;
+}
+
+.ui-slider-handle {
+  width: 20px;
+  height: 20px;
+  border-radius: 20px;
+  background: red;
+  position: absolute;
+  margin-left: -8px;
+  margin-top: -10px;
+  cursor: pointer;
+  outline: none;
+}
+
+.spinner {
+  border: 5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 5px solid #000;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-wrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.buffering-indicator {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}

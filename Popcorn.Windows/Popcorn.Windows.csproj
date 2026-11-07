@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Windows desktop app: one WebView2 window on Popcorn.Server's web UI (counterpart of the Rust/CEF Popcorn.Linux).
+         Bundled into the server's folder, so keep its dependencies to WebView2 + the Serilog versions the server uses. -->
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <UseWindowsForms>true</UseWindowsForms>
+        <EnableWindowsTargeting>true</EnableWindowsTargeting>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <ApplicationIcon>..\Popcorn.Player.Windows\popcorn.ico</ApplicationIcon>
+        <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+        <PackageReference Include="Serilog" Version="4.3.0" />
+        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="wait.html" LogicalName="wait.html" />
+        <EmbeddedResource Include="..\Popcorn.Linux\popcorn.png" LogicalName="popcorn.png" />
+        <EmbeddedResource Include="..\Popcorn.Web\public\images\pop_1.png" LogicalName="kernel.png" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Ends up in the bundle/install folder; registered as the app's uninstaller by install_windows.ps1. -->
+        <None Update="uninstall.ps1" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+</Project>

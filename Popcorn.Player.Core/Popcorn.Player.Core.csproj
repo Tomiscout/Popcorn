@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- LibraryImport (LibMpvClient) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FFMpegCore" Version="5.2.0" />
+    <PackageReference Include="Fleck" Version="1.2.0" />
+    <PackageReference Include="NetCoreServer" Version="8.0.7" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Popcorn.Application\Popcorn.Application.csproj" />
+    <ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
+    <ProjectReference Include="..\Popcorn.Persistence\Popcorn.Persistence.csproj" />
+    <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
+    <ProjectReference Include="..\PopcornPlayer.Shared\PopcornPlayer.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

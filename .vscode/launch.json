@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "runtimeExecutable": "/usr/bin/brave",
+      "runtimeArgs": [
+        "--enable-features=AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,VaapiOnNvidiaGPUs,VaapiIgnoreDriverChecks",
+        "--ozone-platform=wayland"
+      ],
+      "request": "launch",
+      "name": "Chrome Popcorn linux",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/Popcorn.Web/src"
+    },
+    {
+      // Use IntelliSense to find out which attributes exist for C# debugging
+      // Use hover for the description of the existing attributes
+      // For further information visit https://github.com/dotnet/vscode-csharp/blob/main/debugger-launchjson.md
+      "name": "Popcorn.Server",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      // If you have changed target frameworks, make sure to update the program path.
+      "program": "${workspaceFolder}/Popcorn.Server/bin/Debug/net10.0/Popcorn.Server.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/Popcorn.Server",
+      // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": ".NET Core Attach",
+      "type": "coreclr",
+      "request": "attach"
+    }
+  ]
+}

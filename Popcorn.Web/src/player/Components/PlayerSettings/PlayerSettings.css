@@ -1,0 +1,27 @@
+.player-settings__anchor {
+  display: flex;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* The top bar lets clicks through to the video; its menu takes them. */
+.player-settings__dropdown {
+  pointer-events: auto;
+  width: min(360px, 90vw);
+}
+
+.player-settings__panel {
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
+}
+
+.player-settings__label {
+  width: 35%;
+  white-space: nowrap;
+  vertical-align: top;
+  color: var(--mantine-color-dimmed);
+}
+
+.player-settings__value {
+  overflow-wrap: anywhere;
+}

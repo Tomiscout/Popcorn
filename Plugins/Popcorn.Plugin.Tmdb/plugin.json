@@ -1,0 +1,8 @@
+{
+  "id": "tmdb",
+  "name": "TMDb",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "assembly": "Popcorn.Plugin.Tmdb.dll",
+  "ui": "index.js"
+}

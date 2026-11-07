@@ -1,0 +1,48 @@
+.continue-title {
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.9em;
+}
+
+.continue-title > span {
+  display: inline-block;
+}
+
+.continue-title:hover > .marquee,
+.watch-card:hover .continue-title > .marquee {
+  animation: continue-marquee var(--marquee-duration) ease-in-out 0.5s infinite alternate;
+}
+
+@keyframes continue-marquee {
+  0%,
+  15% {
+    transform: translateX(0);
+  }
+  85%,
+  100% {
+    transform: translateX(var(--marquee-distance));
+  }
+}
+
+.continue-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.continue-bar {
+  flex: 1;
+  height: 3px;
+  background: #55525a;
+}
+
+.continue-bar-fill {
+  height: 100%;
+  background: #b0060f;
+}
+
+.continue-time {
+  flex: none;
+  font-size: 0.7em;
+  white-space: nowrap;
+}

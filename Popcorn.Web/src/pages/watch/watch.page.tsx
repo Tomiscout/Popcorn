@@ -1,0 +1,113 @@
+import React, { useEffect, useState } from 'react';
+import ItemsGrid from './items-grid';
+import { SocketRequests } from '../../socket/socket-requests';
+import { ContinueWatching, MediaItem, MediaListResponse } from '../../model/media.contract';
+import { useWebSocket } from '../../state/websocket-context';
+import { useFileContext } from '../../state/file-context';
+import { Box, Flex, Text, TextInput } from '@mantine/core';
+import { IconSearch } from '@tabler/icons-react';
+import { useSocketEvents } from '../../socket/useSocketEvents.hook';
+import LoadingPage from '../loading/loading.page';
+
+export interface WatchPageProps {
+  pageLoaded: () => void;
+}
+
+const WatchPage: React.FC<WatchPageProps> = ({ pageLoaded }) => {
+  const { client, isClientReady } = useWebSocket();
+  const { getFilesToLoad } = useFileContext();
+
+  const [hasPageLoaded, setHasPageLoaded] = useState(false);
+  const [recentItems, setRecentItems] = useState<MediaItem[]>([]);
+  const [newItems, setNewItems] = useState<MediaItem[]>([]);
+  const [removedItems, setRemovedItems] = useState<MediaItem[]>([]);
+  const [continueWatching, setContinueWatching] = useState<Record<string, ContinueWatching>>({});
+  const [searchValue, setSearchValue] = useState('');
+
+  const pageHasLoaded = () => {
+    setTimeout(() => {
+      setHasPageLoaded(true);
+      pageLoaded();
+    }, 10);
+  };
+
+  useEffect(() => {
+    if (!isClientReady) return;
+
+    client.sendEvent<any>(SocketRequests.MediaList, {} as any);
+  }, [isClientReady]);
+
+  useSocketEvents({
+    [SocketRequests.MediaList]: (response: MediaListResponse) => {
+      setRecentItems(response.recentItems);
+      setNewItems(response.newItems);
+      setRemovedItems(response.removedItems);
+      setContinueWatching(response.continue ?? {});
+
+      const imagesToLoad = getFilesToLoad(
+        [
+          ...response.recentItems.map((i) => i.imagePath!),
+          ...response.newItems.map((i) => i.imagePath!),
+          ...response.removedItems.map((i) => i.imagePath!),
+        ].filter((i) => i)
+      );
+
+      if (imagesToLoad.length) {
+        client.sendEvent(SocketRequests.ImageFile, imagesToLoad);
+      } else {
+        console.log('page loaded from handler');
+        pageHasLoaded();
+      }
+    },
+    [SocketRequests.ImageFilesBatchSent]: () => {
+      pageHasLoaded();
+    },
+  });
+
+  // Nothing until the list and its posters are here: same screen as while the socket connects.
+  if (!hasPageLoaded) return <LoadingPage />;
+
+  if (!recentItems.length && !newItems.length && !removedItems.length) {
+    return (
+      <Text ta="center" c="dimmed" size="lg" mt="xl">
+        Nothing here, add your media
+      </Text>
+    );
+  }
+
+  return (
+    <Flex direction="column" gap="lg">
+      <TextInput
+        value={searchValue}
+        onChange={(event) => setSearchValue(event.currentTarget.value)}
+        variant="filled"
+        radius="xl"
+        leftSectionPointerEvents="none"
+        leftSection={<IconSearch size="16px" />}
+        placeholder="Search"
+        classNames={{
+          input: 'searchInput',
+        }}
+      />
+
+      <Box>
+        <ItemsGrid
+          headerTitle="Continue watching"
+          items={recentItems}
+          continueWatching={continueWatching}
+          buttonText="Do something"
+          searchQuery={searchValue}
+        />
+        <ItemsGrid
+          headerTitle="Not yet watched"
+          items={newItems}
+          continueWatching={continueWatching}
+          searchQuery={searchValue}
+        />
+        <ItemsGrid headerTitle="No longer on disk" items={removedItems} searchQuery={searchValue} />
+      </Box>
+    </Flex>
+  );
+};
+
+export default WatchPage;

@@ -1,0 +1,17 @@
+.fin-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.fin-overlay img {
+  /* Relative to the player only: no pixel cap, so it does not end up at the image's own 512 px. */
+  width: 5%;
+  max-height: 5%;
+  object-fit: contain;
+}

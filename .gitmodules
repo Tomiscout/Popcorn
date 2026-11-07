@@ -1,0 +1,3 @@
+[submodule "MPV/src"]
+	path = MPV/src
+	url = https://github.com/Tomiscout/mpv.git

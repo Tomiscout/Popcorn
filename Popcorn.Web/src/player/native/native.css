@@ -1,0 +1,34 @@
+/* Native player overlay: the page is composited over mpv's video layer, so nothing may paint an opaque
+   background (Mantine's body colour, the web player's black container). */
+html,
+body,
+#root {
+  background: transparent !important;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+
+.video-container.native {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: transparent;
+}
+
+/* Started without a file: how to open one (NativePlayer). Clicks go through to the overlay below. */
+.native-no-file {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 1.25rem;
+  pointer-events: none;
+  user-select: none;
+}

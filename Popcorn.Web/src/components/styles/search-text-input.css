@@ -1,0 +1,8 @@
+.searchInput {
+  &:focus-within {
+    --input-bd: var(--mantine-color-dark-3) !important; /* disables border color */
+    /* box-shadow: none; */
+    /* outline: 2px solid #fa5252;
+    outline-offset: 2px; */
+  }
+}

@@ -1,0 +1,6 @@
+<Project>
+  <!-- Product version of every assembly = the root VERSION file (set_version.mjs); -p:Version=... still wins. -->
+  <PropertyGroup Condition="'$(Version)' == '' and Exists('$(MSBuildThisFileDirectory)VERSION')">
+    <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)VERSION').Trim())</Version>
+  </PropertyGroup>
+</Project>

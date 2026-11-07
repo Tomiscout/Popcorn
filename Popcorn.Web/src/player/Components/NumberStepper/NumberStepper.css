@@ -1,0 +1,36 @@
+.number-stepper {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.number-stepper span {
+  color: white;
+  margin: 0 6px;
+  font-size: 12px;
+  min-width: 44px;
+  text-align: center;
+}
+
+.number-stepper button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  cursor: pointer;
+}
+
+.number-stepper button:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.number-stepper svg {
+  width: 14px;
+  height: 14px;
+}

@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- TMDb media source plugin. Build output (+ plugin.json + ui/dist) is assembled into
+         ../../Popcorn.Server/plugins/tmdb/, which the server build copies next to itself. See Docs/Plugins.md. -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <!-- Copies dependencies (TMDbLib) to the output and writes a .deps.json for the plugin load context -->
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+        <DefaultItemExcludes>$(DefaultItemExcludes);ui/**</DefaultItemExcludes>
+        <PluginId>tmdb</PluginId>
+        <PluginTargetDir>$(MSBuildThisFileDirectory)..\..\Popcorn.Server\plugins\$(PluginId)\</PluginTargetDir>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="TMDbLib" Version="3.0.0" />
+        <!-- Provided by the server at runtime: compile against them, do not ship them -->
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" ExcludeAssets="runtime" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Popcorn.Plugins.Abstractions\Popcorn.Plugins.Abstractions.csproj">
+            <Private>false</Private>
+            <ExcludeAssets>runtime</ExcludeAssets>
+        </ProjectReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <Target Name="AssemblePlugin" AfterTargets="Build">
+        <RemoveDir Directories="$(PluginTargetDir)" />
+        <ItemGroup>
+            <PluginBuildFiles Include="$(OutDir)**\*.*" />
+            <PluginUiFiles Include="ui\dist\**\*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(PluginBuildFiles)" DestinationFolder="$(PluginTargetDir)%(RecursiveDir)" />
+        <Copy SourceFiles="@(PluginUiFiles)" DestinationFolder="$(PluginTargetDir)web\%(RecursiveDir)" />
+        <Warning Condition="'@(PluginUiFiles)' == ''" Text="ui/dist is empty: TMDb plugin installed without its UI module (run 'npm ci &amp;&amp; npm run build' in ui/)" />
+    </Target>
+
+</Project>

@@ -1,0 +1,65 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Popcorn.Player.Windows</RootNamespace>
+    <!-- Function pointers / LibraryImport for popcorn_player.dll (Native/PlayerNative.cs) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationIcon>popcorn.ico</ApplicationIcon>
+    <AssemblyTitle>Popcorn Player</AssemblyTitle>
+    <Product>Popcorn</Product>
+    <PlayerNativeDir>$(MSBuildThisFileDirectory)..\Popcorn.Player.Windows.Native\</PlayerNativeDir>
+    <PlayerNativeDll>$(PlayerNativeDir)target\release\popcorn_player.dll</PlayerNativeDll>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="PipeMethodCalls" Version="4.0.2" />
+    <PackageReference Include="PipeMethodCalls.NetJson" Version="3.0.0" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Popcorn.Player.Core\Popcorn.Player.Core.csproj" />
+    <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- libmpv from MPV/build_windows.sh (build_windows.ps1), so bin/ runs too and not only the bundle -->
+    <Content Include="..\MPV\windows\libmpv-2.dll" Condition="Exists('..\MPV\windows\libmpv-2.dll')" Link="libmpv-2.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ffmpeg.exe" Condition="Exists('ffmpeg.exe')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ffprobe.exe" Condition="Exists('ffprobe.exe')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Native layer (Popcorn.Player.Windows.Native, Rust): built with the player, so cargo has to be on PATH.
+       Windows only: elsewhere this project is just compiled as a check (EnableWindowsTargeting). -->
+  <!-- Files made outside this project are added as content in targets (globbed when building, not when the project
+       is loaded), so both the build output and `dotnet publish` (build_windows.ps1) get them. -->
+  <Target Name="BuildPlayerNative" BeforeTargets="BeforeBuild" Condition="'$(OS)' == 'Windows_NT'">
+    <Exec Command="cargo build --release" WorkingDirectory="$(PlayerNativeDir)" />
+    <ItemGroup>
+      <Content Include="$(PlayerNativeDll)" Link="popcorn_player.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Player overlay (Popcorn.Web `npm run build:player` -> dist-player/) -->
+  <Target Name="IncludeWebPlayer" BeforeTargets="BeforeBuild">
+    <!-- Replace, not merge: file names are content-hashed, old bundles would pile up. -->
+    <RemoveDir Directories="$(OutDir)web-player" />
+    <ItemGroup>
+      <WebPlayerFile Include="..\Popcorn.Web\dist-player\**\*.*" />
+      <Content Include="@(WebPlayerFile)" Link="web-player\%(WebPlayerFile.RecursiveDir)%(WebPlayerFile.Filename)%(WebPlayerFile.Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+</Project>

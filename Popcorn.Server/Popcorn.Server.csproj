@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <RootNamespace>Popcorn.Server</RootNamespace>
+        <AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
+        <!-- No IIS web.config in the published output -->
+        <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+        <!-- File description + company: the name and publisher Task Manager → Startup apps shows for the autostart. -->
+        <AssemblyTitle>Popcorn</AssemblyTitle>
+        <Company>Popcorn</Company>
+        <Product>Popcorn</Product>
+    </PropertyGroup>
+
+    <!-- Windows release builds run in the background (tray, no console window); Debug keeps the console. -->
+    <PropertyGroup Condition="'$(OS)' == 'Windows_NT' And '$(Configuration)' == 'Release'">
+        <OutputType>WinExe</OutputType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="FFMpegCore" Version="5.2.0" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
+        <PackageReference Include="Serilog" Version="4.3.0" />
+        <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Popcorn.Application\Popcorn.Application.csproj" />
+        <ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
+        <ProjectReference Include="..\Popcorn.Downloads\Popcorn.Downloads.csproj" />
+        <ProjectReference Include="..\Popcorn.Linux.Tray\Popcorn.Linux.Tray.csproj" />
+        <ProjectReference Include="..\Popcorn.Persistence\Popcorn.Persistence.csproj" />
+        <ProjectReference Include="..\Popcorn.PlayerServer\Popcorn.PlayerServer.csproj" />
+        <ProjectReference Include="..\Popcorn.Plugins.Abstractions\Popcorn.Plugins.Abstractions.csproj" />
+        <ProjectReference Include="..\Popcorn.SegmentFinder\Popcorn.SegmentFinder.csproj" />
+        <ProjectReference Include="..\Popcorn.Windows.Tray\Popcorn.Windows.Tray.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="web\" />
+        <!-- Bundled plugins (gitignored build output of Plugins/*, like web/): copied as-is, never compiled/published as content -->
+        <Content Remove="plugins\**" />
+        <None Remove="plugins\**" />
+        <Compile Remove="plugins\**" />
+    </ItemGroup>
+    <ItemGroup>
+        <Content Include="systemd\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+    <!-- Build artifacts of Popcorn.Web and Plugins/*, added as content in a target (globbed when building, not when the
+         project is loaded), so both the build output and `dotnet publish` (make / build_windows.ps1) get them. -->
+    <Target Name="IncludeWebAndPlugins" BeforeTargets="BeforeBuild">
+        <RemoveDir Directories="$(OutDir)plugins" />
+        <ItemGroup>
+            <Content Remove="web\**" />
+            <WebFile Include="web\**\*.*" />
+            <PluginFile Include="plugins\**\*.*" />
+            <Content Include="@(WebFile);@(PluginFile)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+        </ItemGroup>
+    </Target>
+</Project>

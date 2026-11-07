@@ -1,0 +1,13 @@
+.next-file-dialog {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+  width: min(420px, 90%);
+  padding: var(--mantine-spacing-md);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-dark-7);
+  box-shadow: var(--mantine-shadow-md);
+  pointer-events: auto;
+}

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- The only assembly a plugin references. Always loaded from the server, never from a plugin folder
+         (plugins reference it with Private=false / ExcludeAssets=runtime), see Docs/Plugins.md. -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Popcorn.Plugins</RootNamespace>
+    </PropertyGroup>
+
+</Project>
