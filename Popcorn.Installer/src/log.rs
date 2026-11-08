@@ -1,28 +1,51 @@
-//! Minimal logger (same format as Popcorn.Linux): stderr + daily file in `<data>/logs/Popcorn.Installer-YYYYMMDD.txt`.
+//! Minimal logger (same format as Popcorn.Linux): stderr + daily file in `<data>/logs/YYYY-MM-DD-Popcorn.Installer.txt`
+//! (the name the .NET apps use too, see `Popcorn.Shared/Logging/LogFileName.cs`), rolled over at local midnight.
 
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-static FILE: Mutex<Option<(File, PathBuf)>> = Mutex::new(None);
+const APP: &str = "Popcorn.Installer";
+
+struct State {
+    dir: PathBuf,
+    day: (u32, u32, u32),
+    file: Option<(File, PathBuf)>,
+}
+
+static STATE: Mutex<Option<State>> = Mutex::new(None);
 
 pub fn init(logs_dir: &Path) {
     let _ = std::fs::create_dir_all(logs_dir);
-    let t = LocalTime::now();
-    let path = logs_dir.join(format!(
-        "Popcorn.Installer-{:04}{:02}{:02}.txt",
-        t.year, t.month, t.day
-    ));
-    match OpenOptions::new().create(true).append(true).open(&path) {
-        Ok(file) => *FILE.lock().unwrap() = Some((file, path)),
-        Err(e) => eprintln!("Cannot open log file {}: {e}", path.display()),
+    let mut state = State {
+        dir: logs_dir.to_path_buf(),
+        day: (0, 0, 0),
+        file: None,
+    };
+    state.open(&LocalTime::now());
+    *STATE.lock().unwrap() = Some(state);
+}
+
+impl State {
+    /// Appends (O_APPEND), so the installer's relaunched copy can share the day's file line by line. No file lock: the
+    /// server's log viewer opens it with a shared one.
+    fn open(&mut self, t: &LocalTime) {
+        self.day = (t.year as u32, t.month as u32, t.day as u32);
+        let path = self.dir.join(format!("{:04}-{:02}-{:02}-{APP}.txt", t.year, t.month, t.day));
+        self.file = match OpenOptions::new().create(true).append(true).open(&path) {
+            Ok(file) => Some((file, path)),
+            Err(e) => {
+                eprintln!("Cannot open log file {}: {e}", path.display());
+                None
+            }
+        };
     }
 }
 
 /// The file the log goes to, for error messages.
 pub fn file_path() -> Option<PathBuf> {
-    FILE.lock().ok()?.as_ref().map(|(_, path)| path.clone())
+    STATE.lock().ok()?.as_ref()?.file.as_ref().map(|(_, path)| path.clone())
 }
 
 pub fn write(level: &str, args: std::fmt::Arguments) {
@@ -32,10 +55,15 @@ pub fn write(level: &str, args: std::fmt::Arguments) {
         t.year, t.month, t.day, t.hour, t.minute, t.second, t.millis
     );
     eprint!("{line}");
-    if let Ok(mut file) = FILE.lock()
-        && let Some((file, _)) = file.as_mut()
+    if let Ok(mut state) = STATE.lock()
+        && let Some(state) = state.as_mut()
     {
-        let _ = file.write_all(line.as_bytes());
+        if state.day != (t.year as u32, t.month as u32, t.day as u32) {
+            state.open(&t);
+        }
+        if let Some((file, _)) = state.file.as_mut() {
+            let _ = file.write_all(line.as_bytes());
+        }
     }
 }
 

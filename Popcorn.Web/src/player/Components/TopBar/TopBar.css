@@ -10,6 +10,14 @@
   pointer-events: none;
 }
 
+/* Hidden buttons take no taps either (touch screens: the tap shows the controls). */
+.top-bar--hidden {
+  opacity: 0;
+}
+.top-bar--hidden * {
+  pointer-events: none !important;
+}
+
 .top-bar__background {
   position: absolute;
   top: 0;

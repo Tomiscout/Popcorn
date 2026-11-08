@@ -1,4 +1,5 @@
 using Popcorn.Shared.Ffmpeg;
+using Popcorn.Shared.Logging;
 using Popcorn.Shared.Utils;
 using Serilog;
 
@@ -8,12 +9,18 @@ public abstract class Program
 {
     public static async Task Main(string[] args)
     {
+        // Before the first file is opened: old <App>-YYYYMMDD.txt names → YYYY-MM-DD-<App>.txt (all apps' files).
+        var renamedLogs = LogFileName.MigrateLegacyNames(DirectoryUtils.LogsFolder);
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Is(Serilog.Events.LogEventLevel.Debug)
+            // The Logs settings tab polls api/logs: its requests would fill the log it shows (ASP.NET logs ~40 lines each).
+            .Filter.ByExcluding(IsLogViewerRequest)
             .WriteTo.Console()
             .WriteTo.Debug()
-            .WriteTo.File(Path.Combine(DirectoryUtils.DataFolder, $"logs{Path.DirectorySeparatorChar}Popcorn.Server-.txt"), rollingInterval: RollingInterval.Day)
+            .WriteTo.DailyFile(DirectoryUtils.LogsFolder, "Popcorn.Server")
             .CreateLogger();
+
+        if (renamedLogs > 0) Log.Information("Renamed {Count} log files to the date-first names", renamedLogs);
 
         var ffmpeg = FfmpegBinaries.Configure();
         Log.Information("FFmpeg: {Source}", ffmpeg ?? "from PATH");
@@ -58,6 +65,11 @@ public abstract class Program
             Log.CloseAndFlush();
         }
     }
+
+    private static bool IsLogViewerRequest(Serilog.Events.LogEvent e) =>
+        e.Properties.TryGetValue("RequestPath", out var path)
+        && path is Serilog.Events.ScalarValue { Value: string value }
+        && value.StartsWith("/api/logs", StringComparison.OrdinalIgnoreCase);
 
     private static bool TryAcquire(Mutex mutex)
     {

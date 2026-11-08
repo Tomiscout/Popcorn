@@ -9,6 +9,7 @@ using Popcorn.Player.Core.WebSocket;
 using Popcorn.Player.Windows.Native;
 using Popcorn.Player.Windows.Pipe;
 using Popcorn.Shared.Ffmpeg;
+using Popcorn.Shared.Logging;
 using Popcorn.Shared.Utils;
 using Serilog;
 
@@ -33,8 +34,7 @@ public class Program
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()
             .WriteTo.Debug()
-            .WriteTo.File(Path.Combine(DirectoryUtils.DataFolder, "logs", "Popcorn.Player-.txt"),
-                rollingInterval: RollingInterval.Day,
+            .WriteTo.DailyFile(DirectoryUtils.LogsFolder, "Popcorn.Player",
                 restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information)
             .CreateLogger();
         AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionTrapper;

@@ -6,44 +6,25 @@ import {
   IconVolume3 as MuteVolume,
 } from '@tabler/icons-react';
 
-import { postMessage } from '../../../utils/events';
+import { usePlayerStore } from '../../../state/player.store';
+import { setPlayerVolume, togglePlayerMute } from '../../volume';
 import './VolumeSlider.css';
 import { useEventListeners } from '../../Utlis/listener.utils';
 
 const VolumeControl = () => {
   const volumePopupHalfWidth = 20; //volumePopup.offsetWidth is not present on first render
 
-  const [volume, setVolume] = useState(1);
-  const [muted, setMuted] = useState(false);
+  const volume = usePlayerStore((s) => s.volume);
+  const muted = usePlayerStore((s) => s.muted);
   const [showPopup, setShowPopup] = useState(false);
   const volumeRef = useRef<HTMLDivElement>(null);
   const volumePopupRef = useRef<HTMLDivElement>(null);
 
-  // const throttledPostMessage = useMemo(() => throttle((type, value) => {
-  //   postMessage(type, value);
-  // }, 50), []);
-
-  const onToggleMute = () => {
-    const newMutedState = !muted;
-    setMuted(newMutedState);
-    postMessage('volume', newMutedState ? 0 : volume);
-  };
-  const changeVolume = (vol: number) => {
-    if (muted) {
-      setMuted(false);
-    }
-    vol = parseFloat(Math.max(0, Math.min(vol, 1)).toFixed(2));
-
-    setVolume(vol);
-    postMessage('volume', vol);
-  };
-
-  const upHandler = () => {
-    changeVolume(volume + 0.1);
-  };
-  const downHandler = () => {
-    changeVolume(volume - 0.1);
-  };
+  const onToggleMute = togglePlayerMute;
+  const changeVolume = setPlayerVolume;
+  // Store at call time: the key handlers are registered once.
+  const upHandler = () => setPlayerVolume(usePlayerStore.getState().volume + 0.1);
+  const downHandler = () => setPlayerVolume(usePlayerStore.getState().volume - 0.1);
 
   const handleMouseEnter = () => {
     const volumeElement = volumeRef.current;

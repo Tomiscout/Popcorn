@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { AudioTrackDto, MediaFileMetadata, NextFilePlan, SubtitleTrackDto } from '../query/models/video.models';
-import type { AdditionalAudioFile } from '../player/Components/VideoPlayer';
 import { FolderLoadedNavigation, MediaFile } from '../model/media.contract';
 import type { PlayerSegmentsDto, SegmentAutoSkip } from '../model/segments.contract';
 
@@ -100,6 +99,9 @@ export interface PlayerState {
   isPlaying: boolean;
   isFloating: boolean;
   isFullscreen: boolean;
+  /** 0–1, kept while muted. Changed through `player/volume.ts`, which also tells the host. */
+  volume: number;
+  muted: boolean;
   isAudioLoading: boolean;
   currentTime: number;
   duration: number;
@@ -109,7 +111,6 @@ export interface PlayerState {
   currentAudio: AudioTrackDto | null;
   subtitleFiles: { [key: string]: string };
   thumbnailFiles: { [key: string]: string };
-  additionalAudioFiles: AdditionalAudioFile[];
   currentPlaylist: MediaFile[] | null;
   currentPlaylistNavigation: FolderLoadedNavigation[] | null;
   segments: PlayerSegment[];
@@ -157,7 +158,6 @@ export interface PlayerState {
   getExtraTrackKey: () => string;
   addThumbnailFile: (key: string, fileUrl: string) => void;
   getThumbnailFile: (key: string) => string | null;
-  addAdditionalAudioFile: (file: AdditionalAudioFile) => void;
   resetState: () => void;
   closePlayer: () => void;
 }
@@ -168,6 +168,8 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   isPlaying: false,
   isFloating: false,
   isFullscreen: false,
+  volume: 1,
+  muted: false,
   isAudioLoading: false,
   currentTime: -1,
   duration: -1,
@@ -176,7 +178,6 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   currentSubtitle: null,
   subtitleFiles: {},
   thumbnailFiles: {},
-  additionalAudioFiles: [],
   currentAudio: null,
   currentPlaylist: [],
   currentPlaylistNavigation: [],
@@ -253,10 +254,6 @@ export const usePlayerStore = create<PlayerState>((set) => ({
     set({ currentExtraTrack: state.currentExtraTrack + 1 });
     return newKey;
   },
-  addAdditionalAudioFile: (file) =>
-    set((state) => ({
-      additionalAudioFiles: [...state.additionalAudioFiles, file],
-    })),
   resetState: () => {
     //Need to revoke blob URLs
     const state: PlayerState = usePlayerStore.getState();
@@ -280,7 +277,6 @@ export const usePlayerStore = create<PlayerState>((set) => ({
       currentAudio: null,
       subtitleFiles: {},
       thumbnailFiles: {},
-      additionalAudioFiles: [],
       segments: [],
       segmentAutoSkip: null,
       nextFileWarning: null,

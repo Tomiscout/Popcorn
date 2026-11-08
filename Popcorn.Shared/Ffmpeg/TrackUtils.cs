@@ -20,29 +20,4 @@ public class TrackUtils
         
         return outputSubtitlePath;
     }
-    
-    public static Task ExtractAudioTrackSafeAsync(
-        string inputPath,
-        int audioTrackIndex,
-        string outputAudioPath,
-        bool forceTranscode
-    )
-    {
-        var args = FFMpegArguments.FromFileInput(inputPath)
-            .OutputToFile(outputAudioPath, overwrite: true, opts =>
-            {
-                opts.WithCustomArgument($"-map 0:{audioTrackIndex}");
-
-                if (!forceTranscode)
-                {
-                    opts.WithCustomArgument("-c:a copy");
-                }
-                else
-                {
-                    opts.WithCustomArgument("-c:a aac -b:a 192k");
-                }
-            });
-
-        return args.ProcessAsynchronously();
-    }
 }

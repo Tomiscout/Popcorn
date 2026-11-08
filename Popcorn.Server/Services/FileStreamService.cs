@@ -107,17 +107,12 @@ public class FileStreamService(
     var defaultAudioTrack = probe.GetDefaultAudioStream(settings.PrefferedAudioLanguages);
     var defaultSubtitleTrack = probe.GetDefaultAudioStream(settings.PrefferedAudioLanguages);
     
-    var audioTracks = probe.AudioStreams.Select(a =>
+    var audioTracks = probe.AudioStreams.Select(a => new AudioTrackDto
     {
-      var audioCodec = a.ParseAudioCodec();
-      return new AudioTrackDto
-      {
-        Index = a.Index,
-        Codec = a.ParseAudioCodec().ToString(),
-        Container = GetAudioCodecContainer(audioCodec),
-        Label = GetMediaStreamTitle(a),
-        Language = a.Language
-      };
+      Index = a.Index,
+      Codec = a.ParseAudioCodec().ToString(),
+      Label = GetMediaStreamTitle(a),
+      Language = a.Language
     }).ToList();
 
     var subtitleTracks = probe.SubtitleStreams.Select(s => new SubtitleTrackDto
@@ -151,16 +146,6 @@ public class FileStreamService(
     return metadata;
   }
 
-  private string GetAudioCodecContainer(AudioCodec audioCodec) => audioCodec switch
-  {
-    AudioCodec.AAC => "m4a",
-    AudioCodec.Vorbis => "ogg",
-    AudioCodec.MP3 => "mp3",
-    AudioCodec.Opus => "webm",
-    AudioCodec.Flac => "flac",
-    _ => "m4a"
-  };
-
   private static string TransformSubtitleCodecNameToExtension(string subtitleCodecName) => subtitleCodecName switch
   {
     "subrip" => "srt",
@@ -188,27 +173,6 @@ public class FileStreamService(
 
     outPath = await TrackUtils.ExtractSubtitleTrackAsync(mediaFile.Path, trackId, outPath, forceVtt);
     if(!File.Exists(outPath)) throw new InvalidOperationException($"File {outPath} not found");
-    
-    return outPath;
-  }
-
-  public async Task<string?> GetMediaFileAudioTrackAsync(MediaFile mediaFile, int trackId)
-  {
-    var metadata = await GetMediaFileMetadataAsync(mediaFile);
-    var audioTrack = metadata?.AudioTracks.FirstOrDefault(t => t.Index == trackId);
-    if (audioTrack == null) throw new InvalidOperationException("Audio track not found");
-
-    var outPath = Path.Combine(DirectoryUtils.StreamCache, $"{mediaFile.Id}-{trackId}.{audioTrack.Container}");
-
-    await TrackUtils.ExtractAudioTrackSafeAsync(
-      mediaFile.Path,
-      trackId,
-      outPath,
-      audioTrack.Codec == nameof(AudioCodec.Unknown)
-    );
-
-    if (!File.Exists(outPath))
-      throw new InvalidOperationException($"File {outPath} not found");
     
     return outPath;
   }

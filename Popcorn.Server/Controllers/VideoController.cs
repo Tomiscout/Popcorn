@@ -23,7 +23,9 @@ public class VideoController(
     ItemHistoryService itemHistoryService,
     SegmentSkipService segmentSkipService,
     IMediaItemRepository mediaItemRepository,
-    DownloadManager downloads) : ControllerBase
+    DownloadManager downloads,
+    AudioTrackService audioTracks,
+    ILogger<VideoController> logger) : ControllerBase
 {
     /// <summary>Still downloading: played as is from the download stream (no remux, it needs the whole file).</summary>
     private async Task<DownloadPlaybackDto?> InProgressDownload(MediaFile mediaFile) =>
@@ -93,31 +95,71 @@ public class VideoController(
         return Ok(metadata);
     }
     
-    [HttpGet("{fileId}/audio/{trackId}")]
-    public async Task<ActionResult> GetAudioFile(Guid fileId, int trackId)
+    private sealed record AudioSource(MediaFile File, AudioTrackDto Track, string? InputUrl);
+
+    /// <summary>The file + track behind an audio request; <c>InputUrl</c> = download stream of a file still downloading.</summary>
+    private async Task<AudioSource?> FindAudioTrack(Guid fileId, int trackId)
     {
-        if (fileId == Guid.Empty || trackId < 0)
-            return NotFound();
-
+        if (fileId == Guid.Empty || trackId < 0) return null;
         var mediaFile = await mediaFileRepository.GetFileById(fileId);
-        if (mediaFile == null) return NotFound();
+        if (mediaFile == null) return null;
 
-        if (!System.IO.File.Exists(mediaFile.Path))
-            return NotFound();
+        var playback = await InProgressDownload(mediaFile);
+        if (playback is null && !System.IO.File.Exists(mediaFile.Path)) return null;
+        var inputUrl = playback is null ? null : LocalUrl(playback);
 
-        if (await InProgressDownload(mediaFile) is not null)
-            return Conflict("The file is still downloading; tracks can be extracted once it is complete.");
+        var metadata = await fileStreamService.GetMediaFileMetadataAsync(mediaFile, inputUrl);
+        var track = metadata?.AudioTracks.FirstOrDefault(t => t.Index == trackId);
+        return track == null ? null : new AudioSource(mediaFile, track, inputUrl);
+    }
 
-        var filePath = await fileStreamService.GetMediaFileAudioTrackAsync(mediaFile, trackId);
-        if (filePath == null) return NotFound();
+    /// <summary>
+    /// Audio track for the web player when the video has none it can play: whether the converted track is ready; else
+    /// starts its conversion (kept alive by asking again). Files still downloading are not converted (it would read
+    /// the whole download), they only have the live stream.
+    /// </summary>
+    [HttpGet("{fileId}/audio/{trackId}/prepare")]
+    public async Task<ActionResult<AudioTrackState>> PrepareAudioTrack(Guid fileId, int trackId)
+    {
+        if (await FindAudioTrack(fileId, trackId) is not { } source) return NotFound();
+        if (source.InputUrl is not null) return new AudioTrackState(Ready: false, Converting: false);
+        return audioTracks.Prepare(source.File, source.Track);
+    }
 
-        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+    /// <summary>The converted track (seekable, ranges), 404 until <see cref="PrepareAudioTrack"/> says it is ready.</summary>
+    [HttpGet("{fileId}/audio/{trackId}")]
+    public IActionResult GetAudioTrack(Guid fileId, int trackId) =>
+        fileId != Guid.Empty && trackId >= 0 && AudioTrackService.ConvertedPath(fileId, trackId) is { } path
+            ? PhysicalFile(path, "audio/mp4", enableRangeProcessing: true)
+            : NotFound();
 
-        return PhysicalFile(
-            filePath,
-            MimeUtils.GetMimeTypeForFileExtension(extension),
-            Path.GetFileName(filePath)
-        );
+    /// <summary>
+    /// Live stream of the track from <paramref name="start"/> seconds while it is converted (no ranges: the player
+    /// reloads it from the new position when it seeks outside what it has buffered). Ends with the request.
+    /// </summary>
+    [HttpGet("{fileId}/audio/{trackId}/stream")]
+    public async Task<IActionResult> StreamAudioTrack(Guid fileId, int trackId, [FromQuery] double start = 0)
+    {
+        if (!double.IsFinite(start) || start < 0) return NotFound();
+        if (await FindAudioTrack(fileId, trackId) is not { } source) return NotFound();
+
+        var aborted = HttpContext.RequestAborted;
+        Response.ContentType = "audio/aac";
+        Response.Headers.CacheControl = "no-store";
+        try
+        {
+            await audioTracks.StreamAsync(source.File, source.Track, TimeSpan.FromSeconds(start), source.InputUrl,
+                Response.Body, aborted);
+        }
+        catch (Exception) when (aborted.IsCancellationRequested)
+        {
+            // The player went away (seek, track or file change, closed): ffmpeg is gone with it.
+        }
+        catch (Exception ex) when (Response.HasStarted)
+        {
+            logger.LogWarning(ex, "Audio stream of {FileId} track {TrackId} broke off", fileId, trackId);
+        }
+        return new EmptyResult();
     }
     
     [HttpGet("{fileId}/subtitles/{trackId}")]

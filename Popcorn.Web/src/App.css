@@ -9,6 +9,7 @@
 
 .app-content {
   max-height: 100vh;
+  max-height: 100dvh; /* phones: the visible height, without the browser bars */
   overflow: auto;
 }
 

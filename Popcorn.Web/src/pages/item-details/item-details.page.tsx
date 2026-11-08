@@ -280,7 +280,7 @@ const ItemDetailsPage: React.FC = () => {
 
   return (
     <Flex direction="column" className="itemDetailsRoot" w="100%">
-      <Flex p="sm" w="100%" h={256 + 24} className="item-header">
+      <Flex p="sm" w="100%" className="item-header">
         {backdropUrl && <img key={backdropUrl} src={backdropUrl} alt="" className="item-backdrop" />}
         {backdropUrl && <div className="item-backdrop-shade" />}
         <Group gap="xs" wrap="nowrap" className="item-actions">

@@ -81,7 +81,7 @@ always offered the release.
 8. Delete `<install>.old` and the downloaded zips.
 
 The data folder (`%LOCALAPPDATA%\Popcorn`: database, plugins, caches) is never touched by installs and updates.
-Log: `<data>/logs/Popcorn.Installer-YYYYMMDD.txt` (`%TEMP%` for `--uninstall`).
+Log: `<data>/logs/YYYY-MM-DD-Popcorn.Installer.txt` (`%TEMP%` for `--uninstall`).
 
 ## FFmpeg (`src/ffmpeg.rs`)
 

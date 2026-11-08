@@ -1,3 +1,4 @@
+using Popcorn.Shared.Logging;
 using Serilog;
 
 namespace Popcorn.Windows;
@@ -19,7 +20,7 @@ internal static class Program
     {
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
-            .WriteTo.File(Path.Combine(Program.DataFolder, "logs", "Popcorn.Windows-.txt"), rollingInterval: RollingInterval.Day)
+            .WriteTo.DailyFile(Path.Combine(Program.DataFolder, "logs"), "Popcorn.Windows")
             .CreateLogger();
 
         try

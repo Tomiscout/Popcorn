@@ -41,6 +41,7 @@ public static class ServiceRegister
         services.AddSingleton<PlayerLaunchService>();
         services.AddSingleton<UpdateService>();
         services.AddScoped<FileStreamService>();
+        services.AddSingleton<AudioTrackService>();
         
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

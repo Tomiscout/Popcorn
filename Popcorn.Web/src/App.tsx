@@ -2,7 +2,8 @@ import { IconDeviceTv, IconDownload, IconFolderOpen, IconSearch, IconSettings } 
 
 import './App.css';
 import { Routes, Route, Link, Navigate, useLocation, BrowserRouter } from 'react-router-dom';
-import { AppShell, Button, MantineProvider, NavLink } from '@mantine/core';
+import { AppShell, Burger, Button, Group, MantineProvider, NavLink, Text } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import { theme } from './theme';
 import { Notifications } from '@mantine/notifications';
 import WatchPage from './pages/watch/watch.page';
@@ -25,7 +26,7 @@ import LoadingPage from './pages/loading/loading.page';
 import SearchDetailsPage from './pages/search/search-details.page';
 import { useSocketEvents } from './socket/useSocketEvents.hook';
 import { useSocketBlobEvents } from './socket/useSocketBlobEvents.hook';
-import { isDesktopApp } from './utils/platform';
+import { isDesktopApp, useIsMobile } from './utils/platform';
 import { useSettingsSync } from './state/settings.store';
 import { NetworkStats } from './pages/downloads/network-stats';
 import { useDownloadAddedNotifications, useTorrentFileDrop } from './pages/downloads/downloads.hooks';
@@ -45,6 +46,8 @@ function AppContent() {
   useSettingsSync();
   useDownloadAddedNotifications();
   const isTorrentDragging = useTorrentFileDrop();
+  const isMobile = useIsMobile();
+  const [navOpened, { toggle: toggleNav, close: closeNav }] = useDisclosure(false);
 
   // Ignore hasPageLoaded for paths other than /watch
   useEffect(() => {
@@ -110,52 +113,45 @@ function AppContent() {
 
   // Detail pages draw their backdrop header edge to edge.
   const noContentPadding = location.pathname.startsWith('/media-details') || location.pathname.startsWith('/watch/');
+  const navLinks = [
+    { to: '/watch', label: 'Watch', icon: IconDeviceTv },
+    { to: '/media-search', label: 'Search', icon: IconSearch },
+    { to: '/folders', label: 'Folders', icon: IconFolderOpen },
+    { to: '/downloads', label: 'Downloads', icon: IconDownload },
+    { to: '/settings', label: 'Settings', icon: IconSettings },
+  ];
   return (
     <AppShell
       className="app-root"
+      // Phones: a header with a menu button; the nav bar slides over the page.
+      header={{ height: 50, collapsed: !isMobile }}
       navbar={{
         width: 180,
-        breakpoint: 'off',
+        breakpoint: 'sm',
+        collapsed: { mobile: !navOpened },
       }}
-      padding={noContentPadding ? 0 : 'md'}
+      padding={noContentPadding ? 0 : { base: 'xs', sm: 'md' }}
     >
+      <AppShell.Header bg="#201919" withBorder={false}>
+        <Group h="100%" px="sm" gap="sm">
+          <Burger opened={navOpened} onClick={toggleNav} size="sm" aria-label="Menu" />
+          <Text fw={600}>{navLinks.find((l) => location.pathname.startsWith(l.to))?.label ?? 'Popcorn'}</Text>
+        </Group>
+      </AppShell.Header>
+
       {hasPageLoaded && (
         <AppShell.Navbar bg="#201919" withBorder={false}>
-          <NavLink
-            to="/watch"
-            component={Link}
-            active={location.pathname === '/watch'}
-            label="Watch"
-            leftSection={<IconDeviceTv size={24} stroke={1.5} />}
-          />
-          <NavLink
-            to="/media-search"
-            component={Link}
-            active={location.pathname === '/media-search'}
-            label="Search"
-            leftSection={<IconSearch size={24} stroke={1.5} />}
-          />
-          <NavLink
-            to="/folders"
-            component={Link}
-            active={location.pathname === '/folders'}
-            label="Folders"
-            leftSection={<IconFolderOpen size={24} stroke={1.5} />}
-          />
-          <NavLink
-            to="/downloads"
-            component={Link}
-            active={location.pathname === '/downloads'}
-            label="Downloads"
-            leftSection={<IconDownload size={24} stroke={1.5} />}
-          />
-          <NavLink
-            to="/settings"
-            component={Link}
-            active={location.pathname === '/settings'}
-            label="Settings"
-            leftSection={<IconSettings size={24} stroke={1.5} />}
-          />
+          {navLinks.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              component={Link}
+              active={location.pathname === to}
+              label={label}
+              leftSection={<Icon size={24} stroke={1.5} />}
+              onClick={closeNav}
+            />
+          ))}
 
           {!isDesktopApp && (
             <Button variant="light" fullWidth mt="md" onClick={toggleFloating}>

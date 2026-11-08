@@ -9,6 +9,8 @@ import { NextFileDialog } from './Components/NextFileDialog/NextFileDialog';
 import { FinOverlay } from './Components/FinOverlay/FinOverlay';
 import { useEventListeners } from './Utlis/listener.utils';
 import { needsBuffering, usePlayerStore } from '../state/player.store';
+import { CenterPlayButton } from './Components/CenterPlayButton/CenterPlayButton';
+import { isTouchDevice } from '../utils/platform';
 
 interface PlayerOverlayProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
   /** Extra classes on the container (`inline` / `floating` / `fullscreen` / `native`). */
@@ -54,8 +56,28 @@ export const PlayerOverlay = forwardRef<HTMLDivElement, PlayerOverlayProps>(
       }, 4000);
     };
 
+    const hideControls = () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      setShowControls(false);
+    };
+    const toggleControlsByTap = () => (controlsActive ? hideControls() : displayControls());
+
     useEventListeners('keyup', { default: displayControls });
-    useEventListeners('mousemove', { default: displayControls });
+    // Mouse only: a tap also sends a mouse move, but taps on the video toggle the controls (CaptureClickArea).
+    // Touches elsewhere (buttons, seek bar) keep the controls up.
+    useEffect(() => {
+      const onPointerMove = (e: PointerEvent) => e.pointerType === 'mouse' && displayControls();
+      const onPointerDown = (e: PointerEvent) => {
+        if (e.pointerType !== 'mouse' && !(e.target as HTMLElement).closest('.capture-click-area')) displayControls();
+      };
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerdown', onPointerDown);
+      return () => {
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerdown', onPointerDown);
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Hosts react to `isBuffering` by holding playback. Evaluated on store changes, not renders: the time changes often.
     useEffect(
@@ -69,6 +91,7 @@ export const PlayerOverlay = forwardRef<HTMLDivElement, PlayerOverlayProps>(
 
     useEffect(() => {
       containerRef.current?.focus();
+      displayControls(); // starts the hide timer: touch screens have no mouse move to start it
       return () => {
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
       };
@@ -76,7 +99,7 @@ export const PlayerOverlay = forwardRef<HTMLDivElement, PlayerOverlayProps>(
 
     return (
       <div {...rest} className={`video-container ${className}`} tabIndex={-1} ref={containerRef}>
-        <CaptureClickArea isFloating={isFloating} />
+        <CaptureClickArea isFloating={isFloating} onTouchTap={toggleControlsByTap} />
         <TopBar showControls={showControls} />
         <ErrorOverlay />
         <NextFileDialog />
@@ -95,6 +118,7 @@ export const PlayerOverlay = forwardRef<HTMLDivElement, PlayerOverlayProps>(
         {metadata && (
           <>
             <ControlBar showControls={showControls} />
+            {isTouchDevice && !isFloating && <CenterPlayButton visible={showControls} />}
             <PlaybackNotificationControl />
             {children}
           </>

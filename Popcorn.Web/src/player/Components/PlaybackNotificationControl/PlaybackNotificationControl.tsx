@@ -10,6 +10,7 @@ import {
   IconVolume3 as MuteVolume,
 } from '@tabler/icons-react';
 
+import { isTouchDevice } from '../../../utils/platform';
 import './PlaybackNotificationControl.css';
 
 interface Notification {
@@ -34,7 +35,9 @@ const PlaybackNotificationControl = () => {
       volume: (volume: number) =>
         show(volume <= 0 ? { icon: <MuteVolume /> } : { message: `${Math.round(volume * 100)}%` }),
       skip_seconds: (seconds: number) => show({ icon: seconds < 0 ? <RewindButton /> : <ForwardButton /> }),
-      play_status_changed: (isPlaying: boolean) => show({ icon: isPlaying ? <PlayButton /> : <PauseButton /> }),
+      // Touch screens have the centre play button in the same place.
+      play_status_changed: (isPlaying: boolean) =>
+        !isTouchDevice && show({ icon: isPlaying ? <PlayButton /> : <PauseButton /> }),
       play_next_title: () => show({ icon: <NextTrack /> }),
     };
 

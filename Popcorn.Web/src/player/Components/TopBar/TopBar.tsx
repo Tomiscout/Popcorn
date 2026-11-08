@@ -35,7 +35,7 @@ export const TopBar: React.FC<TopBarProps> = ({ showControls }) => {
   const fileName = metadata?.filePath.split(/[\\/]/).pop() || metadata?.fullTitle;
 
   return (
-    <div className="top-bar" style={{ opacity: showControls ? '1' : '0' }}>
+    <div className={`top-bar${showControls ? '' : ' top-bar--hidden'}`}>
       <div className="top-bar__background" />
       <div className="top-bar__content">
         {close && (

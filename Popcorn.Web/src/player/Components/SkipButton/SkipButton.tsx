@@ -71,7 +71,7 @@ const SkipButton = memo(({ text, onSkip, isVisible, autoSkip, duration = 5 }: Sk
   });
 
   return isVisible ? (
-    <button className="skip-button" onClick={forceSkip}>
+    <button className="skip-button" data-counting={countingDown || undefined} onClick={forceSkip}>
       <div className="skip-button-text">{text}</div>
       <div
         className="skip-button-progress"

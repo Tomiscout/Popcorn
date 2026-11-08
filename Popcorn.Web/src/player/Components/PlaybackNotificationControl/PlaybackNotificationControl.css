@@ -18,10 +18,18 @@
     justify-content: center;
     border-radius: 10px;
     font-size: 14px;
+    pointer-events: none;
 
     /* Add the animation properties here */
     animation-name: fadeOut;
     animation-duration: 0.5s;
     animation-fill-mode: forwards;
     animation-delay: 1s;
+}
+
+/* Touch screens: above the centre play button (volume swipes show their level here). */
+@media (pointer: coarse) {
+    .notification-container {
+        top: calc(50% - 80px);
+    }
 }

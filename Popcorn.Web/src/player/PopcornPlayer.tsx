@@ -5,7 +5,7 @@ import Draggable from 'react-draggable';
 import './PopcornPlayer.css';
 import { disableDefaultListeners } from './Utlis/listener.utils';
 import { initEvents, registerEventHandler, unregisterEventHandler } from '../utils/events';
-import { usePlayerStore } from '../state/player.store';
+import { usePlayerStore, type PlayerState } from '../state/player.store';
 import { createPortal } from 'react-dom';
 import { VideoPlayer as RawVideoPlayer } from './Components/VideoPlayer';
 import { useVideoMetadata } from '../query/video.query';
@@ -18,10 +18,20 @@ import { PlayerPlaylistResponse } from '../model/media.contract';
 import type { SegmentAutoSkip } from '../model/segments.contract';
 
 import { useNavigate } from 'react-router-dom';
+import { isTouchDevice } from '../utils/platform';
 import type { NextFilePlan } from '../query/models/video.models';
 import { applyNextFilePlan } from './next-file';
 
 export type Mode = 'inline' | 'floating' | 'fullscreen';
+
+/** Escape belongs to these while they are open (menus, dialogs, the skip button's count-down). */
+const ESCAPE_TAKERS = '[role="dialog"], [role="menu"], [role="listbox"], .skip-button[data-counting]';
+
+/** `ScreenOrientation.lock` is missing from TypeScript's DOM types. */
+type LockableOrientation = ScreenOrientation & { lock?: (orientation: 'landscape') => Promise<void> };
+
+/** The video waits (paused, `isPlaying` = the user's wish) for the download or for a separately loaded audio track. */
+const isHeld = (s: PlayerState) => s.isBuffering || s.isAudioLoading;
 
 // 1. memoize the VideoPlayer so it only mounts once
 const VideoPlayer = React.memo(
@@ -136,26 +146,69 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
     console.log('Setting new mode:', newMode);
   }, [isFloating, isFullscreen]);
 
+  // Phones and tablets open the player in fullscreen: in a browser tab its bottom bar sits under the browser's
+  // toolbar. Still within the user activation of the tap that opened it (Chrome allows ~5 s).
+  useEffect(() => {
+    if (isTouchDevice && !usePlayerStore.getState().isFloating) usePlayerStore.getState().setIsFullscreen(true);
+  }, []);
+
   // whenever mode flips, trigger the Fullscreen API
   useEffect(() => {
-    if (!videoContainerRef.current) return;
+    const container = videoContainerRef.current;
+    if (!container) return;
     if (mode === 'fullscreen') {
       if (!document.fullscreenElement) {
-        videoContainerRef.current.requestFullscreen().catch(console.error);
+        container
+          .requestFullscreen({ navigationUI: 'hide' })
+          .then(() => {
+            // Videos are wide: turn the phone sideways (Android browsers allow it in fullscreen only).
+            if (isTouchDevice) (screen.orientation as LockableOrientation).lock?.('landscape').catch(() => {});
+          })
+          .catch((error) => {
+            // No user activation (or no Fullscreen API, iOS): stay in the page.
+            console.warn('Fullscreen refused', error);
+            usePlayerStore.getState().setIsFullscreen(false);
+          });
       }
-    } else {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(console.error);
-      }
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen().catch(console.error);
     }
   }, [mode]);
+
+  // The browser leaves fullscreen on its own (Escape, back gesture): follow it.
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (document.fullscreenElement) return;
+      if (isTouchDevice) screen.orientation.unlock?.();
+      if (usePlayerStore.getState().isFullscreen) usePlayerStore.getState().setIsFullscreen(false);
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  // Escape leaves fullscreen, else closes the player, unless it is meant for a menu, dialog or skip count-down
+  // in the player. Decided on keydown: the browser swallows the Escape that ends fullscreen, but not always its keyup.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.repeat) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (document.querySelector(ESCAPE_TAKERS)) return;
+      const { isFullscreen, isFloating } = usePlayerStore.getState();
+      if (isFullscreen) usePlayerStore.getState().setIsFullscreen(false);
+      else if (!isFloating) postMessage('player_close');
+    };
+    // Capture: runs before Mantine closes the popup the key is for.
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, []);
 
   useEffect(() => {
     const onToggle = (shouldPlay: boolean) => {
       if (!videoRef.current) return;
       if (shouldPlay) {
-        // While buffering this only records the wish; playback goes on when the data is there.
-        if (!usePlayerStore.getState().isBuffering) videoRef.current.play();
+        // While held this only records the wish; playback goes on when the data is there.
+        if (!isHeld(usePlayerStore.getState())) videoRef.current.play();
         setIsPlaying(true);
       } else {
         videoRef.current.pause();
@@ -248,14 +301,16 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
     };
 
     const closeHandler = () => {
-      const { resetState, closePlayer } = usePlayerStore.getState();
+      const { resetState, closePlayer, setIsFullscreen } = usePlayerStore.getState();
       resetState();
+      setIsFullscreen(false);
       closePlayer();
     };
 
     const unsubscribeBuffering = usePlayerStore.subscribe((state, prev) => {
-      if (state.isBuffering === prev.isBuffering || !videoRef.current) return;
-      if (state.isBuffering) videoRef.current.pause();
+      const held = isHeld(state);
+      if (held === isHeld(prev) || !videoRef.current) return;
+      if (held) videoRef.current.pause();
       else if (state.isPlaying) videoRef.current.play().catch(console.error);
     });
 

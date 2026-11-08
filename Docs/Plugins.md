@@ -272,7 +272,7 @@ Copying a folder in by hand works too, but it is only picked up at the next scan
    currently only TMDb. They are replaced on every install/update of Popcorn, so don't put anything there by hand.
 
 Folders without `plugin.json` (and folders starting with `.`) are ignored, so plugin sources can live next to the plugins. A plugin with the same `id` as one already loaded is skipped. A plugin that fails to load stays in the list with its
-error (shown in Settings, details in `logs/Popcorn.Server-*.txt`). Everything else keeps working.
+error (shown in Settings, details in `logs/*-Popcorn.Server.txt` and Settings → Logs). Everything else keeps working.
 
 ## Server side (.NET)
 

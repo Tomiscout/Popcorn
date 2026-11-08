@@ -15,6 +15,8 @@
 .controls-root.controls-hidden .progress-slider-row,
 .controls-root.controls-hidden .playback-controls {
   opacity: 0;
+  /* A tap on hidden controls (touch screens) goes to the video and shows them instead. */
+  pointer-events: none;
 }
 
 .controls-container {

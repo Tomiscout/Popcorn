@@ -3,6 +3,7 @@ body {
   padding: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: none;
   font-family: 'Rubik', sans-serif;
@@ -30,8 +31,14 @@ input:focus {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 .video-container.fullscreen {
+  /* Also covers the page for the moment the store and the browser disagree. */
+  position: fixed !important;
+  transform: none !important;
+  inset: 0;
+  z-index: 9998;
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
   margin: 0;
   padding: 0;
 }
@@ -42,6 +49,8 @@ input:focus {
   left: 0;
   width: 100vw !important;
   height: 100vh !important;
+  /* Phones: the visible height. With 100vh the control bar sits under the browser's bottom toolbar. */
+  height: 100dvh !important;
   z-index: 9998; /* just below your floating if needed */
   background: black;
 }

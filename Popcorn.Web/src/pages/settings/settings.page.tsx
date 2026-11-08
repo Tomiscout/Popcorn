@@ -1,14 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { AutostartState, PlayerOption, Settings } from '../../model/settings.contract';
 import { SocketRequests } from '../../socket/socket-requests';
 import { useWebSocket } from '../../state/websocket-context';
-import { Button, Code, Radio, Skeleton, Stack, Switch, Tabs, Text, Title } from '@mantine/core';
+import { Button, Code, Loader, Radio, Skeleton, Stack, Switch, Tabs, Text, Title } from '@mantine/core';
 import { SegmentAutoSkip, segmentAutoSkipOptions } from '../../model/segments.contract';
 import { isDesktopApp } from '../../utils/platform';
 import PlayerList, { newPlayerId } from './player-list';
 import PluginList from './plugin-list';
 import DownloadSettingsSection from './download-settings';
 import UpdateSection from './update-section';
+
+// Own chunk: date picker + virtual list, only needed on the Logs tab.
+const LogViewer = lazy(() => import('./logs/log-viewer'));
 
 const SettingsPage: React.FC = () => {
   const { client, isClientReady } = useWebSocket();
@@ -68,6 +71,7 @@ const SettingsPage: React.FC = () => {
             <Tabs.Tab value="general">General</Tabs.Tab>
             <Tabs.Tab value="downloads">Downloads</Tabs.Tab>
             <Tabs.Tab value="plugins">Plugins</Tabs.Tab>
+            <Tabs.Tab value="logs">Logs</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="general">
@@ -152,6 +156,12 @@ const SettingsPage: React.FC = () => {
               </Text>
               <PluginList />
             </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="logs">
+            <Suspense fallback={<Loader size="sm" />}>
+              <LogViewer />
+            </Suspense>
           </Tabs.Panel>
         </Tabs>
       )}

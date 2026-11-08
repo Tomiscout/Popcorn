@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "popcorn-player-windows-native"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "webview2-com",
  "windows",

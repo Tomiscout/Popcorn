@@ -48,7 +48,7 @@ import { SocketRequests } from '../../socket/socket-requests';
 import { useSocketEvents } from '../../socket/useSocketEvents.hook';
 import { usePlayerStore } from '../../state/player.store';
 import { useWebSocket } from '../../state/websocket-context';
-import { isDesktopApp } from '../../utils/platform';
+import { isDesktopApp, useIsMobile } from '../../utils/platform';
 import { formatBytes, formatDuration, formatRate } from './format';
 import { DownloadEntry, groupDownloads } from './download-groups';
 import { useColumnWidths, usePolling } from './downloads.hooks';
@@ -611,6 +611,9 @@ const COLUMN_WIDTHS: Record<Column, number> = {
   priority: 110,
 };
 
+/** Phones: the name column leaves room for the actions and state next to it (the table scrolls sideways). */
+const MOBILE_COLUMN_WIDTHS: Record<Column, number> = { ...COLUMN_WIDTHS, name: 190 };
+
 /** Width of the expand-arrow column (not resizable). */
 const EXPANDER_WIDTH = 40;
 
@@ -624,7 +627,11 @@ function DownloadTable({
   actions: DownloadActions;
 }) {
   const entries = useMemo(() => groupDownloads(downloads), [downloads]);
-  const { widths, setWidth, reset } = useColumnWidths<Column>('popcorn.downloads.columns', COLUMN_WIDTHS);
+  const isMobile = useIsMobile();
+  const { widths, setWidth, reset } = useColumnWidths<Column>(
+    'popcorn.downloads.columns',
+    isMobile ? MOBILE_COLUMN_WIDTHS : COLUMN_WIDTHS
+  );
   if (!downloads.length)
     return (
       <Text c="dimmed" size="sm">

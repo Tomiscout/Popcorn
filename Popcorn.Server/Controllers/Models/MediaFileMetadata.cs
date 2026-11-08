@@ -38,8 +38,6 @@ public class AudioTrackDto
     public required string Label { get; set; }
     public string? Language { get; set; }
     public required string Codec { get; set; }
-    
-    public required string Container { get; set; }
 }
 
 public class SubtitleTrackDto

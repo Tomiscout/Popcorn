@@ -4,6 +4,7 @@ public static class DirectoryUtils
 {
     public static readonly string DataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Popcorn" + Path.DirectorySeparatorChar);
     public static readonly string StreamCache = DataFolder + "StreamCache" + Path.DirectorySeparatorChar;
+    public static readonly string LogsFolder = Path.Combine(DataFolder, "logs");
     public static readonly string ThumbnailsFolder = Path.Combine(DataFolder, "ThumbnailsCache");
 
     public static void EnsureApplicationFolder()
