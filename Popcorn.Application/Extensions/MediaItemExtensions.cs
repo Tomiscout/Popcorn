@@ -92,36 +92,109 @@ public static class MediaItemExtensions
         var numbered = files.Where(f => f.SeasonNumber.HasValue && f.EpisodeNumber.HasValue).ToList();
         SetPreviousFile(plan, current, files, numbered);
 
-        if (current.SeasonNumber is { } season && current.EpisodeNumber.HasValue && numbered.Count > 1)
-        {
-            var lastEpisode = current.Episodes!.Select(e => int.TryParse(e, out var n) ? n : 0).Max(); // S01E01E02
-            var next = numbered
-                .Where(f => f.SeasonNumber > season || (f.SeasonNumber == season && f.EpisodeNumber > lastEpisode))
-                .OrderBy(f => f.SeasonNumber).ThenBy(f => f.EpisodeNumber).ThenBy(f => f.Path)
-                .FirstOrDefault();
-            if (next is null) return plan;
+        var nextFile = FindNextFile(item, files, numbered, current, item.History ?? []);
+        if (nextFile is null) return plan;
 
-            plan.NextFileId = next.Id;
-            plan.NextLabel = EpisodeLabel(next.SeasonNumber!.Value, next.EpisodeNumber!.Value);
-            plan.NextEpisodeTitle = MediaNameParser.Parse(next.Path).EpisodeTitle;
-            plan.MissingLabel = MissingBefore(season, lastEpisode, next.SeasonNumber.Value, next.EpisodeNumber.Value);
-            return plan;
+        plan.NextFileId = nextFile.Id;
+        plan.NextEpisodeTitle = MediaNameParser.Parse(nextFile.Path).EpisodeTitle;
+        if (IsEpisodeOrder(current, numbered))
+        {
+            var lastEpisode = LastEpisode(current);
+            plan.NextLabel = EpisodeLabel(nextFile.SeasonNumber!.Value, nextFile.EpisodeNumber!.Value);
+            plan.MissingLabel = MissingBefore(current.SeasonNumber!.Value, lastEpisode, nextFile.SeasonNumber.Value, nextFile.EpisodeNumber.Value);
         }
-
-        // The last played file decides the folder walk; history of deleted files would break it.
-        var history = (item.History ?? [])
-            .Where(h => files.Any(f => f.Id == h.FileId))
-            .Append(new ItemHistory { ItemId = item.Id, FileId = currentFileId })
-            .ToList();
-        var nextFile = item.GetNextMediaFile(history);
-        plan.NextFileId = nextFile?.Id;
-        if (nextFile is not null)
+        else
         {
-            plan.NextEpisodeTitle = MediaNameParser.Parse(nextFile.Path).EpisodeTitle;
             plan.NextTitle = WithoutPrefix(nextFile.GetDisplayTitle(), plan.ItemTitle);
         }
         return plan;
     }
+
+    /// <summary>Proper season/episode numbers decide what comes after <paramref name="current"/> (else the folder walk).</summary>
+    private static bool IsEpisodeOrder(MediaFile current, List<MediaFile> numbered) =>
+        current.SeasonNumber.HasValue && current.EpisodeNumber.HasValue && numbered.Count > 1;
+
+    /// <summary>Last episode number of the file: S01E01E02 -> 2.</summary>
+    private static int LastEpisode(MediaFile file) =>
+        file.Episodes?.Select(e => int.TryParse(e, out var n) ? n : 0).DefaultIfEmpty(0).Max() is { } max && max > 0
+            ? max
+            : file.EpisodeNumber ?? 0;
+
+    /// <summary>
+    /// The solver behind <see cref="GetNextFilePlan"/>: the next higher episode (other versions of the same episode passed over),
+    /// or without proper numbers the next file of the folder walk after <paramref name="history"/> + <paramref name="current"/>.
+    /// </summary>
+    private static MediaFile? FindNextFile(MediaItem item, List<MediaFile> files, List<MediaFile> numbered, MediaFile current,
+        IEnumerable<ItemHistory> history)
+    {
+        if (IsEpisodeOrder(current, numbered))
+        {
+            var season = current.SeasonNumber!.Value;
+            var lastEpisode = LastEpisode(current);
+            return numbered
+                .Where(f => f.SeasonNumber > season || (f.SeasonNumber == season && f.EpisodeNumber > lastEpisode))
+                .OrderBy(f => f.SeasonNumber).ThenBy(f => f.EpisodeNumber).ThenBy(f => f.Path)
+                .FirstOrDefault();
+        }
+
+        // The last played file decides the folder walk; history of deleted files would break it.
+        var walk = history
+            .Where(h => files.Any(f => f.Id == h.FileId))
+            .Append(new ItemHistory { ItemId = item.Id, FileId = current.Id })
+            .ToList();
+        return item.GetNextMediaFile(walk);
+    }
+
+    /// <summary>
+    /// Every file of the item in the order playing goes through them (item page's flattened file list): from the first
+    /// episode (else the first file of the folder walk) along <see cref="FindNextFile"/>. Files that order passes over
+    /// follow: other versions of an episode right after it, the rest in folder order.
+    /// </summary>
+    public static List<MediaFile> GetPlayOrder(this MediaItem item)
+    {
+        var files = (item.Files ?? []).Where(f => f.Type == FileType.File).ToList();
+        foreach (var file in files.Where(f => !f.TagsProcessed)) file.ParseTags();
+        var folderOrder = FolderOrder(files);
+        if (files.Count == 0) return files;
+
+        var numbered = files.Where(f => f.SeasonNumber.HasValue && f.EpisodeNumber.HasValue).ToList();
+        var order = new List<MediaFile>();
+        var seen = new HashSet<Guid>();
+        try
+        {
+            var current = numbered.Count > 1
+                ? numbered.OrderBy(f => f.SeasonNumber).ThenBy(f => f.EpisodeNumber).ThenBy(f => f.Path).First()
+                : item.GetNextMediaFile([]);
+            var walk = new List<ItemHistory>();
+            while (current is not null && seen.Add(current.Id))
+            {
+                order.Add(current);
+                var next = FindNextFile(item, files, numbered, current, walk);
+                walk.Add(new ItemHistory { ItemId = item.Id, FileId = current.Id });
+                current = next;
+            }
+        }
+        catch (Exception)
+        {
+            // The folder walk throws on inconsistent data; what it found so far stays, the rest follows in folder order.
+        }
+
+        foreach (var file in folderOrder.Where(f => !seen.Contains(f.Id)))
+        {
+            var sameEpisode = file.SeasonNumber.HasValue && file.EpisodeNumber.HasValue
+                ? order.FindLastIndex(f => f.SeasonNumber == file.SeasonNumber && f.EpisodeNumber == file.EpisodeNumber)
+                : -1;
+            if (sameEpisode >= 0) order.Insert(sameEpisode + 1, file);
+            else order.Add(file);
+        }
+        return order;
+    }
+
+    /// <summary>Folder first, then its subfolders (\0 sorts "a/b" before "a b"), as the walk of GetNextMediaFile goes.</summary>
+    private static List<MediaFile> FolderOrder(IEnumerable<MediaFile> files) => files
+        .OrderBy(f => (Path.GetDirectoryName(f.Path) ?? "").Replace(Path.DirectorySeparatorChar, '\0'), StringComparer.Ordinal)
+        .ThenBy(f => f.Title).ThenBy(f => f.Path)
+        .ToList();
 
     /// <summary>The next lower episode, or without proper numbers the file before it in folder order.</summary>
     private static void SetPreviousFile(NextFilePlan plan, MediaFile current, List<MediaFile> files, List<MediaFile> numbered)
@@ -137,11 +210,7 @@ public static class MediaItemExtensions
         }
         else
         {
-            // Folder first, then its subfolders (\0 sorts "a/b" before "a b"), as the walk of GetNextMediaFile goes.
-            var ordered = files
-                .OrderBy(f => (Path.GetDirectoryName(f.Path) ?? "").Replace(Path.DirectorySeparatorChar, '\0'), StringComparer.Ordinal)
-                .ThenBy(f => f.Title).ThenBy(f => f.Path)
-                .ToList();
+            var ordered = FolderOrder(files);
             previous = ordered.ElementAtOrDefault(ordered.IndexOf(current) - 1);
             if (previous is not null) plan.PreviousTitle = WithoutPrefix(previous.GetDisplayTitle(), plan.ItemTitle);
         }

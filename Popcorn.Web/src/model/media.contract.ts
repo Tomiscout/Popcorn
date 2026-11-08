@@ -32,7 +32,28 @@ export interface MediaFile {
   seasons?: string[];
 }
 
+/** Item page's flattened file list: every file in play order (same order as the next file solver). */
+export interface MediaItemFlatFileList {
+  itemId: string;
+  files: MediaFile[];
+  /** More than one download feeds the item: the list is flattened unless the user switched it off. */
+  multipleDownloads: boolean;
+}
+
+/** Deletes one history entry of the item, or all of them without `historyId`. */
+export interface DeleteMediaItemHistoryRequest {
+  itemId: string;
+  historyId?: number;
+}
+
+export interface RenameMediaItemRequest {
+  id: string;
+  title: string;
+}
+
 export interface MediaItemHistory {
+  /** Id of the history entry (what `MediaItemHistoryDelete` deletes). */
+  id: number;
   title: string;
   fileId: string;
   playbackTime: string;

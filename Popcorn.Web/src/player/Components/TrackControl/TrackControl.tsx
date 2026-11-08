@@ -2,11 +2,12 @@ import { useState, useRef, useMemo } from 'react';
 import { postMessage } from '../../../utils/events';
 import NumberStepper from '../NumberStepper/NumberStepper';
 import './TrackControl.css';
-import { IconPlus as AddIcon, IconBadgeCc as Subtitles } from '@tabler/icons-react';
+import { IconPlus as AddIcon, IconBadgeCc as Subtitles, IconWaveSine as SyncIcon } from '@tabler/icons-react';
 import { usePlayerStore } from '../../../state/player.store';
 import { useFileDialog } from '@mantine/hooks';
 import { subtitleFormats } from '../../../utils/file.utils';
 import { usePlayerFeatures } from '../../player-features';
+import { setSubtitleDelay } from '../../subtitle-delay';
 
 interface TrackEntry {
   id: string;
@@ -17,20 +18,19 @@ interface TrackEntry {
 /** Subtitle "None" entry; hosts get -1 in `subtitle_track_selected` and turn subtitles off. */
 export const NO_SUBTITLE_ID = '-1';
 
-const toEntry = (t: { index: number; label: string; language?: string }): TrackEntry => ({
+const toEntry = (t: { index: number; label: string; language?: string; languageName?: string | null }): TrackEntry => ({
   description: t.label,
-  language: t.language ?? '',
+  language: t.languageName || t.language || '',
   id: t.index.toString(),
 });
 
 const TrackControl = () => {
   const subtitlePopupWidth = 500;
 
-  const { metadata, currentAudio, currentSubtitle } = usePlayerStore();
+  const { metadata, currentAudio, currentSubtitle, subtitleDelay: delay, setSubtitleSyncOpen } = usePlayerStore();
   const { addSubtitle, subtitleDelay } = usePlayerFeatures();
 
   const [showPopup, setShowPopup] = useState(false);
-  const [resetSubtitleDelay, setResetSubtitleDelay] = useState(false);
   const subtitleRef = useRef<HTMLDivElement>(null);
   const subtitlePopupRef = useRef<HTMLDivElement>(null);
 
@@ -62,7 +62,13 @@ const TrackControl = () => {
   const handleSubtitleChange = (value: string) => {
     if (selectedSubtitle === value) return;
     postMessage('subtitle_track_selected', value);
-    subtitleDelayReset();
+    // Another track has its own timing.
+    setSubtitleDelay(0);
+  };
+
+  const openSync = () => {
+    setShowPopup(false);
+    setSubtitleSyncOpen(true);
   };
 
   const handleAddSubtitle = () => {
@@ -74,14 +80,6 @@ const TrackControl = () => {
   };
 
   const subtitleDelayStep = 0.05;
-  const handleSubtitleDelayChanged = (newDelay: number) => {
-    postMessage('subtitle_delay_set', newDelay);
-  };
-  const subtitleDelayReset = () => {
-    //hacky but idc
-    setResetSubtitleDelay(true);
-    setTimeout(() => setResetSubtitleDelay(false), 0);
-  };
 
   const handleMouseEnter = () => {
     const subtitleElement = subtitleRef.current;
@@ -124,7 +122,7 @@ const TrackControl = () => {
           </div>
           {
             <span className={`option-text ${selectedValue === track.id ? 'bold' : ''}`}>
-              {track.id === NO_SUBTITLE_ID ? 'None' : track.language + ' '}
+              {track.id === NO_SUBTITLE_ID ? 'None' : track.language && track.language + ' '}
               <span className={`option-desc-text`}>{track.description}</span>
             </span>
           }
@@ -165,12 +163,18 @@ const TrackControl = () => {
                   </button>
                 )}
                 {subtitleDelay && (
-                  <NumberStepper
-                    initialValue={0}
-                    onNumberChanged={handleSubtitleDelayChanged}
-                    step={subtitleDelayStep}
-                    reset={resetSubtitleDelay}
-                  />
+                  <>
+                    <button
+                      className="add-subtitle-button sync-subtitle-button"
+                      onClick={openSync}
+                      disabled={!currentSubtitle}
+                      title={currentSubtitle ? 'Line the subtitles up with the audio' : 'Choose a subtitle track first'}
+                    >
+                      <SyncIcon />
+                      <span>Sync</span>
+                    </button>
+                    <NumberStepper value={delay} onChange={setSubtitleDelay} step={subtitleDelayStep} />
+                  </>
                 )}
               </div>
             )}

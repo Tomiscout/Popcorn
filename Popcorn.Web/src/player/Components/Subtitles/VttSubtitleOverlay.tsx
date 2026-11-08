@@ -11,6 +11,7 @@ interface VttSubtitleOverlayProps {
 const VttSubtitleOverlay: React.FC<VttSubtitleOverlayProps> = ({ videoRef, currentKey }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { getSubtitleFile } = usePlayerStore();
+  const delay = usePlayerStore((s) => s.subtitleDelay);
   const [cues, setCues] = useState<VTTCue[]>([]);
   const [activeCues, setActiveCues] = useState<VTTCue[]>([]);
 
@@ -35,25 +36,27 @@ const VttSubtitleOverlay: React.FC<VttSubtitleOverlayProps> = ({ videoRef, curre
     parser.flush();
 
     setCues(parsedCues);
-    setTimeout(updateCues, 0); // initial cue update
   }, [currentKey]);
 
-  function updateCues() {
-    if (!videoRef.current) return;
-    const currentTime = videoRef.current.currentTime;
-    const active = cues.filter((cue) => currentTime >= cue.startTime && currentTime <= cue.endTime);
-    setActiveCues(active);
-  }
-
-  // Sync cues with video time
+  // Checked every frame (timeupdate comes only ~4 times a second: lines would be up to 250 ms late, which defeats
+  // the subtitle delay's 10 ms steps); React only re-renders when the set of lines on screen changes.
   useEffect(() => {
-    if (!videoRef.current) return;
-
-    videoRef.current?.addEventListener('timeupdate', updateCues);
-    return () => {
-      videoRef.current?.removeEventListener('timeupdate', updateCues);
+    const video = videoRef.current;
+    if (!video) return;
+    let shown: VTTCue[] = [];
+    let frame = 0;
+    const update = () => {
+      frame = requestAnimationFrame(update);
+      // Positive delay = subtitles later (mpv's sub-delay).
+      const time = video.currentTime - usePlayerStore.getState().subtitleDelay;
+      const active = cues.filter((cue) => time >= cue.startTime && time <= cue.endTime);
+      if (active.length === shown.length && active.every((cue, i) => cue === shown[i])) return;
+      shown = active;
+      setActiveCues(active);
     };
-  }, [cues, videoRef]);
+    update();
+    return () => cancelAnimationFrame(frame);
+  }, [cues, videoRef, delay]);
 
   return (
     <div

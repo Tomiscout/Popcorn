@@ -46,6 +46,7 @@ function EditImagesForm({ item, onClose, posterUrl, backdropUrl }: Omit<EditImag
       <MediaImagePicker
         kind="Poster"
         name={name}
+        itemId={item.id}
         value={poster === undefined ? posterUrl : poster}
         onChange={setPoster}
       />
@@ -53,6 +54,7 @@ function EditImagesForm({ item, onClose, posterUrl, backdropUrl }: Omit<EditImag
       <MediaImagePicker
         kind="Backdrop"
         name={name}
+        itemId={item.id}
         value={backdrop === undefined ? backdropUrl : backdrop}
         onChange={setBackdrop}
       />

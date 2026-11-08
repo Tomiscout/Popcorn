@@ -203,6 +203,8 @@ export interface ImageResult {
   url: string;
   thumbnailUrl: string | null;
   title: string | null;
+  /** Title the image belongs to when the provider found several (heading; consecutive images share it); null = none. */
+  group: string | null;
 }
 
 // Popcorn.Server/Models/Requests/PluginRequests.cs
@@ -210,6 +212,8 @@ export interface MediaImageSearchRequest {
   /** Item name as typed or the folder name; the server parses title/year. */
   name: string;
   kind: ImageKind;
+  /** Library item the images are for: the media it was added from identifies the title. */
+  itemId?: string | null;
   requestId: string;
 }
 

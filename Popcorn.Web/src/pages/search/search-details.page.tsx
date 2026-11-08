@@ -1,4 +1,4 @@
-import { Alert, Button, Loader, Center, Container, Group, Title } from '@mantine/core';
+import { Alert, Box, Button, Loader, Center, Container, Group, Title } from '@mantine/core';
 import { IconArrowLeft, IconSearch } from '@tabler/icons-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -9,25 +9,36 @@ import { useWebSocket } from '../../state/websocket-context';
 import { PluginDetailsRequest, PluginDetailsResponse } from '../../model/plugin.contract';
 import { pluginDetailsPath } from '../../plugins/plugins.hook';
 import { PluginDetails } from '../../plugins/plugin-components';
-import { FileSearch, LinkMedia, useFileSearch } from '../../plugins/file-sources';
+import { FileSearch, LinkMedia, searchLabel, useFileSearch } from '../../plugins/file-sources';
+import { SourceFilter } from '../../plugins/source-filter';
 import { FileResults } from '../../plugins/file-results';
 
-/** Files section: every file source searched for one media item (its `fileQuery`, or its title), on demand. */
+/** Files section: the enabled file sources searched for one media item (its `fileQuery`, or its title), on demand. */
 function ItemFiles({ query, media }: { query: FileQuery; media: LinkMedia }) {
   const [search, setSearch] = useState<FileSearch | null>(null);
-  const { sources, start, refresh } = useFileSearch(search, setSearch);
-  if (!sources?.length) return null;
+  const { sources, enabled, setEnabled, start, refresh } = useFileSearch(search, setSearch);
+  if (!sources?.length || !enabled) return null;
   return (
     <Container size="lg" pb="xl">
       <Group mb="sm">
         <Title order={3}>Files</Title>
         {!search && (
-          <Button variant="light" leftSection={<IconSearch size={16} />} onClick={() => start(query)}>
-            Search {sources.length === 1 ? sources[0].name : `${sources.length} file sources`}
+          <Button
+            variant="light"
+            leftSection={<IconSearch size={16} />}
+            disabled={enabled.length === 0}
+            onClick={() => start(query)}
+          >
+            {searchLabel(enabled)}
           </Button>
         )}
       </Group>
-      {search && <FileResults section="item-files" sources={sources} search={search} media={media} onRefresh={refresh} />}
+      <Box mb="md">
+        <SourceFilter sources={sources} enabled={enabled} onChange={setEnabled} />
+      </Box>
+      {search && (
+        <FileResults section="item-files" sources={enabled} search={search} media={media} onRefresh={refresh} />
+      )}
     </Container>
   );
 }
@@ -93,7 +104,12 @@ const SearchDetailsPage: React.FC = () => {
           <ItemFiles
             key={`files\n${key}`}
             query={current.details.fileQuery ?? { text: current.details.title }}
-            media={{ title: current.details.title, posterUrl: current.details.posterUrl }}
+            media={{
+              title: current.details.title,
+              posterUrl: current.details.posterUrl,
+              backdropUrl: current.details.backdropUrl,
+              source: { pluginId, mediaId: current.details.id, imdbId: current.details.fileQuery?.imdbId ?? null },
+            }}
           />
         </>
       )}

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using FFMpegCore;
 using Microsoft.Extensions.Logging;
+using Popcorn.Application.Utils;
 using Popcorn.Player.Core.Contracts;
 using Popcorn.Player.Core.Core;
 using Popcorn.Player.Core.Services;
@@ -54,6 +55,8 @@ public class MpvPlayer : IPlayer
         _player.SetProperty("hwdec", "auto");
         _player.SetProperty("osd-level", "0");
         _player.SetProperty("sub-border-size", "1");
+        // Subtitle files next to the video are found by ExternalSubtitles (item folder, Subs/ folders), not by mpv.
+        _player.SetProperty("sub-auto", "no");
         // Files still downloading are read over HTTP from the server, which holds a request until the download has
         // the data: 0 = FFmpeg's default, no read timeout (mpv's own default gives up after 60 s).
         _player.SetProperty("network-timeout", "0");
@@ -72,6 +75,8 @@ public class MpvPlayer : IPlayer
         {
             Stop();
             // An option, so it applies to every later loadfile too: always set it.
+            // sub-delay is an option too: a delay set for one file must not carry over to the next.
+            _player.SetProperty("sub-delay", "0");
             _player.SetProperty("start", startSeconds is { } start ? start.ToString(CultureInfo.InvariantCulture) : "none");
             _player.Command("loadfile", path);
         }
@@ -158,7 +163,7 @@ public class MpvPlayer : IPlayer
 
     public void SetPlaybackTime(long time)
     {
-        _player.Command("seek", (time / 1000).ToString(CultureInfo.InvariantCulture), "absolute");
+        _player.Command("seek", (time / 1000.0).ToString("0.###", CultureInfo.InvariantCulture), "absolute");
     }
 
     public void SkipTime(long time)
@@ -204,6 +209,9 @@ public class MpvPlayer : IPlayer
                 Language = StringOrEmpty(track, "lang"),
                 Description = StringOrEmpty(track, "title"),
                 Selected = track.TryGetProperty("selected", out var selected) && selected.ValueKind == JsonValueKind.True,
+                Codec = StringOrEmpty(track, "codec"),
+                StreamIndex = track.TryGetProperty("ff-index", out var ffIndex) && ffIndex.ValueKind == JsonValueKind.Number ? ffIndex.GetInt32() : null,
+                ExternalFilename = StringOrEmpty(track, "external-filename") is { Length: > 0 } external ? external : null,
             });
         }
 
@@ -236,6 +244,10 @@ public class MpvPlayer : IPlayer
         }
     }
 
+    public string? CurrentFilePath => _currentFilePath;
+
+    public MediaTrack? GetTrack(MediaTrackType type, int id) => _mediaTracks?.FirstOrDefault(t => t.Type == type && t.Id == id);
+
     public void SubtitleSetDelay(double delay)
     {
         _player.SetProperty("sub-delay", delay.ToString(CultureInfo.InvariantCulture));
@@ -256,6 +268,24 @@ public class MpvPlayer : IPlayer
 
         LoadMediaTracks();
         _audioSubtitlesService.Value.SendAudioAndSubtitles();
+    }
+
+    public void AddExternalSubtitles(IReadOnlyList<ExternalSubtitle> subtitles)
+    {
+        if (subtitles.Count == 0) return;
+        foreach (var subtitle in subtitles)
+        {
+            try
+            {
+                if (subtitle.Language is { } language) _player.Command("sub-add", subtitle.Path, "auto", subtitle.Title, language);
+                else _player.Command("sub-add", subtitle.Path, "auto", subtitle.Title);
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "Could not add the subtitle file {Path}", subtitle.Path);
+            }
+        }
+        LoadMediaTracks();
     }
 
     public void Dispose()

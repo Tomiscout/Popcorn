@@ -18,6 +18,7 @@ const AssSubtitleOverlay: React.FC<AssSubtitleOverlayProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const assInstance = useRef<ASS | null>(null);
   const { getSubtitleFile } = usePlayerStore();
+  const delay = usePlayerStore((s) => s.subtitleDelay);
 
   useEffect(() => {
     if (!currentKey) {
@@ -33,12 +34,18 @@ const AssSubtitleOverlay: React.FC<AssSubtitleOverlayProps> = ({
       container: containerRef.current!,
       resampling,
     });
+    assInstance.current.delay = usePlayerStore.getState().subtitleDelay;
 
     return () => {
       assInstance.current?.destroy();
       assInstance.current = null;
     };
   }, [currentKey, resampling]);
+
+  // Same sign as mpv's sub-delay: positive = later.
+  useEffect(() => {
+    if (assInstance.current) assInstance.current.delay = delay;
+  }, [delay]);
 
   return (
     <div

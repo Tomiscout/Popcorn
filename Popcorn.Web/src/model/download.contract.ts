@@ -71,6 +71,9 @@ export interface DownloadAddRequest {
   addToLibrary: boolean;
   mediaTitle?: string | null;
   posterUrl?: string | null;
+  backdropUrl?: string | null;
+  /** Media page the download was started from, kept by the library item (finds its pictures and description). */
+  mediaSource?: MediaSourceRef | null;
   /** Existing library item to add the files to (saved inside its folder). */
   mediaItemId?: string | null;
 }
@@ -81,6 +84,15 @@ export interface DownloadAddBatchRequest {
   mediaItemId?: string | null;
   mediaTitle?: string | null;
   posterUrl?: string | null;
+  backdropUrl?: string | null;
+  mediaSource?: MediaSourceRef | null;
+}
+
+/** Popcorn.Domain/Models/MediaSourceRef.cs: a media source plugin's media (its details page) and its IMDb id. */
+export interface MediaSourceRef {
+  pluginId?: string | null;
+  mediaId?: string | null;
+  imdbId?: string | null;
 }
 
 export interface DownloadAddedResponse {

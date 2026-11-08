@@ -86,6 +86,17 @@ export function missingEpisodes(episodes: number[]): number[] {
 
 const seeders = (file: FileResult) => file.sortValues?.seeders ?? -1;
 
+/** Of the members a group's "all episodes" picks one per episode: the one with the most seeders. */
+export function bestPerEpisode<T>(members: GroupMember<T>[], file: (item: T) => FileResult): T[] {
+  const best = new Map<string, T>();
+  for (const { item, episodes } of members) {
+    const key = episodes.join(',');
+    const current = best.get(key);
+    if (current === undefined || seeders(file(item)) > seeders(file(current))) best.set(key, item);
+  }
+  return [...best.values()];
+}
+
 /** One episode of a group: the best of its duplicates (most seeders), and how many others there were. */
 export type GroupMember<T> = { item: T; episodes: number[]; duplicates: number };
 
@@ -102,30 +113,33 @@ export type FileEntry<T> =
 
 /**
  * Groups results of one naming scheme with at least two distinct episodes; duplicates (the same episode / the same
- * name from several sources) are merged into the one with the most seeders. A group or file takes the place of its
- * first item, so the order of `items` (the user's sort) is kept.
+ * name from several sources) are merged into the one with the most seeders. Results of one source are never merged
+ * with each other: there the same name is a different torrent (another upload), so the n-th of a name from each
+ * source are the duplicates. A group or file takes the place of its first item, so the order of `items` (the user's
+ * sort) is kept.
  */
-export function groupFiles<T>(items: T[], file: (item: T) => FileResult): FileEntry<T>[] {
-  type Candidate = { item: T; name: EpisodeName | null; index: number };
-  const candidates: Candidate[] = items.map((item, index) => ({
-    item,
-    name: parseEpisodeName(file(item).title),
-    index,
-  }));
-
-  // Best result per exact name / episode of a scheme.
-  const best = new Map<string, { candidate: Candidate; duplicates: number }>();
-  const dedupeKey = (c: Candidate) =>
-    c.name
-      ? `${c.name.scheme}\n${c.name.episodes.join(',')}`
-      : file(c.item)
+export function groupFiles<T>(items: T[], file: (item: T) => FileResult, source: (item: T) => string): FileEntry<T>[] {
+  type Candidate = { item: T; name: EpisodeName | null; index: number; key: string };
+  const occurrences = new Map<string, number>();
+  const candidates: Candidate[] = items.map((item, index) => {
+    const name = parseEpisodeName(file(item).title);
+    const release = name
+      ? `${name.scheme}\n${name.episodes.join(',')}`
+      : file(item)
           .title.toLowerCase()
           .replace(/[^\p{L}\p{N}]+/gu, ' ')
           .trim();
+    const perSource = `${source(item)}\n${release}`;
+    const n = occurrences.get(perSource) ?? 0;
+    occurrences.set(perSource, n + 1);
+    return { item, name, index, key: `${release}\n${n}` };
+  });
+
+  // Best result per exact name / episode of a scheme (and occurrence within its source).
+  const best = new Map<string, { candidate: Candidate; duplicates: number }>();
   for (const c of candidates) {
-    const key = dedupeKey(c);
-    const current = best.get(key);
-    if (!current) best.set(key, { candidate: c, duplicates: 0 });
+    const current = best.get(c.key);
+    if (!current) best.set(c.key, { candidate: c, duplicates: 0 });
     else {
       current.duplicates++;
       if (seeders(file(c.item)) > seeders(file(current.candidate.item))) current.candidate = c;
@@ -139,17 +153,23 @@ export function groupFiles<T>(items: T[], file: (item: T) => FileResult): FileEn
       list.push(entry);
       schemes.set(entry.candidate.name.scheme, list);
     }
+  // A scheme with at least two distinct episodes is a group (it may also hold several uploads of one episode).
+  const grouped = new Set(
+    [...schemes]
+      .filter(([, list]) => new Set(list.map((e) => e.candidate.name!.episodes.join(','))).size > 1)
+      .map(([scheme]) => scheme)
+  );
 
   // Position of each entry = the earliest of its items (duplicates included) in the sorted input.
   const firstIndex = new Map<string, number>();
   for (const c of candidates) {
-    const key = c.name && (schemes.get(c.name.scheme)?.length ?? 0) > 1 ? `group\n${c.name.scheme}` : dedupeKey(c);
+    const key = c.name && grouped.has(c.name.scheme) ? `group\n${c.name.scheme}` : c.key;
     if (!firstIndex.has(key)) firstIndex.set(key, c.index);
   }
 
   const entries: { at: number; entry: FileEntry<T> }[] = [];
   for (const [scheme, list] of schemes) {
-    if (list.length < 2) continue;
+    if (!grouped.has(scheme)) continue;
     const members = list
       .map(({ candidate, duplicates }) => ({ item: candidate.item, episodes: candidate.name!.episodes, duplicates }))
       .sort((a, b) => a.episodes[0] - b.episodes[0]);
@@ -168,7 +188,7 @@ export function groupFiles<T>(items: T[], file: (item: T) => FileResult): FileEn
     });
   }
   for (const [key, { candidate, duplicates }] of best) {
-    if (candidate.name && (schemes.get(candidate.name.scheme)?.length ?? 0) > 1) continue;
+    if (candidate.name && grouped.has(candidate.name.scheme)) continue;
     entries.push({ at: firstIndex.get(key)!, entry: { kind: 'file', key, item: candidate.item, duplicates } });
   }
   return entries.sort((a, b) => a.at - b.at).map((e) => e.entry);

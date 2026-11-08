@@ -48,6 +48,7 @@ public class MediaItemWebService(
             .ThenBy(f => f.Title)
             .ToList();
         await bus.SendEventAsync(SocketRequests.MediaItemFileList, currentFiles);
+        await SendFlatFileList(mediaItem);
 
         var historyItems = await itemHistoryService.GetItemHistoryAsync(mediaItem.Id, mediaItem.History);
         await bus.SendEventAsync(SocketRequests.MediaItemHistory, historyItems);
@@ -65,6 +66,54 @@ public class MediaItemWebService(
         mediaItem.History = null!;
         await bus.SendEventAsync(SocketRequests.MediaItem, mediaItem);
         await bus.SendEventAsync(SocketRequests.MediaItemContinue, continueWatching);
+    }
+
+    /// <summary>Files in play order + whether the item gets them from several downloads (the list's default view then).</summary>
+    private async Task SendFlatFileList(MediaItem mediaItem)
+    {
+        List<MediaFile> files;
+        try
+        {
+            files = mediaItem.GetPlayOrder();
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Could not order the files of item {itemId}", mediaItem.Id);
+            files = [];
+        }
+        var downloadCount = (await downloads.GetListAsync()).Count(d => d.MediaItemId == mediaItem.Id);
+        await bus.SendEventAsync(SocketRequests.MediaItemFlatFileList, new MediaItemFlatFileListResponse
+        {
+            ItemId = mediaItem.Id,
+            Files = files,
+            MultipleDownloads = downloadCount > 1,
+        });
+    }
+
+    [WebSocketEvent(SocketRequests.MediaItemHistoryDelete)]
+    public async Task DeleteMediaItemHistory(DeleteMediaItemHistoryRequest request)
+    {
+        if (request.HistoryId is { } historyId)
+            await mediaItemRepository.DeleteHistoryItem(request.ItemId, historyId);
+        else
+            await mediaItemRepository.DeleteHistoryAll(request.ItemId);
+
+        // History decides played marks and what Play continues: resend the whole item.
+        await SendMediaItems(new MediaItemRequest { Id = request.ItemId });
+    }
+
+    [WebSocketEvent(SocketRequests.RenameMediaItem)]
+    public async Task RenameMediaItem(RenameMediaItemRequest request)
+    {
+        var title = request.Title.Trim();
+        if (string.IsNullOrWhiteSpace(title)) return;
+        var mediaItem = await mediaItemRepository.GetMediaItem(request.Id);
+        if (mediaItem == null) return;
+
+        await mediaItemRepository.SetTitle(mediaItem.Id, title);
+        mediaItem.Title = title;
+        mediaItem.ShortTitle = title;
+        await bus.SendEventAsync(SocketRequests.MediaItem, mediaItem);
     }
 
     [WebSocketEvent(SocketRequests.MediaItemFileList)]

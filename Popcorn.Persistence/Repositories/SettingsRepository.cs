@@ -7,6 +7,8 @@ public class SettingsRepository
     private readonly JsonRepository _repository = new JsonRepository();
     private readonly string _settingsFile = "settings.json";
     private static SettingsModel _cachedSettings;
+    // Server and players share the file: another process' save is read again.
+    private static DateTime _cachedWriteTime;
 
     public SettingsRepository()
     {
@@ -16,10 +18,13 @@ public class SettingsRepository
 
     public async Task<SettingsModel> GetSettingsAsync()
     {
-        if(_cachedSettings is null)
+        var writeTime = File.GetLastWriteTimeUtc(SettingsPath);
+        if(_cachedSettings is null || writeTime != _cachedWriteTime)
         {
-            _cachedSettings = await _repository.LoadJsonAsync<SettingsModel>(_settingsFile);
-            _cachedSettings.NormalizePlayers();
+            var settings = await _repository.LoadJsonAsync<SettingsModel>(_settingsFile);
+            settings.NormalizePlayers();
+            _cachedSettings = settings;
+            _cachedWriteTime = writeTime;
         }
         return _cachedSettings;
     }
@@ -29,11 +34,14 @@ public class SettingsRepository
         settings.NormalizePlayers();
         await _repository.SaveJsonAsync(settings, _settingsFile);
         _cachedSettings = settings;
+        _cachedWriteTime = File.GetLastWriteTimeUtc(SettingsPath);
     }
     
+    private string SettingsPath => Path.Join(_repository.GetDataFolder(), _settingsFile);
+
     public async Task EnsureSettingsExist()
     {
-        if(!File.Exists(Path.Join(_repository.GetDataFolder(), _settingsFile)))
+        if(!File.Exists(SettingsPath))
         {
             await SaveSettings(new SettingsModel { UseInternalPlayer = true }); // fresh install: Popcorn player first
         }

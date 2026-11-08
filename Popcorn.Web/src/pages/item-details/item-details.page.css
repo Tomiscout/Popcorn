@@ -67,6 +67,28 @@
   padding-right: 340px;
 }
 
+/* Rename button: shown while the title is hovered (always on touch screens, they have no hover). */
+.item-title .item-title-edit {
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.item-title:hover .item-title-edit,
+.item-title .item-title-edit:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .item-title .item-title-edit {
+    opacity: 1;
+  }
+}
+
+.item-title-input {
+  width: min(100%, 40rem);
+  box-sizing: content-box;
+}
+
 /* Takes the height the title and play block leave; a long text scrolls. */
 .item-description {
   flex: 0 1 auto;
@@ -154,5 +176,18 @@
 
   .item-continue {
     width: 100%;
+  }
+}
+
+/* History tab: per-row delete button shown on hover (always on touch screens). */
+@media (hover: hover) {
+  .history-delete {
+    opacity: 0;
+    transition: opacity 120ms;
+  }
+
+  tr:hover .history-delete,
+  .history-delete:focus-visible {
+    opacity: 1;
   }
 }

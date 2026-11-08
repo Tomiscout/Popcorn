@@ -9,6 +9,7 @@ using Popcorn.Domain.Enum;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
 using Popcorn.Persistence;
+using Popcorn.Shared.Utils;
 
 namespace Popcorn.Downloads;
 
@@ -352,8 +353,13 @@ public sealed class DownloadManager(
 
     private async Task<byte[]> DownloadTorrentFileAsync(string url)
     {
+        if (TorrentDataUrl.IsTorrentDataUrl(url))
+        {
+            if (!TorrentDataUrl.TryDecode(url, out var data)) throw new ArgumentException("Invalid .torrent data: link");
+            return data.Length > MaxTorrentFileBytes ? throw new ArgumentException("The .torrent file is too large") : data;
+        }
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
-            throw new ArgumentException("A torrent link must be a magnet: or http(s) URL");
+            throw new ArgumentException("A torrent link must be a magnet:, http(s) or .torrent data: URL");
         using var response = await _http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
         if (response.Content.Headers.ContentLength > MaxTorrentFileBytes) throw new ArgumentException("The .torrent file is too large");
@@ -407,7 +413,7 @@ public sealed class DownloadManager(
     /// A new, empty library item in its own folder of the download folder, for a batch of downloads attached to it
     /// (e.g. the episodes of a show picked on a search page).
     /// </summary>
-    public async Task<Guid> CreateLibraryItemAsync(string title, string? posterUrl)
+    public async Task<Guid> CreateLibraryItemAsync(string title, string? posterUrl, string? backdropUrl = null, MediaSourceRef? source = null)
     {
         await _ready.Task;
         var root = _settings.ResolveDownloadFolder();
@@ -423,9 +429,10 @@ public sealed class DownloadManager(
             _gate.Release();
         }
 
-        var item = new MediaItem { FolderDirectory = folder, Title = title, Files = [] };
+        var item = new MediaItem { FolderDirectory = folder, Title = title, Files = [], Source = source };
         var id = await mediaItemService.CreateMediaItemFromScan(item, new MediaScanResult { FolderPath = folder, Title = title, Files = [], Folders = [] });
         await mediaImageService.TrySetImageAsync(item, MediaImageKind.Poster, posterUrl);
+        await mediaImageService.TrySetImageAsync(item, MediaImageKind.Backdrop, backdropUrl);
         return id;
     }
 
@@ -442,6 +449,8 @@ public sealed class DownloadManager(
             AddToLibrary = options.AddToLibrary || options.MediaItemId is not null,
             MediaTitle = options.MediaTitle,
             PosterUrl = options.PosterUrl,
+            BackdropUrl = options.BackdropUrl,
+            MediaSource = MediaSourceRef.Clean(options.MediaSource),
             AttachToItemId = options.MediaItemId,
         };
     }
@@ -459,6 +468,8 @@ public sealed class DownloadManager(
         record.AddToLibrary = true;
         record.MediaTitle ??= options.MediaTitle;
         record.PosterUrl ??= options.PosterUrl;
+        record.BackdropUrl ??= options.BackdropUrl;
+        record.MediaSource ??= MediaSourceRef.Clean(options.MediaSource);
         _linkAttempted.Remove(record.Id);
     }
 
@@ -702,6 +713,7 @@ public sealed class DownloadManager(
                 FolderDirectory = record.SavePath,
                 Title = record.MediaTitle ?? record.Name,
                 Files = [],
+                Source = record.MediaSource,
             };
             var scan = new MediaScanResult
             {
@@ -712,6 +724,7 @@ public sealed class DownloadManager(
             };
             var itemId = await mediaItemService.CreateMediaItemFromScan(item, scan);
             await mediaImageService.TrySetImageAsync(item, MediaImageKind.Poster, record.PosterUrl);
+            await mediaImageService.TrySetImageAsync(item, MediaImageKind.Backdrop, record.BackdropUrl);
             await _gate.WaitAsync();
             try { record.MediaItemId = itemId; await SaveAsync(); }
             finally { _gate.Release(); }

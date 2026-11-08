@@ -12,6 +12,7 @@ using Popcorn.Downloads;
 using Popcorn.Domain.Utils;
 using Popcorn.Server.Controllers.Models;
 using Popcorn.Server.Services;
+using Popcorn.Shared.Ffmpeg;
 
 namespace Popcorn.Server.Controllers;
 
@@ -162,6 +163,29 @@ public class VideoController(
         return new EmptyResult();
     }
     
+    /// <summary>
+    /// Waveform of a window of the track for the subtitle syncer: <see cref="AudioWaveform.PeaksPerSecond"/> bytes per
+    /// second from <paramref name="start"/> (shorter at the end of the file). Only that window is decoded.
+    /// </summary>
+    [HttpGet("{fileId}/audio/{trackId}/waveform")]
+    public async Task<IActionResult> GetAudioWaveform(Guid fileId, int trackId, [FromQuery] double start = 0,
+        [FromQuery] double duration = 20)
+    {
+        if (!double.IsFinite(start) || start < 0 || !double.IsFinite(duration) || duration <= 0) return BadRequest();
+        if (await FindAudioTrack(fileId, trackId) is not { } source) return NotFound();
+        try
+        {
+            var peaks = await AudioWaveform.ReadPeaksAsync(source.InputUrl ?? source.File.Path, trackId.ToString(),
+                start, duration, HttpContext.RequestAborted);
+            Response.Headers.CacheControl = "private, max-age=3600";
+            return File(peaks, "application/octet-stream");
+        }
+        catch (Exception) when (HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            return new EmptyResult();
+        }
+    }
+
     [HttpGet("{fileId}/subtitles/{trackId}")]
     public async Task<ActionResult> GetSubtitleFile(Guid fileId, int trackId)
     {
@@ -174,7 +198,8 @@ public class VideoController(
         if (!System.IO.File.Exists(mediaFile.Path))
             return NotFound();
 
-        if (await InProgressDownload(mediaFile) is not null)
+        // Subtitle files found next to the video are readable while it downloads, its own tracks are not.
+        if (trackId < SubtitleTrackDto.ExternalIndexBase && await InProgressDownload(mediaFile) is not null)
             return Conflict("The file is still downloading; tracks can be extracted once it is complete.");
 
         var filePath = await fileStreamService.GetMediaFileSubtitlesAsync(mediaFile, trackId);

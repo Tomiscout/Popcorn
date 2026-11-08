@@ -28,6 +28,7 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>((_prop
     setDuration,
     setIsPlaying,
     setCurrentAudio,
+    setCurrentSubtitle,
     setPlaybackEnded,
   } = usePlayerStore();
 
@@ -230,9 +231,17 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>((_prop
     // A separately streamed track holds the video until it can play (`isAudioLoading`), then it goes on.
     setIsPlaying(video.autoplay);
 
-    if (metadata?.audioDefaultIndex) {
-      const audio = metadata?.audioTracks.find((track) => track.index === metadata?.audioDefaultIndex);
+    // Preferred language (settings), else the track inside the stream.
+    const startAudio = metadata?.audioStartIndex ?? metadata?.audioDefaultIndex;
+    if (startAudio != null) {
+      const audio = metadata?.audioTracks.find((track) => track.index === startAudio);
       setCurrentAudio(audio || null);
+    }
+
+    // A track in a preferred language, else a subtitle file the server found for a video without subtitles of its own.
+    if (metadata?.subtitleDefaultIndex != null && !usePlayerStore.getState().currentSubtitle) {
+      const subtitle = metadata.subtitleTracks.find((track) => track.index === metadata.subtitleDefaultIndex);
+      setCurrentSubtitle(subtitle || null);
     }
 
     postMessage('video_loaded');

@@ -1,7 +1,9 @@
 using Popcorn.Application.Services;
 using Popcorn.Domain.Interfaces;
+using Popcorn.Domain.Models;
 using Popcorn.Downloads;
 using Popcorn.SegmentFinder;
+using Popcorn.Shared.Utils;
 using Popcorn.Server.Attributes;
 using Popcorn.Server.Models;
 using Popcorn.Server.Models.Requests;
@@ -33,6 +35,8 @@ public class DownloadsWebService(
             AddToLibrary = request.AddToLibrary,
             MediaTitle = string.IsNullOrWhiteSpace(request.MediaTitle) ? null : request.MediaTitle.Trim(),
             PosterUrl = request.PosterUrl,
+            BackdropUrl = request.BackdropUrl,
+            MediaSource = request.MediaSource,
             MediaItemId = request.MediaItemId,
         };
         await RespondAdded(() => AddLink(request.Kind, request.Url, options));
@@ -52,7 +56,8 @@ public class DownloadsWebService(
         try
         {
             itemId = request.MediaItemId ?? await downloads.CreateLibraryItemAsync(
-                title ?? throw new ArgumentException("A batch needs a library item or a title"), request.PosterUrl);
+                title ?? throw new ArgumentException("A batch needs a library item or a title"), request.PosterUrl,
+                request.BackdropUrl, MediaSourceRef.Clean(request.MediaSource));
         }
         catch (Exception e) when (IsAddError(e))
         {
@@ -73,7 +78,7 @@ public class DownloadsWebService(
             }
             catch (Exception e) when (IsAddError(e))
             {
-                logger.LogWarning(e, "Could not add download {Url}", link.Url);
+                logger.LogWarning(e, "Could not add download {Url}", TorrentDataUrl.ForLog(link.Url));
                 errors.Add(e.Message);
             }
         }

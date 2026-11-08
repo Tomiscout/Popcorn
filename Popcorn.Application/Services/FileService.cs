@@ -17,7 +17,14 @@ public class FileService(
 
     public void OpenUrl(string url)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !OpenableSchemes.Contains(uri.Scheme))
+        // A .torrent carried in the link: handed to the torrent program as a file.
+        if (TorrentDataUrl.TryDecode(url, out var torrent))
+        {
+            var path = Path.Combine(Path.GetTempPath(), $"popcorn-{Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(torrent))[..16]}.torrent");
+            File.WriteAllBytes(path, torrent);
+            url = new Uri(path).AbsoluteUri;
+        }
+        else if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !OpenableSchemes.Contains(uri.Scheme))
             throw new ArgumentException($"Not an openable link: {url}", nameof(url));
 
         // No shell: the URL comes from a plugin

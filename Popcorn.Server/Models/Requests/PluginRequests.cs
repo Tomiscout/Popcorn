@@ -187,6 +187,8 @@ public class MediaImageSearchRequest
     /// <summary>Item name as typed or the folder name; parsed for title/year.</summary>
     public string Name { get; set; } = string.Empty;
     public MediaImageKind Kind { get; set; }
+    /// <summary>Library item the images are for: its <see cref="Popcorn.Domain.Models.MediaItem.Source"/> identifies the title.</summary>
+    public Guid? ItemId { get; set; }
     /// <summary>Echoed in the response so the client can drop answers to older searches.</summary>
     public string? RequestId { get; set; }
 }

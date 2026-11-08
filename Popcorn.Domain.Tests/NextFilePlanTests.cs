@@ -159,4 +159,24 @@ public class NextFilePlanTests
         Assert.That(plan.NextLabel, Is.Null);
         Assert.That(plan.NextTitle, Is.EqualTo("Behind the scenes"));
     }
+
+    [Test]
+    public void PlayOrder_EpisodesAcrossFolders_VersionsAfterTheirEpisode()
+    {
+        // Two downloads in their own folders: season 2 first by folder name, a second version of S01E01, an extra.
+        var s2 = File("/media/Show/A.Season.2/Show.S02E01.1080p.x264-GRP.mkv");
+        var s1e2 = File("/media/Show/B.Season.1/Show.S01E02.1080p.x264-GRP.mkv");
+        var s1e1 = File("/media/Show/B.Season.1/Show.S01E01.1080p.x264-GRP.mkv");
+        var s1e1Other = File("/media/Show/Show.S01E01.720p.x264-OTHER.mkv");
+        var extra = File("/media/Show/Behind the scenes.mkv");
+        var order = Item(s2, s1e2, extra, s1e1Other, s1e1).GetPlayOrder().Select(f => f.Id);
+        Assert.That(order, Is.EqualTo(new[] { s1e1.Id, s1e1Other.Id, s1e2.Id, s2.Id, extra.Id }));
+    }
+
+    [Test]
+    public void PlayOrder_UnnumberedFiles_FolderWalk()
+    {
+        var (a, b) = (File("/media/Show/A.mkv"), File("/media/Show/B.mkv"));
+        Assert.That(Item(b, a).GetPlayOrder().Select(f => f.Id), Is.EqualTo(new[] { a.Id, b.Id }));
+    }
 }

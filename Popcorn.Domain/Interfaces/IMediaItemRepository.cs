@@ -14,9 +14,14 @@ public interface IMediaItemRepository
     Task<Guid> CreateMediaItem(MediaItem mediaItem);
     Task DeleteMediaItem(Guid id);
     Task SetImagePath(Guid id, MediaImageKind kind, string? path);
+    /// <summary>Renames the item: title and short title (what the UI shows) both become <paramref name="title"/>.</summary>
+    Task SetTitle(Guid id, string title);
     Task AddHistoryItem(Guid id, ItemHistory item);
     Task<List<ItemHistory>> GetHistoryItems(Guid itemId);
     List<ItemHistoryDto>? GetItemHistoryDtos(MediaItem item);
+    /// <summary>Deletes one history entry (<see cref="ItemHistory.Id"/>) of the item; files left without entries become unplayed.</summary>
+    Task DeleteHistoryItem(Guid itemId, long historyId);
+    /// <summary>Deletes the item's whole history; its files become unplayed.</summary>
     Task DeleteHistoryAll(Guid itemId);
     /// <summary>Sets the segments of a file: its old locations are replaced by <paramref name="locations"/>.</summary>
     Task ReplaceSegmentLocations(Guid fileId, IReadOnlyCollection<SegmentLocation> locations);

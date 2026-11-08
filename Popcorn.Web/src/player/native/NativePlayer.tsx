@@ -4,7 +4,7 @@ import { PlayerOverlay } from '../PlayerOverlay';
 import { PlayerFeatures, PlayerFeaturesProvider } from '../player-features';
 import { disableDefaultListeners } from '../Utlis/listener.utils';
 import { postMessage, registerEventHandler, unregisterEventHandler } from '../../utils/events';
-import { thumbnailKey, usePlayerStore } from '../../state/player.store';
+import { perFileSyncState, thumbnailKey, usePlayerStore } from '../../state/player.store';
 import type { PlayerSegmentsDto, SegmentAutoSkip } from '../../model/segments.contract';
 import { AudioTrackDto, MediaFileMetadata, SubtitleTrackDto } from '../../query/models/video.models';
 import { FileType, FolderLoadedNavigation, MediaFile } from '../../model/media.contract';
@@ -31,8 +31,11 @@ interface NativeTrackLoaded {
 interface NativeMediaTrack {
   id: number;
   language: string;
+  languageName?: string;
   description: string;
   selected: boolean;
+  /** mpv codec name (subrip, ass, hdmv_pgs_subtitle...). */
+  codec?: string;
 }
 
 /** Popcorn.Domain PlayerSegments. */
@@ -83,6 +86,7 @@ const toAudioTrack = (t: NativeMediaTrack): AudioTrackDto => ({
   index: t.id,
   label: t.description,
   language: t.language,
+  languageName: t.languageName,
   codec: '',
 });
 
@@ -90,8 +94,12 @@ const toSubtitleTrack = (t: NativeMediaTrack): SubtitleTrackDto => ({
   index: t.id,
   label: t.description,
   language: t.language,
-  format: '',
+  languageName: t.languageName,
+  format: t.codec ?? '',
 });
+
+/** byte[] from System.Text.Json (base64). */
+const fromBase64 = (data: string) => Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
 
 const toSegmentsDto = (data: NativeSegments | null): PlayerSegmentsDto | null =>
   data && {
@@ -170,6 +178,8 @@ export const NativePlayer = () => {
           nextFileWarning: null,
           playbackEnded: false,
           showFin: false,
+          subtitleFiles: {},
+          ...perFileSyncState,
         });
       },
       audio_subtitles_loaded: (data: { audioTracks?: NativeMediaTrack[]; subtitleTracks?: NativeMediaTrack[] }) => {
@@ -212,8 +222,18 @@ export const NativePlayer = () => {
           downloadRanges: null,
           playbackEnded: false,
           showFin: false,
+          subtitleFiles: {},
+          ...perFileSyncState,
         });
       },
+      // Subtitle syncer: the text of a track (SubRip from ffmpeg, or the subtitle file as it is) and waveform windows.
+      subtitle_text: (data: { track: number; text?: string; error?: string }) => {
+        const key = data.track.toString();
+        if (data.text != null) store.getState().addSubtitleFile(key, data.text);
+        else store.getState().setSubtitleTextError(key, data.error ?? 'Could not read the subtitles');
+      },
+      waveform: (data: { key: string; peaks?: string; error?: string }) =>
+        store.getState().setWaveform(data.key, data.peaks != null ? fromBase64(data.peaks) : null),
       // mpv stays on the last frame (keep-open): seeking back or playing again leaves the end (playback_resumed).
       playback_ended: () => store.setState({ isPlaying: false, playbackEnded: true, showFin: false }),
       playback_resumed: () => store.getState().setPlaybackEnded(false),
@@ -276,6 +296,9 @@ export const NativePlayer = () => {
         send('subtitle_track_selected', index);
       },
       subtitle_delay_set: (delay: number) => send('subtitle_delay_set', delay),
+      subtitle_text_requested: (track: number) => send('subtitle_text_requested', track),
+      waveform_requested: (request: { track: number; start: number; duration: number; key: string }) =>
+        send('waveform_requested', request),
       subtitle_file_select: () => send('subtitle_file_select'),
       play_file: (fileId: string) => send('file_open', fileId),
       folder_open: (folder: { path: string }) => send('folder_open', folder.path),

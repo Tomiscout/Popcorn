@@ -3,6 +3,8 @@ export interface AudioTrackDto {
   index: number;
   label: string;
   language?: string;
+  /** English name of `language` ("eng" → "English"). */
+  languageName?: string | null;
   codec: string;
 }
 
@@ -10,6 +12,8 @@ export interface SubtitleTrackDto {
   index: number;
   label: string;
   language?: string;
+  /** English name of `language` ("eng" → "English"). */
+  languageName?: string | null;
   format: string;
 }
 
@@ -26,7 +30,10 @@ export interface MediaFileMetadata {
   subtitleTracks: SubtitleTrackDto[];
 
   videoDefaultCodec: string | null;
+  /** Audio track inside the video stream; any other is streamed separately. */
   audioDefaultIndex: number | null;
+  /** Audio track playback starts with (preferred language, else the file's default). */
+  audioStartIndex?: number | null;
   subtitleDefaultIndex: number | null;
   formatNames: string[];
   /** Intro/outro locations in seconds; a negative start counts from the end of the file. */

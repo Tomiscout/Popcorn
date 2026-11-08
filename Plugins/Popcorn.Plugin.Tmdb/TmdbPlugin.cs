@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Popcorn.Plugins;
 using TMDbLib.Client;
+using TMDbLib.Objects.Find;
 using TMDbLib.Objects.General;
 using TMDbLib.Objects.Movies;
 using TMDbLib.Objects.Search;
@@ -17,6 +18,7 @@ public sealed class TmdbPlugin(ILogger<TmdbPlugin> logger) : IMediaSourcePlugin,
 {
     private const int ImageMatches = 5;
     private const int GalleryImages = 20;
+    private const int OtherGalleryImages = 6;
 
     private readonly TMDbClient _client = new("b8af6dd235f0a34dd87d3697acd79b29");
     private readonly SemaphoreSlim _initLock = new(1, 1);
@@ -122,80 +124,149 @@ public sealed class TmdbPlugin(ILogger<TmdbPlugin> logger) : IMediaSourcePlugin,
 
     public IReadOnlyList<ImageKind> ImageKinds { get; } = [ImageKind.Poster, ImageKind.Backdrop];
 
+    /// <summary>A movie or show the images can be of.</summary>
+    private sealed record Match(bool IsTv, int Id, string Title, string? OriginalTitle, int? Year, string? PosterPath, string? BackdropPath, int VoteCount)
+    {
+        public string Label => $"{Title}{(Year is { } y ? $" ({y})" : "")}";
+        public string Group => $"{Label} · {(IsTv ? "TV show" : "Movie")}";
+
+        public static Match? From(SearchBase result) => result switch
+        {
+            SearchMovie m => new Match(false, m.Id, m.Title ?? m.OriginalTitle ?? "", m.OriginalTitle, m.ReleaseDate?.Year, m.PosterPath, m.BackdropPath, m.VoteCount),
+            SearchTv t => new Match(true, t.Id, t.Name ?? t.OriginalName ?? "", t.OriginalName, t.FirstAirDate?.Year, t.PosterPath, t.BackdropPath, t.VoteCount),
+            _ => null,
+        };
+    }
+
     /// <summary>
-    /// The best match's own image, then its gallery (posters in English first, backdrops without text first), then the
-    /// images of the next few matches.
+    /// Images grouped per matching title, the best match first: its own image + gallery (posters in English first,
+    /// backdrops without text first), then the other matches with a few images each, so a wrong guess is one click
+    /// away. The best match is the query's media id (added from this plugin's page), else its IMDb id, else the
+    /// search result whose title fits the query best (<see cref="RankMatches"/>).
     /// </summary>
     public async Task<IReadOnlyList<ImageResult>> SearchImagesAsync(ImageQuery query, ImageKind kind, CancellationToken cancellationToken)
     {
         await EnsureConfig(cancellationToken);
-        var matches = await FindMatches(query, cancellationToken);
+        var known = await FindKnown(query, cancellationToken);
+        var searched = await SearchMatches(query, cancellationToken);
+        var matches = (known is null ? searched : searched.Where(m => m.IsTv != known.IsTv || m.Id != known.Id).Prepend(known))
+            .Take(ImageMatches)
+            .ToList();
         if (matches.Count == 0) return [];
 
         var poster = kind == ImageKind.Poster;
-        string? MainPath(SearchBase m) => m switch
-        {
-            SearchMovie movie => poster ? movie.PosterPath : movie.BackdropPath,
-            SearchTv tv => poster ? tv.PosterPath : tv.BackdropPath,
-            _ => null,
-        };
-        string Label(SearchBase m) => m switch
-        {
-            SearchMovie movie => $"{movie.Title}{(movie.ReleaseDate is { } d ? $" ({d.Year})" : "")}",
-            SearchTv tv => $"{tv.Name}{(tv.FirstAirDate is { } d ? $" ({d.Year})" : "")}",
-            _ => string.Empty,
-        };
+        var galleries = await Task.WhenAll(matches.Select((m, i) => Gallery(m, poster, i == 0 ? GalleryImages : OtherGalleryImages, cancellationToken)));
 
-        var best = matches[0];
-        var images = best switch
-        {
-            SearchMovie movie => await _client.GetMovieImagesAsync(movie.Id, "en", "en,null", cancellationToken),
-            SearchTv tv => await _client.GetTvShowImagesAsync(tv.Id, "en", "en,null", cancellationToken),
-            _ => null,
-        };
-        var gallery = (poster ? images?.Posters : images?.Backdrops) ?? [];
-        var galleryPaths = gallery
-            .OrderBy(i => poster ? (i.Iso_639_1 == "en" ? 0 : 1) : (string.IsNullOrEmpty(i.Iso_639_1) ? 0 : 1))
-            .ThenByDescending(i => i.VoteAverage)
-            .Take(GalleryImages)
-            .Select(i => (Path: i.FilePath, Title: Label(best)));
-
-        return new[] { (Path: MainPath(best), Title: Label(best)) }
-            .Concat(galleryPaths)
-            .Concat(matches.Skip(1).Select(m => (Path: MainPath(m), Title: Label(m))))
-            .Where(i => !string.IsNullOrEmpty(i.Path))
+        return matches
+            .SelectMany((m, i) => new[] { poster ? m.PosterPath : m.BackdropPath }
+                .Concat(galleries[i])
+                .Where(path => !string.IsNullOrEmpty(path))
+                .Select(path => (Path: path!, Match: m)))
             .DistinctBy(i => i.Path)
             .Select(i => new ImageResult
             {
                 Url = ImageUrl(i.Path, poster ? "w780" : "w1280")!,
                 ThumbnailUrl = ImageUrl(i.Path, poster ? "w185" : "w300"),
-                Title = i.Title,
+                Title = i.Match.Label,
+                Group = matches.Count > 1 ? i.Match.Group : null,
             })
             .ToList();
     }
 
-    /// <summary>Movies and shows matching the query; ones of the query's year first.</summary>
-    private async Task<List<SearchBase>> FindMatches(ImageQuery query, CancellationToken ct)
+    private async Task<IEnumerable<string>> Gallery(Match match, bool poster, int count, CancellationToken ct)
     {
-        if (query.Kind == MediaKind.Show)
+        try
         {
-            var shows = await _client.SearchTvShowAsync(query.Title, 1, false, query.Year ?? 0, ct);
-            return (shows?.Results ?? []).Take(ImageMatches).Cast<SearchBase>().ToList();
+            var images = match.IsTv
+                ? await _client.GetTvShowImagesAsync(match.Id, "en", "en,null", ct)
+                : await _client.GetMovieImagesAsync(match.Id, "en", "en,null", ct);
+            return ((poster ? images?.Posters : images?.Backdrops) ?? [])
+                .OrderBy(i => poster ? (i.Iso_639_1 == "en" ? 0 : 1) : (string.IsNullOrEmpty(i.Iso_639_1) ? 0 : 1))
+                .ThenByDescending(i => i.VoteAverage)
+                .Take(count)
+                .Select(i => i.FilePath)
+                .ToList();
         }
-
-        var result = await _client.SearchMultiAsync(query.Title, cancellationToken: ct);
-        int? YearOf(SearchBase m) => m switch
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            SearchMovie movie => movie.ReleaseDate?.Year,
-            SearchTv tv => tv.FirstAirDate?.Year,
-            _ => null,
-        };
-        return (result?.Results ?? [])
-            .Where(m => m is SearchMovie or SearchTv)
-            .OrderBy(m => query.Year is { } y && YearOf(m) == y ? 0 : 1) // stable: keeps TMDb's relevance order
-            .Take(ImageMatches)
-            .ToList();
+            logger.LogWarning(ex, "TMDb images of {Match} failed", match.Label);
+            return [];
+        }
     }
+
+    /// <summary>The title the query identifies: this plugin's media id, else the IMDb id. Null = search by name.</summary>
+    private async Task<Match?> FindKnown(ImageQuery query, CancellationToken ct)
+    {
+        try
+        {
+            if (query.MediaId is { } mediaId)
+            {
+                var (kind, id) = ParseId(mediaId);
+                if (kind == "movie" && await _client.GetMovieAsync(id, cancellationToken: ct) is { } m)
+                    return new Match(false, m.Id, m.Title ?? m.OriginalTitle ?? "", m.OriginalTitle, m.ReleaseDate?.Year, m.PosterPath, m.BackdropPath, m.VoteCount);
+                if (kind == "tv" && await _client.GetTvShowAsync(id, cancellationToken: ct) is { } t)
+                    return new Match(true, t.Id, t.Name ?? t.OriginalName ?? "", t.OriginalName, t.FirstAirDate?.Year, t.PosterPath, t.BackdropPath, t.VoteCount);
+            }
+            if (query.ImdbId is { Length: > 0 } imdbId)
+            {
+                var found = await _client.FindAsync(FindExternalSource.Imdb, imdbId, ct);
+                var hit = (found?.MovieResults ?? []).Cast<SearchBase>().Concat(found?.TvResults ?? []).Select(Match.From).FirstOrDefault(m => m != null);
+                if (hit != null) return hit;
+                // an episode's id: its show
+                if (found?.TvEpisode?.FirstOrDefault() is { } episode && await _client.GetTvShowAsync(episode.ShowId, cancellationToken: ct) is { } show)
+                    return new Match(true, show.Id, show.Name ?? show.OriginalName ?? "", show.OriginalName, show.FirstAirDate?.Year, show.PosterPath, show.BackdropPath, show.VoteCount);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "TMDb lookup of {MediaId} / {ImdbId} failed", query.MediaId, query.ImdbId);
+        }
+        return null;
+    }
+
+    /// <summary>Movies and shows found for the query's title, best fitting first (<see cref="RankMatches"/>).</summary>
+    private async Task<List<Match>> SearchMatches(ImageQuery query, CancellationToken ct)
+    {
+        IEnumerable<SearchBase> results = query.Kind == MediaKind.Show
+            ? (await _client.SearchTvShowAsync(query.Title, 1, false, query.Year ?? 0, ct))?.Results ?? []
+            : (await _client.SearchMultiAsync(query.Title, cancellationToken: ct))?.Results ?? [];
+        return RankMatches(query, results.Select(Match.From).OfType<Match>()).ToList();
+    }
+
+    /// <summary>
+    /// TMDb orders search results by popularity, so a new or upcoming title that merely contains the words beats the
+    /// one named exactly so ("Avatar The Last Airbender" → "Aang: The Last Airbender" (2026) before the 2005 show).
+    /// Ranked instead by: same title (punctuation and case ignored, original title too) and year, then how much of
+    /// the title the query covers, then vote count — of two titles named the same (an animated show and its
+    /// live-action remake) the established one wins; the other is right after it.
+    /// </summary>
+    private static IEnumerable<Match> RankMatches(ImageQuery query, IEnumerable<Match> matches)
+    {
+        var wanted = Words(query.Title);
+        double Fit(Match m)
+        {
+            var best = 0.0;
+            foreach (var title in new[] { m.Title, m.OriginalTitle })
+            {
+                if (string.IsNullOrWhiteSpace(title)) continue;
+                var words = Words(title);
+                if (words.SequenceEqual(wanted)) return 2;
+                var shared = words.Intersect(wanted).Count();
+                best = Math.Max(best, shared == 0 ? 0 : (double)shared / words.Union(wanted).Count());
+            }
+            return best;
+        }
+        return matches
+            .Select(m => (Match: m, Score: Fit(m) + (query.Year is { } y && m.Year == y ? 1 : 0)))
+            .OrderByDescending(r => Math.Round(r.Score, 1))
+            .ThenByDescending(r => r.Match.VoteCount)
+            .Select(r => r.Match);
+    }
+
+    private static List<string> Words(string title) =>
+        System.Text.RegularExpressions.Regex.Split(title.ToLowerInvariant().Replace("&", " and "), @"[^\p{L}\p{N}]+")
+            .Where(w => w.Length > 0)
+            .ToList();
 
     private MediaCard? ToCard(SearchBase result) => result switch
     {

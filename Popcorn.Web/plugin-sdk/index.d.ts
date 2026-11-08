@@ -116,16 +116,17 @@ export interface FileCardProps<TData = unknown> {
   file: FileResult<TData>;
   /**
    * Handles a link the way the app does for its built-in buttons. `target` only matters for downloadable links
-   * (Magnet / Torrent / Direct); omitted = the user's default (Settings → Downloads).
+   * (Magnet / Torrent / Direct); omitted = the user's default (Settings → Downloads). Returns a promise while a
+   * `resolve` link is being fetched (can take seconds: show a loader on the button until it settles), else nothing.
    */
-  openLink: (link: FileLink, target?: LinkTarget) => void;
+  openLink: (link: FileLink, target?: LinkTarget) => void | Promise<void>;
   /** Default target of a downloadable link of this kind (what `openLink(link)` does), null for Page links. */
   defaultTarget: (kind: FileLinkKind) => LinkTarget | null;
   /**
    * The card's main action: downloads the result with Popcorn's own client into the library (the open media item, or
-   * a new one). Undefined when the result has no link Popcorn can download.
+   * a new one). Undefined when the result has no link Popcorn can download. `onAdd` returns a promise like `openLink`.
    */
-  add?: { onAdd: () => void; hint: string };
+  add?: { onAdd: () => void | Promise<void>; hint: string };
 }
 
 /** A search result in the search page list. */

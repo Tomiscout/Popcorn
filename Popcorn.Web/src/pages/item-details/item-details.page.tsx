@@ -10,6 +10,9 @@ import {
   MediaItemRequest,
   ContinueWatching,
   RemoveMediaItemRequest,
+  MediaItemFlatFileList,
+  RenameMediaItemRequest,
+  DeleteMediaItemHistoryRequest,
 } from '../../model/media.contract';
 import { ContinueProgress, MarqueeText } from '../../components/continue-watching/continue-watching';
 import { useWebSocket } from '../../state/websocket-context';
@@ -28,6 +31,8 @@ import {
   Tooltip,
   Checkbox,
   Stack,
+  Switch,
+  TextInput,
 } from '@mantine/core';
 import {
   IconFile,
@@ -41,6 +46,7 @@ import {
   IconPlayerSkipForward,
   IconPhotoEdit,
   IconWorldDownload,
+  IconPencil,
 } from '@tabler/icons-react';
 import { useFileUrl } from '../../state/file-context';
 import './item-details.page.css';
@@ -51,6 +57,23 @@ import { PlayerMenuItems, usePlayerOptions, WEB_PLAYER_ID } from '../../componen
 import SegmentsDialog from './segments-dialog';
 import { EditImagesModal } from './edit-images.modal';
 import { ItemFileSources } from './item-file-sources';
+
+/** Per item: the user's choice of the Files tab's "Flatten files" switch (absent = default of the item). */
+const flattenKey = (itemId: string) => `itemFlattenFiles:${itemId}`;
+
+function readFlatten(itemId: string): boolean | null {
+  const stored = localStorage.getItem(flattenKey(itemId));
+  return stored === null ? null : stored === 'true';
+}
+
+/** Folder of the file relative to the item's folder ("" = the item's folder itself). */
+function relativeFolder(file: MediaFile, root: string | undefined): string {
+  const separator = file.path.includes('\\') && !file.path.includes('/') ? '\\' : '/';
+  const folder = file.path.slice(0, Math.max(0, file.path.lastIndexOf(separator)));
+  if (!root) return folder;
+  const base = root.replace(/[\\/]+$/, '');
+  return folder === base ? '' : folder.startsWith(base + separator) ? folder.slice(base.length + 1) : folder;
+}
 
 interface FileContextMenu {
   fileId: string;
@@ -87,12 +110,37 @@ const ItemDetailsPage: React.FC = () => {
   const imageUrl = useFileUrl(mediaItem?.imagePath);
   const backdropUrl = useFileUrl(mediaItem?.backdropPath);
   const [imagesOpened, setImagesOpened] = useState(false);
+  const [flatList, setFlatList] = useState<MediaItemFlatFileList>();
+  /** User's switch position for this item; null = default (on when several downloads feed the item). */
+  const [flattenChoice, setFlattenChoice] = useState<boolean | null>(() => (id ? readFlatten(id) : null));
+  const flatten = flattenChoice ?? flatList?.multipleDownloads ?? false;
+  const [editingTitle, setEditingTitle] = useState<string | null>(null);
 
+  useEffect(() => {
+    setFlattenChoice(id ? readFlatten(id) : null);
+    setEditingTitle(null);
+  }, [id]);
+
+  const setFlatten = (value: boolean) => {
+    if (!id) return;
+    localStorage.setItem(flattenKey(id), String(value));
+    setFlattenChoice(value);
+  };
+
+  const saveTitle = () => {
+    const title = editingTitle?.trim();
+    setEditingTitle(null);
+    if (!mediaItem || !title || title === (mediaItem.shortTitle || mediaItem.title)) return;
+    setMediaItem({ ...mediaItem, title, shortTitle: title }); // shown at once, the server answers with the item
+    client.sendEvent<RenameMediaItemRequest>(SocketRequests.RenameMediaItem, { id: mediaItem.id, title });
+  };
+
+  // Per item, not per item update (renames and picture changes resend the item): keeps the open folder.
   useEffect(() => {
     if (mediaItem) {
       setBreadcrumbs([{ id: mediaItem.id, title: 'Root' }]);
     }
-  }, [mediaItem]);
+  }, [mediaItem?.id]);
 
   useEffect(() => {
     if (!id) return;
@@ -112,12 +160,13 @@ const ItemDetailsPage: React.FC = () => {
     client.onEvent<MediaFile[]>(SocketRequests.MediaItemFileList, mediaFilesReceived);
     client.onEvent<MediaItemHistory[]>(SocketRequests.MediaItemHistory, setMediaHistory);
     client.onEvent<ContinueWatching | null>(SocketRequests.MediaItemContinue, setContinueWatching);
+    client.onEvent<MediaItemFlatFileList>(SocketRequests.MediaItemFlatFileList, setFlatList);
   }, [isClientReady]);
 
   const fileRowClicked = (fileId: string) => {
     if (isOpeningFolder) return; //Need to also debounce file open
 
-    const file = currentMediaFiles?.find((c) => c.id === fileId);
+    const file = currentMediaFiles?.find((c) => c.id === fileId) ?? flatList?.files.find((c) => c.id === fileId);
     if (file?.type === FileType.Folder) {
       setIsOpeningFolder(true);
       setBreadcrumbs((prev) => [...prev, { id: file.id, title: file.title }]);
@@ -140,9 +189,10 @@ const ItemDetailsPage: React.FC = () => {
     }
 
     //Sets as played locally
-    setCurrentMediaFiles((prev) =>
-      prev?.map((mediaFile) => (mediaFile.id === fileId ? { ...mediaFile, played: true } : mediaFile))
-    );
+    const markPlayed = (files: MediaFile[]) =>
+      files.map((mediaFile) => (mediaFile.id === fileId ? { ...mediaFile, played: true } : mediaFile));
+    setCurrentMediaFiles((prev) => prev && markPlayed(prev));
+    setFlatList((prev) => prev && { ...prev, files: markPlayed(prev.files) });
   };
 
   const playNextWith = (playerId: string) => {
@@ -215,6 +265,51 @@ const ItemDetailsPage: React.FC = () => {
     });
   }
 
+  const renderFlatFiles = () => {
+    const files = flatList?.itemId === mediaItem?.id ? (flatList?.files ?? []) : [];
+    return (
+      <Table highlightOnHover>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>File</Table.Th>
+            <Table.Th>Tags</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {files.map((file) => {
+            const folder = relativeFolder(file, mediaItem?.folderDirectory);
+            return (
+              <Table.Tr
+                key={file.id}
+                style={{ cursor: 'pointer' }}
+                onClick={() => fileRowClicked(file.id)}
+                onContextMenu={(e) => openContextMenu(e, file)}
+              >
+                <Table.Td>
+                  <Flex gap="xs" align="center">
+                    <IconMovie style={{ flexShrink: 0 }} />
+                    <Stack gap={0} miw={0}>
+                      <Text c={file.played ? 'dimmed' : ''}>{file.shortTitle || file.title}</Text>
+                      {folder && (
+                        <Text size="xs" c="dimmed" truncate="start" title={file.path}>
+                          {folder}
+                        </Text>
+                      )}
+                    </Stack>
+                  </Flex>
+                </Table.Td>
+                <Table.Td pl="0" pr="0">
+                  {file.formatTags?.map((t, index) => <Pill key={index}>{t}</Pill>)}
+                  {file.otherTags?.map((t, index) => <Pill key={index}>{t}</Pill>)}
+                </Table.Td>
+              </Table.Tr>
+            );
+          })}
+        </Table.Tbody>
+      </Table>
+    );
+  };
+
   const renderFiles = () => {
     return (
       <Table highlightOnHover>
@@ -249,19 +344,65 @@ const ItemDetailsPage: React.FC = () => {
     );
   };
 
+  /** `historyId` undefined = the whole history (asks first). The server answers with the item resent. */
+  const deleteHistory = (historyId?: number) => {
+    if (!mediaItem) return;
+    const send = () => {
+      if (historyId === undefined) setMediaHistory([]);
+      else setMediaHistory((prev) => prev?.filter((h) => h.id !== historyId));
+      client.sendEvent<DeleteMediaItemHistoryRequest>(SocketRequests.MediaItemHistoryDelete, {
+        itemId: mediaItem.id,
+        historyId,
+      });
+    };
+    if (historyId !== undefined) {
+      send();
+      return;
+    }
+    modals.openConfirmModal({
+      title: 'Delete history',
+      children: (
+        <Text size="sm">Delete the whole watch history of this item? Its files are no longer marked as played.</Text>
+      ),
+      labels: { confirm: 'Delete all', cancel: 'Cancel' },
+      confirmProps: { color: 'red' },
+      onConfirm: send,
+    });
+  };
+
   const renderHistory = () => {
+    // Newest first.
+    const entries = [...(mediaHistory ?? [])].sort((a, b) => b.playbackTime.localeCompare(a.playbackTime));
+    if (entries.length === 0) {
+      return (
+        <Text c="dimmed" size="sm" m="sm">
+          Nothing watched yet
+        </Text>
+      );
+    }
     return (
       <Table highlightOnHover>
         <Table.Thead>
           <Table.Tr>
             <Table.Th>File</Table.Th>
             <Table.Th miw="103">Playback time</Table.Th>
+            <Table.Th w={1} pl="0" pr="xs">
+              <Button
+                size="compact-xs"
+                variant="subtle"
+                color="red"
+                leftSection={<IconTrash size={14} />}
+                onClick={() => deleteHistory()}
+              >
+                Delete all
+              </Button>
+            </Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {mediaHistory?.map((item) => (
+          {entries.map((item) => (
             <Table.Tr
-              key={item.playbackTime}
+              key={item.id || `${item.fileId}:${item.playbackTime}`}
               style={{ cursor: 'pointer' }}
               onClick={() => fileRowClicked(item.fileId)}
               onContextMenu={(e) => {
@@ -271,6 +412,22 @@ const ItemDetailsPage: React.FC = () => {
             >
               <Table.Td>{item.title}</Table.Td>
               <Table.Td>{dayjs(item.playbackTime).format('YYYY-MM-DD HH:mm')}</Table.Td>
+              <Table.Td pl="0" pr="xs" ta="right">
+                <Tooltip label="Delete from history" openDelay={300}>
+                  <ActionIcon
+                    variant="subtle"
+                    color="gray"
+                    aria-label="Delete from history"
+                    className="history-delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteHistory(item.id);
+                    }}
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              </Table.Td>
             </Table.Tr>
           ))}
         </Table.Tbody>
@@ -316,9 +473,41 @@ const ItemDetailsPage: React.FC = () => {
         </Tooltip>
 
         <Flex direction="column" align="flex-start" ml="sm" gap="sm" className="item-header-content">
-          <Text fw={700} size="xl" className="item-title">
-            {mediaItem?.shortTitle || mediaItem?.title}
-          </Text>
+          {editingTitle !== null ? (
+            <TextInput
+              className="item-title item-title-input"
+              size="md"
+              autoFocus
+              value={editingTitle}
+              aria-label="Item title"
+              onChange={(e) => setEditingTitle(e.currentTarget.value)}
+              onFocus={(e) => e.currentTarget.select()}
+              onBlur={saveTitle}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveTitle();
+                if (e.key === 'Escape') setEditingTitle(null);
+              }}
+            />
+          ) : (
+            <Group gap={4} wrap="nowrap" className="item-title">
+              <Text fw={700} size="xl">
+                {mediaItem?.shortTitle || mediaItem?.title}
+              </Text>
+              {mediaItem && (
+                <Tooltip label="Rename" openDelay={300}>
+                  <ActionIcon
+                    variant="subtle"
+                    color="gray"
+                    aria-label="Rename"
+                    className="item-title-edit"
+                    onClick={() => setEditingTitle(mediaItem.shortTitle || mediaItem.title)}
+                  >
+                    <IconPencil size={18} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </Group>
+          )}
           {mediaItem?.description && (
             <Text size="sm" className="item-description">
               {mediaItem.description}
@@ -389,20 +578,36 @@ const ItemDetailsPage: React.FC = () => {
 
         <Tabs.Panel value="files" mt="xs" className="scrollablePanel">
           <Group justify="space-between" wrap="nowrap" m="sm">
-            <Breadcrumbs separator=">">
-              {breadcrumbs.map((crumb, idx) => (
-                <Anchor key={crumb.id} component="button" size="sm" onClick={() => onBreadcrumbClick(crumb.id, idx)}>
-                  {crumb.title}
-                </Anchor>
-              ))}
-            </Breadcrumbs>
-            <Tooltip label="Refresh files" openDelay={300}>
-              <ActionIcon variant="subtle" color="gray" aria-label="Refresh files" onClick={refreshFiles}>
-                <IconRefresh size={18} />
-              </ActionIcon>
-            </Tooltip>
+            {flatten ? (
+              <Text size="sm" c="dimmed">
+                All files in play order
+              </Text>
+            ) : (
+              <Breadcrumbs separator=">">
+                {breadcrumbs.map((crumb, idx) => (
+                  <Anchor key={crumb.id} component="button" size="sm" onClick={() => onBreadcrumbClick(crumb.id, idx)}>
+                    {crumb.title}
+                  </Anchor>
+                ))}
+              </Breadcrumbs>
+            )}
+            <Group gap="sm" wrap="nowrap">
+              <Tooltip label="Show every file without folders, in the order they play" openDelay={300}>
+                <Switch
+                  size="sm"
+                  label="Flatten files"
+                  checked={flatten}
+                  onChange={(e) => setFlatten(e.currentTarget.checked)}
+                />
+              </Tooltip>
+              <Tooltip label="Refresh files" openDelay={300}>
+                <ActionIcon variant="subtle" color="gray" aria-label="Refresh files" onClick={refreshFiles}>
+                  <IconRefresh size={18} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
           </Group>
-          {renderFiles()}
+          {flatten ? renderFlatFiles() : renderFiles()}
         </Tabs.Panel>
         <Tabs.Panel value="history" mt="xs" className="scrollablePanel">
           {renderHistory()}

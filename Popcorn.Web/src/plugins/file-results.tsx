@@ -22,7 +22,7 @@ import { persist } from 'zustand/middleware';
 import type { FileResult, FileSortField } from '@popcorn/plugin-sdk';
 import type { FileSearch, FileSource, LinkMedia } from './file-sources';
 import { downloadableLink, useDownloadFiles, useOpenLink } from './file-sources';
-import { episodeRange, FileEntry, groupFiles, missingEpisodes, parseEpisodeName } from './file-groups';
+import { bestPerEpisode, episodeRange, FileEntry, groupFiles, missingEpisodes, parseEpisodeName } from './file-groups';
 import { PluginFileCard } from './plugin-components';
 import { PluginIcon, ProviderGroup, RefreshButton } from './provider-group';
 
@@ -127,12 +127,12 @@ function FileCard({ source, file, media }: { source: FileSource; file: FileResul
       pluginId={source.pluginId}
       sourceId={source.sourceId}
       file={file}
-      openLink={(link, target) => void openLink(link, target, media, source)}
+      openLink={(link, target) => openLink(link, target, media, source)}
       defaultTarget={defaultTarget}
       add={
         link
           ? {
-              onAdd: () => void openLink(link, 'internal', media, source),
+              onAdd: () => openLink(link, 'internal', media, source),
               hint: media?.itemId
                 ? 'Download with Popcorn into this item'
                 : `Download with Popcorn into the library${media ? ` as “${media.title}”` : ''}`,
@@ -224,8 +224,12 @@ function EpisodeGroup({
   selection: Selection;
 }) {
   const [opened, setOpened] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const downloadFiles = useDownloadFiles();
-  const items = entry.members.map((m) => m.item).filter((i) => downloadableLink(i.file) !== null);
+  const items = bestPerEpisode(
+    entry.members.filter((m) => downloadableLink(m.item.file) !== null),
+    (i) => i.file
+  );
   const selected = items.filter(selection.has).length;
   const missing = missingEpisodes(entry.episodes);
   const providers = [...new Map(entry.members.map((m) => [m.item.plugin.id, m.item.plugin])).values()];
@@ -275,7 +279,11 @@ function EpisodeGroup({
           variant="light"
           leftSection={<IconDownload size={14} />}
           disabled={items.length === 0}
-          onClick={() => void downloadFiles(items, media, titleOf(items[0].file))}
+          loading={downloading}
+          onClick={() => {
+            setDownloading(true);
+            void downloadFiles(items, media, titleOf(items[0].file)).finally(() => setDownloading(false));
+          }}
         >
           Download all
         </Button>
@@ -324,7 +332,11 @@ function CombinedResults({
       { key, descending }
     );
     return grouped
-      ? groupFiles(items, (i) => i.file)
+      ? groupFiles(
+          items,
+          (i) => i.file,
+          (i) => i.plugin.id
+        )
       : items.map((item) => ({ kind: 'file', key: itemKey(item), item, duplicates: 0 }));
   }, [shown, search, key, descending, grouped]);
   const visible = expanded ? entries : entries.slice(0, COMBINED_PREVIEW_COUNT);

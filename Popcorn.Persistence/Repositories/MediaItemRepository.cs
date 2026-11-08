@@ -152,12 +152,12 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
 
     private async Task LoadItemHistory(IDbConnection connection, MediaItem item)
     {
-        item.History = (await connection.QueryAsync<ItemHistory>("SELECT * FROM ItemHistory WHERE item_id = @Id", new { Id = item.Id.SqliteId() })).ToList();
+        item.History = (await connection.QueryAsync<ItemHistory>("SELECT rowid AS history_id, * FROM ItemHistory WHERE item_id = @Id", new { Id = item.Id.SqliteId() })).ToList();
     }
 
     private async Task<List<ItemHistory>> GetAllItemHistory(IDbConnection connection)
     {
-        return (await connection.QueryAsync<ItemHistory>("SELECT * FROM ItemHistory")).ToList();
+        return (await connection.QueryAsync<ItemHistory>("SELECT rowid AS history_id, * FROM ItemHistory")).ToList();
     }
 
     private async Task<List<SegmentLocation>> LoadSegmentLocations(IDbConnection connection, Guid fileId)
@@ -195,12 +195,18 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
         await connection.ExecuteAsync($"UPDATE MediaItem SET {column} = @Path WHERE id = @Id", new { Path = path, Id = id.SqliteId() });
     }
 
+    public async Task SetTitle(Guid id, string title)
+    {
+        using var connection = dbContext.CreateConnection();
+        await connection.ExecuteAsync("UPDATE MediaItem SET title = @Title, short_title = @Title WHERE id = @Id", new { Title = title, Id = id.SqliteId() });
+    }
+
     private async Task InsertMediaItem(MediaItem item)
     {
         using var connection = dbContext.CreateConnection();
         string insertSql = @"
-            INSERT INTO MediaItem (id, title, short_title, image_path, backdrop_path, folder_directory, description) 
-            VALUES (@Id, @Title, @ShortTitle, @ImagePath, @BackdropPath, @FolderDirectory, @Description)";
+            INSERT INTO MediaItem (id, title, short_title, image_path, backdrop_path, folder_directory, description, media_plugin_id, media_id, imdb_id) 
+            VALUES (@Id, @Title, @ShortTitle, @ImagePath, @BackdropPath, @FolderDirectory, @Description, @MediaPluginId, @MediaId, @ImdbId)";
 
         connection.Execute(insertSql, new { 
             Id = item.Id.SqliteId(),
@@ -209,7 +215,10 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
             item.ImagePath,
             item.BackdropPath,
             item.FolderDirectory,
-            item.Description
+            item.Description,
+            item.MediaPluginId,
+            item.MediaId,
+            item.ImdbId
         });
     }
 
@@ -233,7 +242,7 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
         using var connection = dbContext.CreateConnection();
 
         string selectSql = @"
-            SELECT ih.*, mf.title FROM ItemHistory ih
+            SELECT ih.rowid AS history_id, ih.*, mf.title FROM ItemHistory ih
             JOIN MediaFile mf on ih.file_id = mf.id 
             WHERE ih.item_id = @Id";
 
@@ -241,11 +250,12 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
         return history;
     }
 
-    public async Task DeleteHistoryItem(Guid fileId, DateTime playbackTime)
+    public async Task DeleteHistoryItem(Guid itemId, long historyId)
     {
         using var connection = dbContext.CreateConnection();
-        string deleteSql = @"DELETE FROM ItemHistory WHERE file_id = @Id and playback_time = @Time";
-        await connection.ExecuteAsync(deleteSql, new { Id = fileId.SqliteId(), Time = playbackTime });
+        await connection.ExecuteAsync("DELETE FROM ItemHistory WHERE rowid = @HistoryId AND item_id = @Id",
+            new { HistoryId = historyId, Id = itemId.SqliteId() });
+        await ClearPlayedWithoutHistory(connection, itemId);
     }
 
     public async Task DeleteHistoryAll(Guid id)
@@ -253,7 +263,16 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
         using var connection = dbContext.CreateConnection();
         string deleteSql = @"DELETE FROM ItemHistory WHERE item_id = @Id";
         await connection.ExecuteAsync(deleteSql, new { Id = id.SqliteId() });
+        await ClearPlayedWithoutHistory(connection, id);
     }
+
+    /// <summary>"Played" = the file is in the item's history: files whose entries are all gone are unplayed again.</summary>
+    private static Task ClearPlayedWithoutHistory(IDbConnection connection, Guid itemId) =>
+        connection.ExecuteAsync(@"
+            UPDATE MediaFile SET played = 0
+            WHERE item_id = @Id AND played <> 0
+              AND id NOT IN (SELECT file_id FROM ItemHistory WHERE item_id = @Id)",
+            new { Id = itemId.SqliteId() });
 
     public async Task AddSegmentInfo(Guid itemId, SegmentInfo segment)
     {

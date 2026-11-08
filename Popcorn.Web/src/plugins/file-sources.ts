@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type { FileLink, FileLinkKind, FileQuery, FileResult, FileSortField, LinkTarget } from '@popcorn/plugin-sdk';
 import { notifications } from '@mantine/notifications';
-import { DownloadAddBatchRequest, DownloadAddRequest, DownloadKind } from '../model/download.contract';
+import { DownloadAddBatchRequest, DownloadAddRequest, DownloadKind, MediaSourceRef } from '../model/download.contract';
 import { useSettings } from '../state/settings.store';
 import {
   OpenLinkRequest,
@@ -16,6 +16,7 @@ import { useWebSocket } from '../state/websocket-context';
 import { WebSocketClient } from '../socket/websocket-client';
 import { isDesktopApp } from '../utils/platform';
 import { usePlugins } from './plugins.hook';
+import { useExcludedFileSources } from './excluded-sources.store';
 
 /** One file source as a provider of results; a plugin can have several. */
 export type FileSource = {
@@ -80,12 +81,16 @@ export function useFileSources(): FileSource[] | null {
 }
 
 /**
- * File search over all file sources. The state lives with the caller (`search` / `setSearch`), so a page can keep it
- * across navigation; nothing is searched until `start` is called.
+ * File search over the file sources the user has not switched off (`SourceFilter`). The state lives with the caller
+ * (`search` / `setSearch`), so a page can keep it across navigation; nothing is searched until `start` is called.
+ * `sources` = all of them (for the filter), `enabled` = the ones searched and shown.
  */
 export function useFileSearch(search: FileSearch | null, setSearch: FileSearchUpdate) {
   const { client, isClientReady } = useWebSocket();
   const sources = useFileSources();
+  const excluded = useExcludedFileSources((s) => s.excluded);
+  const setExcluded = useExcludedFileSources((s) => s.setExcluded);
+  const enabled = useMemo(() => sources?.filter((s) => !excluded[s.id]) ?? null, [sources, excluded]);
 
   useSocketEvents(
     useMemo(
@@ -105,15 +110,15 @@ export function useFileSearch(search: FileSearch | null, setSearch: FileSearchUp
     )
   );
 
-  /** Searches every file source for `query`, replacing the previous search. */
+  /** Searches every enabled file source for `query`, replacing the previous search. */
   const start = useCallback(
     (query: FileQuery) => {
-      if (!isClientReady || !sources?.length) return;
-      const requests = Object.fromEntries(sources.map((s) => [s.id, sendFileSearch(client, s, query)]));
-      const next = { query, requests, results: loadingResults(sources.map((p) => p.id)) };
+      if (!isClientReady || !enabled?.length) return;
+      const requests = Object.fromEntries(enabled.map((s) => [s.id, sendFileSearch(client, s, query)]));
+      const next = { query, requests, results: loadingResults(enabled.map((p) => p.id)) };
       setSearch(() => next);
     },
-    [client, isClientReady, sources, setSearch]
+    [client, isClientReady, enabled, setSearch]
   );
 
   /** Searches one provider (`FileSource.id`) again with the current query. */
@@ -134,18 +139,54 @@ export function useFileSearch(search: FileSearch | null, setSearch: FileSearchUp
     [client, isClientReady, search, sources, setSearch]
   );
 
-  return { sources, start, refresh };
+  /** Switches a source on or off; switched on during a search it is asked too unless it already answered. */
+  const setEnabled = useCallback(
+    (id: string, on: boolean) => {
+      setExcluded(id, !on);
+      if (on && search && !search.results[id]) refresh(id);
+    },
+    [setExcluded, search, refresh]
+  );
+
+  return { sources, enabled, setEnabled, start, refresh };
 }
 
-const SAFE_LINK = /^(magnet:|https?:|ftp:)/i;
+/** Label of a search button over `enabled` sources. */
+export const searchLabel = (enabled: FileSource[]) =>
+  enabled.length === 0
+    ? 'No sources selected'
+    : `Search ${enabled.length === 1 ? enabled[0].name : `${enabled.length} sources`}`;
+
+/** A .torrent file carried in the link (plugins return these for files only their session can fetch). */
+const TORRENT_DATA = 'data:application/x-bittorrent;base64,';
+const isTorrentData = (url: string) => url.toLowerCase().startsWith(TORRENT_DATA);
+const SAFE_LINK = /^(magnet:|https?:|ftp:|data:application\/x-bittorrent;base64,)/i;
 /** What the built-in torrent client / downloader can fetch. */
-const INTERNAL_LINK = /^(magnet:|https?:)/i;
+const INTERNAL_LINK = /^(magnet:|https?:|data:application\/x-bittorrent;base64,)/i;
+
+/** Saves a .torrent data: link as a file (browsers do not open data: URLs in a tab); the torrent program takes it from there. */
+function saveTorrentFile(url: string, name: string) {
+  const bytes = Uint8Array.from(atob(url.slice(TORRENT_DATA.length)), (c) => c.charCodeAt(0));
+  const href = URL.createObjectURL(new Blob([bytes], { type: 'application/x-bittorrent' }));
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = `${name.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'download'}.torrent`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(href), 10_000);
+}
 
 /**
  * Media a download is for: on a search details page the library item it creates is named / pictured after it; with
  * `itemId` (a library item's page) the files are added to that item instead.
  */
-export type LinkMedia = { title: string; posterUrl?: string | null; itemId?: string };
+export type LinkMedia = {
+  title: string;
+  posterUrl?: string | null;
+  backdropUrl?: string | null;
+  /** The media page's plugin + media id and IMDb id: given to the new library item. */
+  source?: MediaSourceRef;
+  itemId?: string;
+};
 
 /** The file source a result came from: fetches its `resolve` links. */
 export type LinkSource = Pick<FileSource, 'pluginId' | 'sourceId'>;
@@ -279,6 +320,8 @@ export function useDownloadFiles() {
         mediaItemId: media?.itemId ?? null,
         mediaTitle: media?.title ?? fallbackTitle,
         posterUrl: media?.posterUrl ?? null,
+        backdropUrl: media?.backdropUrl ?? null,
+        mediaSource: media?.source ?? null,
       });
     },
     [client]
@@ -323,28 +366,33 @@ export function useOpenLink() {
           addToLibrary: true,
           mediaTitle: media?.title ?? null,
           posterUrl: media?.posterUrl ?? null,
+          backdropUrl: media?.backdropUrl ?? null,
+          mediaSource: media?.source ?? null,
           mediaItemId: media?.itemId ?? null,
         });
         return;
       }
       if (isDesktopApp) client.sendEvent<OpenLinkRequest>(SocketRequests.OpenLink, { url: link.url });
       else if (link.kind === 'Magnet') window.location.href = link.url;
+      else if (isTorrentData(link.url)) saveTorrentFile(link.url, media?.title ?? 'download');
       // after fetching a `resolve` link this is no longer the click, so a popup blocker may stop it
       else window.open(link.url, '_blank', 'noopener,noreferrer');
     },
     [client, defaultTarget]
   );
 
+  /** Returns a promise only while a `resolve` link is fetched, so callers can show a loader just then. */
   const openLink = useCallback(
-    async (link: FileLink, target?: LinkTarget, media?: LinkMedia, source?: LinkSource) => {
+    (link: FileLink, target?: LinkTarget, media?: LinkMedia, source?: LinkSource): Promise<void> | void => {
       if (!link.resolve) return openResolved(link, target, media);
       if (!source) {
         console.error('A link to fetch without its file source', link);
         return;
       }
-      const [{ link: resolved, error }] = await withFetchNotice(true, 1, () => resolveLinks(client, source, [link]));
-      if (resolved) openResolved(resolved, target, media);
-      else notifications.show({ color: 'red', autoClose: 8000, message: `Could not get the link: ${error}` });
+      return resolveLinks(client, source, [link]).then(([{ link: resolved, error }]) => {
+        if (resolved) openResolved(resolved, target, media);
+        else notifications.show({ color: 'red', autoClose: 8000, message: `Could not get the link: ${error}` });
+      });
     },
     [client, openResolved]
   );

@@ -21,6 +21,20 @@ public class SetMediaItemImageRequest
     public string? Url { get; set; }
 }
 
+/// <summary>Deletes a history entry of an item (<see cref="HistoryId"/> = <c>ItemHistory.Id</c>), or all of them when null.</summary>
+public class DeleteMediaItemHistoryRequest
+{
+    public Guid ItemId { get; set; }
+    public long? HistoryId { get; set; }
+}
+
+/// <summary>Renames a library item (item page title).</summary>
+public class RenameMediaItemRequest
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+}
+
 /// <summary>Removes an item from the library; <see cref="DeleteFiles"/> also deletes its downloads and files from disk.</summary>
 public class RemoveMediaItemRequest
 {

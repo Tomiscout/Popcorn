@@ -12,6 +12,11 @@ public static class SocketRequests
     public const string OpenMediaItemFolder = "OpenMediaItemFolder";
     public const string MediaItemFileList = "MediaItemFileList";
     public const string MediaItemHistory = "MediaItemHistory";
+    /// <summary>Item page History tab: deletes one entry, or the whole history without <c>HistoryId</c>; answered with the item resent.</summary>
+    public const string MediaItemHistoryDelete = "MediaItemHistoryDelete";
+    /// <summary>Item page: every file of the item in play order (<c>MediaItemFlatFileList</c> response), sent with <see cref="MediaItem"/>.</summary>
+    public const string MediaItemFlatFileList = "MediaItemFlatFileList";
+    public const string RenameMediaItem = "RenameMediaItem";
     public const string ImageFile = "ImageFile";
     public const string ThumbnailFile = "ThumbnailFile";
     public const string ImageFilesBatchSent = "ImageFilesBatchSent";
@@ -36,6 +41,7 @@ public static class SocketRequests
     public const string OpenProgramFolder = "OpenProgramFolder";
     public const string Autostart = "Autostart";
     public const string AutostartSet = "AutostartSet";
+    public const string LanguageList = "LanguageList";
     public const string UpdateStatus = "UpdateStatus";
     public const string UpdateCheck = "UpdateCheck";
     public const string UpdateInstall = "UpdateInstall";

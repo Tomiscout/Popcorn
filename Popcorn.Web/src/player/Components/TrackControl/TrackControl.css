@@ -180,3 +180,20 @@ ul {
   align-items: center;
   padding: 6px 0;
 }
+
+.sync-subtitle-button {
+  margin-left: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.sync-subtitle-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 1;
+}
+
+.sync-subtitle-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

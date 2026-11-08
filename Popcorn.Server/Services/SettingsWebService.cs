@@ -8,6 +8,7 @@ using Popcorn.Server.Attributes;
 using Popcorn.Server.Models;
 using Popcorn.Server.Models.Requests;
 using Popcorn.Shared.Interfaces;
+using Popcorn.Shared.Languages;
 
 namespace Popcorn.Server.Services;
 
@@ -34,6 +35,13 @@ public class SettingsWebService(
         await settingsRepository.SaveSettings(settings);
         await downloadManager.ApplySettingsAsync(settings.Downloads);
         await SendSettings(); // echo back the normalized list (built-ins restored, invalid entries dropped)
+    }
+
+    /// <summary>Languages for the preferred audio/subtitle language pickers (ISO 639-2/T code + English name).</summary>
+    [WebSocketEvent(SocketRequests.LanguageList)]
+    public async Task SendLanguageList()
+    {
+        await bus.SendEventAsync(SocketRequests.LanguageList, LanguageCodes.All);
     }
 
     [WebSocketEvent(SocketRequests.DefaultPlayerName)]

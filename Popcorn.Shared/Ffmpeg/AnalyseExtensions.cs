@@ -1,4 +1,5 @@
 using FFMpegCore;
+using Popcorn.Shared.Languages;
 
 namespace Popcorn.Shared.Ffmpeg;
 
@@ -47,19 +48,9 @@ public static class AnalyseExtensions
     {
         var streamsList = streams.ToList();
         if(streamsList.Count < 2) return streamsList.FirstOrDefault()?.Index ?? null;
-        
-        foreach (var prefLang in defaultLanguages)
-        {
-            var match = streamsList
-                .FirstOrDefault(
-                    a =>
-                        !string.IsNullOrWhiteSpace(a.Language)
-                        && a.Language.Equals(prefLang, StringComparison.OrdinalIgnoreCase)
-                );
 
-            if (match != null)
-                return match.Index;
-        }
+        var match = LanguageCodes.PickPreferred(streamsList, s => s.Language, defaultLanguages);
+        if (match != null) return match.Index;
 
         return streamsList.FirstOrDefault(a => a.Index == defaultIndex)?.Index ?? null;
     }

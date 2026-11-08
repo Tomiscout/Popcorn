@@ -13,7 +13,7 @@ public class MediaItemService(IMediaItemRepository mediaItemRepository, IMediaFi
     /// <summary>New library item (folder add, downloads); its title is cleaned of release tags (<see cref="MediaTitle.FromName"/>).</summary>
     public async Task<Guid> CreateMediaItemFromScan(MediaItem item, MediaScanResult scanResult)
     {
-        if (descriptions != null) item.Description ??= await descriptions.FindDescriptionAsync(item.Title); // the raw name still has the year
+        if (descriptions != null) item.Description ??= await descriptions.FindDescriptionAsync(item.Title, item.Source); // the raw name still has the year
         item.Title = MediaTitle.FromName(item.Title);
         var newItemId = await mediaItemRepository.CreateMediaItem(item);
         await mediaFileRepository.UpsertMediaFiles(item.Id, GetFilesFromScanResult(scanResult));

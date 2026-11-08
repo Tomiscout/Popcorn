@@ -16,5 +16,9 @@ public class MediaItemMap : EntityMap<MediaItem>
         Map(m => m.BackdropPath).ToColumn("backdrop_path");
         Map(m => m.FolderDirectory).ToColumn("folder_directory");
         Map(m => m.Description).ToColumn("description");
+        Map(m => m.MediaPluginId).ToColumn("media_plugin_id");
+        Map(m => m.MediaId).ToColumn("media_id");
+        Map(m => m.ImdbId).ToColumn("imdb_id");
+        Map(m => m.Source).Ignore();
     }
 }

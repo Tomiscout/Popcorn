@@ -1,16 +1,19 @@
 using Popcorn.Domain;
 using Popcorn.Domain.Enum;
+using Popcorn.Domain.Interfaces;
+using Popcorn.Domain.Models;
 using Popcorn.FilenameParser;
 using Popcorn.Plugins;
 using Popcorn.Server.Attributes;
 using Popcorn.Server.Models;
 using Popcorn.Server.Models.Requests;
 using Popcorn.Server.PluginHost;
+using Popcorn.Shared.Utils;
 
 namespace Popcorn.Server.Services;
 
 [WebSocketService]
-public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFileService fileService, ILogger<PluginWebService> logger)
+public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFileService fileService, IMediaItemRepository mediaItemRepository, ILogger<PluginWebService> logger)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ActionTimeout = TimeSpan.FromMinutes(2);
@@ -247,7 +250,9 @@ public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFi
 
     /// <summary>
     /// Posters or backdrops for a library item from every enabled image provider of that kind (queried in parallel,
-    /// answered together in the plugin order). The name is parsed like a release name for title/year/kind.
+    /// answered together in the plugin order). The name is parsed like a release name for title/year/kind (and an IMDb
+    /// id written in it); the item's <see cref="MediaItem.Source"/> gives the IMDb id and, to the plugin it came from,
+    /// its media id.
     /// </summary>
     [WebSocketEvent(SocketRequests.MediaImageSearch)]
     public async Task ImageSearch(MediaImageSearchRequest request)
@@ -256,11 +261,14 @@ public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFi
         if (name.Length == 0) return;
 
         var parsed = MediaNameParser.Parse(name);
+        var source = request.ItemId is { } itemId ? (await mediaItemRepository.GetMediaItem(itemId))?.Source : null;
+        var imdbId = source?.ImdbId ?? MovieParser.ParseImdbId(name);
         var query = new ImageQuery
         {
             Title = string.IsNullOrWhiteSpace(parsed.Title) ? name : parsed.Title,
             Year = parsed.Year,
             Kind = parsed.IsTv ? MediaKind.Show : null,
+            ImdbId = string.IsNullOrEmpty(imdbId) ? null : imdbId,
         };
         var kind = request.Kind == MediaImageKind.Poster ? ImageKind.Poster : ImageKind.Backdrop;
 
@@ -270,7 +278,8 @@ public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFi
             try
             {
                 using var cts = new CancellationTokenSource(Timeout);
-                var images = await plugin.Images!.SearchImagesAsync(query, kind, cts.Token);
+                var own = source?.PluginId == plugin.Manifest.Id ? query with { MediaId = source.MediaId } : query;
+                var images = await plugin.Images!.SearchImagesAsync(own, kind, cts.Token);
                 return new MediaImageProviderResult
                 {
                     PluginId = plugin.Manifest.Id, PluginName = plugin.Manifest.Name,
@@ -362,7 +371,7 @@ public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFi
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Could not open link {url}", request.Url);
+            logger.LogError(ex, "Could not open link {url}", TorrentDataUrl.ForLog(request.Url));
         }
         return Task.CompletedTask;
     }

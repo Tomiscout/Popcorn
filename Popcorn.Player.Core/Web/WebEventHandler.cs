@@ -21,6 +21,7 @@ public class WebEventHandler
     private readonly ThumbnailService _thumbnailService;
     private readonly SegmentSkipService _segmentSkipService;
     private readonly AppWindowLauncher _appWindowLauncher;
+    private readonly SubtitleSyncService _subtitleSyncService;
     private readonly IWebBridge _webBridge;
 
     private bool _playerInitialized = false;
@@ -32,8 +33,9 @@ public class WebEventHandler
     /// <summary>The overlay page connected for the first time (not on reconnects). Raised on the socket's thread.</summary>
     public event Action? OverlayConnected;
 
-    public WebEventHandler(IPlayer player, PlayerCore playerCore, MediaItemManager mediaItemManager, AudioSubtitlesService audioSubtitlesService, ThumbnailService thumbnailService, SegmentSkipService segmentSkipService, AppWindowLauncher appWindowLauncher)
+    public WebEventHandler(IPlayer player, PlayerCore playerCore, MediaItemManager mediaItemManager, AudioSubtitlesService audioSubtitlesService, ThumbnailService thumbnailService, SegmentSkipService segmentSkipService, AppWindowLauncher appWindowLauncher, SubtitleSyncService subtitleSyncService)
     {
+        _subtitleSyncService = subtitleSyncService;
         _appWindowLauncher = appWindowLauncher;
         _segmentSkipService = segmentSkipService;
         _player = player;
@@ -82,6 +84,10 @@ public class WebEventHandler
                 _audioSubtitlesService.SubtitleFileAdd(); break;
             case "subtitle_delay_set":
                 _player.SubtitleSetDelay(message.Data!.GetJsonDouble()); break;
+            case "subtitle_text_requested":
+                _subtitleSyncService.OnSubtitleTextRequest(message.Data!.GetJsonInt32()); break;
+            case "waveform_requested":
+                RequestWaveform((JsonElement)message.Data!); break;
             case "file_open":
                 _playerCore.LoadMedia(Guid.Parse(message.Data!.GetJsonString())); break;
             case "folder_open":
@@ -100,6 +106,13 @@ public class WebEventHandler
                 throw new NotImplementedException($"Event from _player not supported: {message.Name}");
         }
     }
+
+    /// <summary>Subtitle syncer: <c>{ track, start, duration, key }</c> (seconds; track = mpv id, -1 = first).</summary>
+    private void RequestWaveform(JsonElement data) => _subtitleSyncService.OnWaveformRequest(
+        data.GetProperty("track").GetInt32(),
+        data.GetProperty("start").GetDouble(),
+        data.GetProperty("duration").GetDouble(),
+        data.GetProperty("key").GetString() ?? string.Empty);
 
     /// <summary>The item's auto-skip override from the overlay's settings menu (null = global setting).</summary>
     private void SetSegmentAutoSkip(object? data)

@@ -293,6 +293,20 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
       client?.sendEvent(SocketRequests.ThumbnailFile, { fileId: currentFileId, timeSeconds: timeMs / 1000 });
     };
 
+    // Subtitle syncer: waveform windows of the playing audio track (only the part around the position is decoded).
+    const waveformRequestHandler = async (request: { track: number; start: number; duration: number; key: string }) => {
+      const { fileId: requestFileId, setWaveform } = usePlayerStore.getState();
+      const url = `http://${resolveServerHost()}/api/video/${requestFileId}/audio/${request.track}/waveform?start=${request.start}&duration=${request.duration}`;
+      let peaks: Uint8Array | null = null;
+      try {
+        const response = await fetch(url);
+        if (response.ok) peaks = new Uint8Array(await response.arrayBuffer());
+      } catch (error) {
+        console.error('Waveform', error);
+      }
+      if (usePlayerStore.getState().fileId === requestFileId) setWaveform(request.key, peaks);
+    };
+
     const segmentSeenHandler = (segmentId: string) => client?.sendEvent(SocketRequests.SegmentSeen, segmentId);
 
     const segmentAutoSkipSetHandler = (mode: SegmentAutoSkip | null) => {
@@ -321,6 +335,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
     registerEventHandler('folder_open', folderOpenHandler);
     registerEventHandler('folder_open_root', folderOpenRootHandler);
     registerEventHandler('thumb_requested', thumbnailRequestHandler);
+    registerEventHandler('waveform_requested', waveformRequestHandler);
     registerEventHandler('player_close', closeHandler);
     registerEventHandler('segment_seen', segmentSeenHandler);
     registerEventHandler('segment_auto_skip_set', segmentAutoSkipSetHandler);
@@ -340,6 +355,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
       unregisterEventHandler('folder_open', folderOpenHandler);
       unregisterEventHandler('folder_open_root', folderOpenRootHandler);
       unregisterEventHandler('thumb_requested', thumbnailRequestHandler);
+      unregisterEventHandler('waveform_requested', waveformRequestHandler);
       unregisterEventHandler('player_close', closeHandler);
       unregisterEventHandler('segment_seen', segmentSeenHandler);
       unregisterEventHandler('segment_auto_skip_set', segmentAutoSkipSetHandler);

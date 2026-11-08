@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Button, FileButton, Group, Loader, ScrollArea, Stack, Text, Tooltip } from '@mantine/core';
 import { IconPhotoOff, IconUpload } from '@tabler/icons-react';
 import { useWebSocket } from '../../state/websocket-context';
 import { SocketRequests } from '../../socket/socket-requests';
 import type { MediaImageKind } from '../../model/media.contract';
+import { usePlugins } from '../../plugins/plugins.hook';
+import { SourceFilter } from '../../plugins/source-filter';
+import { useExcludedImageProviders } from '../../plugins/excluded-sources.store';
 import type {
+  ImageResult,
   MediaImageProviderResult,
   MediaImageSearchRequest,
   MediaImageSearchResponse,
@@ -22,7 +26,7 @@ const SIZES: Record<MediaImageKind, { preview: [number, number]; thumb: [number,
 let requestCounter = 0;
 
 /** Results of every enabled image provider of `kind` for `name` (debounced; answers to older searches dropped). */
-function useImageSearch(name: string, kind: MediaImageKind) {
+function useImageSearch(name: string, kind: MediaImageKind, itemId: string | undefined) {
   const { client, isClientReady } = useWebSocket();
   const [providers, setProviders] = useState<MediaImageProviderResult[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -50,12 +54,37 @@ function useImageSearch(name: string, kind: MediaImageKind) {
     const timer = setTimeout(() => {
       const requestId = `${Date.now()}-${++requestCounter}`;
       pending.current = requestId;
-      client.sendEvent<MediaImageSearchRequest>(SocketRequests.MediaImageSearch, { name: trimmed, kind, requestId });
+      client.sendEvent<MediaImageSearchRequest>(SocketRequests.MediaImageSearch, {
+        name: trimmed,
+        kind,
+        itemId: itemId ?? null,
+        requestId,
+      });
     }, SEARCH_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [client, isClientReady, name, kind]);
+  }, [client, isClientReady, name, kind, itemId]);
 
   return { providers, loading };
+}
+
+/** Image providers of `kind` (user's plugin order) for the filter chips, and the ones the user left on. */
+function useImageProviders(kind: MediaImageKind) {
+  const plugins = usePlugins();
+  const { excluded, setExcluded } = useExcludedImageProviders();
+  const all = useMemo(() => plugins?.filter((p) => p.imageKinds?.includes(kind)) ?? [], [plugins, kind]);
+  const enabled = useMemo(() => all.filter((p) => !excluded[p.id]), [all, excluded]);
+  return { all, enabled, setEnabled: (id: string, on: boolean) => setExcluded(id, !on) };
+}
+
+/** Consecutive images of one title (`ImageResult.group`); one untitled run when the provider found a single title. */
+function groupImages(images: ImageResult[]) {
+  const groups: { title: string | null; images: ImageResult[] }[] = [];
+  for (const image of images) {
+    const last = groups[groups.length - 1];
+    if (last && last.title === image.group) last.images.push(image);
+    else groups.push({ title: image.group, images: [image] });
+  }
+  return groups;
 }
 
 function readAsDataUrl(file: File) {
@@ -77,11 +106,22 @@ interface MediaImagePickerProps {
   onChange(url: string | null): void;
   /** Pick the first result of each search until the user picks something themselves. */
   autoSelect?: boolean;
+  /** Library item being edited: providers get the media it was added from (exact title instead of a name search). */
+  itemId?: string;
 }
 
 /** Poster or backdrop chooser: preview, own file upload, a "no image" choice and the images found by image provider plugins. */
-export function MediaImagePicker({ kind, name, value, onChange, autoSelect }: MediaImagePickerProps) {
-  const { providers, loading } = useImageSearch(name, kind);
+export function MediaImagePicker({ kind, name, value, onChange, autoSelect, itemId }: MediaImagePickerProps) {
+  const { providers: allResults, loading } = useImageSearch(name, kind, itemId);
+  const filter = useImageProviders(kind);
+  // Results of the providers the user left on; a provider missing from the plugin list (still loading) is shown.
+  const providers = useMemo(
+    () =>
+      allResults?.filter(
+        (r) => filter.enabled.some((p) => p.id === r.pluginId) || !filter.all.some((p) => p.id === r.pluginId)
+      ) ?? null,
+    [allResults, filter.enabled, filter.all]
+  );
   const [uploadError, setUploadError] = useState<string | null>(null);
   const userPicked = useRef(false);
   const [previewW, previewH] = SIZES[kind].preview;
@@ -91,7 +131,7 @@ export function MediaImagePicker({ kind, name, value, onChange, autoSelect }: Me
   useEffect(() => {
     if (!autoSelect || userPicked.current || !providers) return;
     onChange(providers.flatMap((p) => p.images)[0]?.url ?? null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when new results arrive
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when new results arrive or the filter changes
   }, [providers, autoSelect]);
 
   const pick = (url: string | null) => {
@@ -159,55 +199,71 @@ export function MediaImagePicker({ kind, name, value, onChange, autoSelect }: Me
         )}
       </Stack>
 
-      <ScrollArea.Autosize mah={previewH + 30} style={{ flex: 1, minWidth: 0 }} type="auto" offsetScrollbars>
-        <Stack gap="xs" pt={28}>
-          {!found && noImageTile}
-          {loading && !providers && <Loader size="sm" />}
-          {providers?.length === 0 && (
-            <Text size="sm" c="dimmed">
-              No image providers enabled (Settings → Plugins). Upload your own picture.
-            </Text>
-          )}
-          {providers && providers.length > 0 && !found && !providers.some((p) => p.error) && (
-            <Text size="sm" c="dimmed">
-              Nothing found for “{name.trim()}”. Edit the title or upload your own picture.
-            </Text>
-          )}
-          {providers?.map((provider, index) => (
-            <Stack key={provider.pluginId} gap={4}>
-              {(providers.length > 1 || provider.error) && (
-                <Group gap="xs">
-                  <Text size="xs" c="dimmed">
-                    {provider.pluginName}
+      <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
+        <Box mih={22}>
+          <SourceFilter sources={filter.all} enabled={filter.enabled} onChange={filter.setEnabled} />
+        </Box>
+        <ScrollArea.Autosize mah={previewH + 4} type="auto" offsetScrollbars>
+          <Stack gap="xs">
+            {!found && noImageTile}
+            {loading && !providers && <Loader size="sm" />}
+            {providers?.length === 0 && (
+              <Text size="sm" c="dimmed">
+                {allResults && allResults.length > 0
+                  ? 'All image providers are switched off above. Upload your own picture.'
+                  : 'No image providers enabled (Settings → Plugins). Upload your own picture.'}
+              </Text>
+            )}
+            {providers && providers.length > 0 && !found && !providers.some((p) => p.error) && (
+              <Text size="sm" c="dimmed">
+                Nothing found for “{name.trim()}”. Edit the title or upload your own picture.
+              </Text>
+            )}
+            {providers?.map((provider, index) => (
+              <Stack key={provider.pluginId} gap={4}>
+                {(providers.length > 1 || provider.error) && (
+                  <Group gap="xs">
+                    <Text size="xs" c="dimmed">
+                      {provider.pluginName}
+                    </Text>
+                    {loading && <Loader size={10} />}
+                  </Group>
+                )}
+                {provider.error && (
+                  <Text size="xs" c="red">
+                    {provider.error}
                   </Text>
-                  {loading && <Loader size={10} />}
-                </Group>
-              )}
-              {provider.error && (
-                <Text size="xs" c="red">
-                  {provider.error}
-                </Text>
-              )}
-              <Group gap={6}>
-                {index === firstWithImages && noImageTile}
-                {provider.images.map((image) => (
-                  <Tooltip key={image.url} label={image.title} disabled={!image.title} openDelay={400}>
-                    <button
-                      type="button"
-                      className="media-image-thumb"
-                      data-selected={image.url === value || undefined}
-                      style={{ width: thumbW, height: thumbH }}
-                      onClick={() => pick(image.url)}
-                    >
-                      <img src={image.thumbnailUrl ?? image.url} alt={image.title ?? ''} loading="lazy" />
-                    </button>
-                  </Tooltip>
+                )}
+                {groupImages(provider.images).map((group, groupIndex) => (
+                  <Stack key={`${groupIndex}:${group.title}`} gap={4}>
+                    {group.title && (
+                      <Text size="xs" fw={500}>
+                        {group.title}
+                      </Text>
+                    )}
+                    <Group gap={6}>
+                      {index === firstWithImages && groupIndex === 0 && noImageTile}
+                      {group.images.map((image) => (
+                        <Tooltip key={image.url} label={image.title} disabled={!image.title} openDelay={400}>
+                          <button
+                            type="button"
+                            className="media-image-thumb"
+                            data-selected={image.url === value || undefined}
+                            style={{ width: thumbW, height: thumbH }}
+                            onClick={() => pick(image.url)}
+                          >
+                            <img src={image.thumbnailUrl ?? image.url} alt={image.title ?? ''} loading="lazy" />
+                          </button>
+                        </Tooltip>
+                      ))}
+                    </Group>
+                  </Stack>
                 ))}
-              </Group>
-            </Stack>
-          ))}
-        </Stack>
-      </ScrollArea.Autosize>
+              </Stack>
+            ))}
+          </Stack>
+        </ScrollArea.Autosize>
+      </Stack>
     </Group>
   );
 }

@@ -1,0 +1,292 @@
+/* Docked under the top bar: the subtitles on the video (bottom) stay in sight while lining them up. */
+.subtitle-sync {
+  --sync-accent: #ffbe46;
+  --sync-playhead: #fa5252;
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1120px, calc(100% - 32px));
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 14, 18, 0.9);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
+  color: white;
+  font-family: 'Rubik', sans-serif;
+  cursor: default;
+  user-select: none;
+  animation: subtitle-sync-in 0.16s ease-out;
+}
+
+@keyframes subtitle-sync-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+}
+
+.subtitle-sync button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0 7px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+
+.subtitle-sync button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+}
+
+.subtitle-sync button:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.subtitle-sync button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ---- header ---- */
+
+.subtitle-sync__header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.subtitle-sync__title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.subtitle-sync__title svg {
+  color: var(--sync-accent);
+  flex: none;
+}
+
+.subtitle-sync__track {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.subtitle-sync__delay {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.subtitle-sync__delay button {
+  min-width: 38px;
+  font-variant-numeric: tabular-nums;
+}
+
+.subtitle-sync__value {
+  min-width: 96px;
+  padding: 0 8px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.subtitle-sync__value--changed {
+  color: var(--sync-accent);
+}
+
+.subtitle-sync__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.subtitle-sync__divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ---- lanes ---- */
+
+.subtitle-sync__lanes {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.subtitle-sync__lanes canvas {
+  display: block;
+  width: 100%;
+  touch-action: none;
+}
+
+.subtitle-sync__wave {
+  height: 88px;
+  cursor: grab;
+  background: linear-gradient(rgba(125, 200, 255, 0.04), rgba(125, 200, 255, 0.01));
+}
+
+.subtitle-sync__cues {
+  height: 58px;
+  cursor: ew-resize;
+  background: rgba(255, 190, 70, 0.03);
+}
+
+.subtitle-sync__wave.is-dragging {
+  cursor: grabbing;
+}
+
+.subtitle-sync__lane-label {
+  position: absolute;
+  left: 8px;
+  z-index: 1;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+.subtitle-sync__lane-label--audio {
+  top: 6px;
+  color: rgba(125, 200, 255, 0.9);
+}
+
+.subtitle-sync__lane-label--subs {
+  top: 98px;
+  color: var(--sync-accent);
+}
+
+.subtitle-sync__lane-message {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+
+.subtitle-sync__lane-message--audio {
+  top: 0;
+  height: 72px;
+}
+
+.subtitle-sync__lane-message--subs {
+  top: 92px;
+  height: 58px;
+}
+
+.subtitle-sync__playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--sync-playhead);
+  box-shadow: 0 0 8px rgba(250, 82, 82, 0.6);
+  pointer-events: none;
+}
+
+.subtitle-sync__playhead::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -5px;
+  border: 6px solid transparent;
+  border-top-color: var(--sync-playhead);
+  border-bottom: none;
+}
+
+/* ---- footer ---- */
+
+.subtitle-sync__footer {
+  min-height: 18px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subtitle-sync__selected {
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.subtitle-sync__selected b {
+  flex: none;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--sync-accent);
+}
+
+.subtitle-sync__selected-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.subtitle-sync kbd {
+  padding: 0 4px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-family: inherit;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Narrow windows: title on its own row, labels of the action buttons dropped. */
+@media (max-width: 820px) {
+  .subtitle-sync__header {
+    grid-template-columns: 1fr auto;
+  }
+  .subtitle-sync__title {
+    grid-column: 1 / -1;
+  }
+  .subtitle-sync__actions span:not(.subtitle-sync__divider) {
+    display: none;
+  }
+  .subtitle-sync__hint {
+    display: none;
+  }
+}

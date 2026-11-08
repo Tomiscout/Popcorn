@@ -21,6 +21,9 @@ public class DownloadAddRequest
     /// <summary>Library item title, e.g. the media page's title; null = the download name.</summary>
     public string? MediaTitle { get; set; }
     public string? PosterUrl { get; set; }
+    public string? BackdropUrl { get; set; }
+    /// <summary>Media page the download was started from (plugin + media id, IMDb id), kept by the library item.</summary>
+    public Popcorn.Domain.Models.MediaSourceRef? MediaSource { get; set; }
     /// <summary>Existing library item to add the files to (saved inside its folder); overrides the title/poster.</summary>
     public Guid? MediaItemId { get; set; }
 }
@@ -41,6 +44,8 @@ public class DownloadAddBatchRequest
     public Guid? MediaItemId { get; set; }
     public string? MediaTitle { get; set; }
     public string? PosterUrl { get; set; }
+    public string? BackdropUrl { get; set; }
+    public Popcorn.Domain.Models.MediaSourceRef? MediaSource { get; set; }
 }
 
 /// <summary>Answer to <see cref="SocketRequests.DownloadAdd"/> / <see cref="SocketRequests.DownloadAddTorrentFile"/>.</summary>

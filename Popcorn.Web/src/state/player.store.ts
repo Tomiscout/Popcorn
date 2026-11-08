@@ -93,6 +93,21 @@ export function needsBuffering(state: PlayerState) {
   return range[1] * duration - currentTime < (isBuffering ? BUFFER_RESUME_MS : BUFFER_STOP_MS);
 }
 
+/** Subtitle syncer state that belongs to one file (cleared when another one loads). */
+export const perFileSyncState = {
+  subtitleDelay: 0,
+  subtitleSyncOpen: false,
+  waveforms: {} as Record<string, Uint8Array | null>,
+  subtitleTextErrors: {} as Record<string, string>,
+};
+
+/** Peaks per second of the `waveforms` windows (Popcorn.Shared `AudioWaveform.PeaksPerSecond`). */
+export const WAVEFORM_PEAKS_PER_SECOND = 100;
+/** Length of one `waveforms` window in seconds; window n starts at n × this. */
+export const WAVEFORM_WINDOW_SECONDS = 20;
+export const waveformKey = (fileId: string | null, audioTrack: number, window: number) =>
+  `${fileId}|${audioTrack}|${window}`;
+
 export interface PlayerState {
   mediaId: string | null;
   fileId: string | null; // If set - renders the player
@@ -130,6 +145,17 @@ export interface PlayerState {
   downloadRanges: [number, number][] | null;
   /** Stopped for the download (`needsBuffering`). Hosts hold playback while set; `isPlaying` stays what the user asked for. */
   isBuffering: boolean;
+  /** Seconds the subtitles are shown later (negative = earlier). Changed through `player/subtitle-delay.ts`, which tells the host. */
+  subtitleDelay: number;
+  /** The subtitle syncer panel is open. */
+  subtitleSyncOpen: boolean;
+  /**
+   * Waveform windows for the subtitle syncer, by `waveformKey`: peaks (`WAVEFORM_PEAKS_PER_SECOND` bytes per second,
+   * 0–255), or null when the host could not read them. Asked for with `waveform_requested`.
+   */
+  waveforms: Record<string, Uint8Array | null>;
+  /** Why the text of a subtitle track (key = track index) could not be read for the syncer (native players). */
+  subtitleTextErrors: Record<string, string>;
   setFileId: (v: string | null) => void;
   setMediaId: (v: string | null) => void;
   setIsPlaying: (v: boolean) => void;
@@ -148,6 +174,9 @@ export interface PlayerState {
   setItemAutoSkip: (mode: SegmentAutoSkip | null) => void;
   setDownloadRanges: (v: [number, number][] | null) => void;
   setIsBuffering: (v: boolean) => void;
+  setSubtitleSyncOpen: (v: boolean) => void;
+  setWaveform: (key: string, peaks: Uint8Array | null) => void;
+  setSubtitleTextError: (track: string, error: string) => void;
   setNextFileWarning: (v: NextFilePlan | null) => void;
   setPlaybackEnded: (v: boolean) => void;
   setHoldControls: (v: boolean) => void;
@@ -191,6 +220,10 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   holdControls: false,
   downloadRanges: null,
   isBuffering: false,
+  subtitleDelay: 0,
+  subtitleSyncOpen: false,
+  waveforms: {},
+  subtitleTextErrors: {},
   setMediaId: (v) => set({ mediaId: v }),
   setFileId: (v) => set({ fileId: v }),
   setIsPlaying: (v) => set({ isPlaying: v }),
@@ -216,6 +249,10 @@ export const usePlayerStore = create<PlayerState>((set) => ({
     set((state) => ({ segmentAutoSkip: state.segmentAutoSkip && { ...state.segmentAutoSkip, itemMode: mode } })),
   setDownloadRanges: (v) => set({ downloadRanges: v }),
   setIsBuffering: (v) => set({ isBuffering: v }),
+  setSubtitleSyncOpen: (v) => set({ subtitleSyncOpen: v }),
+  setWaveform: (key, peaks) => set((state) => ({ waveforms: { ...state.waveforms, [key]: peaks } })),
+  setSubtitleTextError: (track, error) =>
+    set((state) => ({ subtitleTextErrors: { ...state.subtitleTextErrors, [track]: error } })),
   setNextFileWarning: (v) => set({ nextFileWarning: v }),
   setPlaybackEnded: (v) => set({ playbackEnded: v, showFin: false }),
   setHoldControls: (v) => set({ holdControls: v }),
@@ -285,6 +322,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
       holdControls: false,
       downloadRanges: null,
       isBuffering: false,
+      ...perFileSyncState,
     });
   },
   closePlayer: () => {

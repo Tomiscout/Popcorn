@@ -10,6 +10,7 @@ using Serilog;
 using Popcorn.Domain;
 using Popcorn.Application.Services;
 using Popcorn.Shared.Ffmpeg;
+using Popcorn.Application.Utils;
 
 namespace Popcorn.Player.Core.Core;
 
@@ -50,6 +51,8 @@ public class PlayerCore
     private bool _isLoadedFromArgs = false;
 
     private bool _isLoadingTrack = false;
+    /// <summary>Subtitle files found for the loading file, added to mpv once it has loaded it.</summary>
+    private List<ExternalSubtitle> _externalSubtitles = [];
 
     /// <summary>The current file is still downloading and is played from the server's download stream.</summary>
     public bool IsStreamingDownload => _downloadRanges is not null;
@@ -130,6 +133,14 @@ public class PlayerCore
         }
 
         CurrentMediaFile = file;
+        // Only for files without subtitles of their own.
+        _externalSubtitles = CurrentMediaProbe.SubtitleStreams.Count == 0
+            ? ExternalSubtitles.Find(file.Path, _isLoadedFromArgs ? null : _mediaItemManager.CurrentMediaItem?.FolderDirectory)
+            : [];
+        if (_externalSubtitles.Count > 0)
+        {
+            Log.Information("Subtitle files for {Path}: {Subtitles}", file.Path, _externalSubtitles.Select(s => s.Path));
+        }
         SetDownloadRanges(download is { Complete: false } ? download.Ranges : null);
         if (download is { Complete: false }) StartDownloadPolling(file.Path);
 
@@ -192,7 +203,8 @@ public class PlayerCore
     {
         if (!_isLoadingTrack) return;
         OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
-        _audioSubtitlesService.AutoSelectAudioAndSubtitles();
+        _player.AddExternalSubtitles(_externalSubtitles);
+        _audioSubtitlesService.AutoSelectAudioAndSubtitles(selectSubtitle: _externalSubtitles.Count > 0);
         _audioSubtitlesService.SendAudioAndSubtitles();
         _audioSubtitlesService.SendAudioSegments(CurrentMediaFile);
 

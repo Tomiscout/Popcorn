@@ -102,7 +102,7 @@ public enum FileLinkKind
 {
     /// <summary>magnet: URI, passed to the torrent program.</summary>
     Magnet,
-    /// <summary>URL of a .torrent file.</summary>
+    /// <summary>URL of a .torrent file, or the file itself as <c>data:application/x-bittorrent;base64,…</c>.</summary>
     Torrent,
     /// <summary>URL of the file itself (http, https, ftp).</summary>
     Direct,
@@ -154,6 +154,16 @@ public record ImageQuery
     public int? Year { get; init; }
     /// <summary>Set when the name looks like an episode (<see cref="MediaKind.Show"/>); null = unknown.</summary>
     public MediaKind? Kind { get; init; }
+    /// <summary>
+    /// IMDb id ("tt1234567") of the item: known from the media page it was added from, or written in its name. When
+    /// set it identifies the title; use it before any name search.
+    /// </summary>
+    public string? ImdbId { get; init; }
+    /// <summary>
+    /// This plugin's own media id (<see cref="MediaDetails.Id"/>) when the item was added from this plugin's media
+    /// page: the exact title, wins over everything else. Only ever set for the plugin that produced it.
+    /// </summary>
+    public string? MediaId { get; init; }
 }
 
 /// <summary>An image found by an <see cref="IImageProvider"/>.</summary>
@@ -165,4 +175,9 @@ public class ImageResult
     public string? ThumbnailUrl { get; init; }
     /// <summary>What the image is of, e.g. "The Matrix (1999)"; shown as a tooltip.</summary>
     public string? Title { get; init; }
+    /// <summary>
+    /// Heading for the title the image belongs to when a search finds several (e.g. "The Matrix (1999) · Movie"):
+    /// consecutive images with the same group are shown together under it. Null = no heading.
+    /// </summary>
+    public string? Group { get; init; }
 }

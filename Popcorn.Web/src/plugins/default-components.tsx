@@ -7,6 +7,7 @@ import {
   Flex,
   Group,
   Image,
+  Loader,
   Menu,
   ScrollArea,
   Stack,
@@ -16,7 +17,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { IconChevronDown, IconDownload, IconExternalLink, IconPlus } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type {
   DetailsCardProps,
   DetailsProps,
@@ -130,6 +131,27 @@ const PILL_LABELS: Partial<Record<FileLinkKind, string>> = {
   Torrent: '.torrent',
 };
 
+/**
+ * Keys of the card's actions that are still running (a `resolve` link being fetched): `run` marks the key busy while
+ * the promise `work` returns is pending; synchronous actions never show as busy.
+ */
+function useBusy() {
+  const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
+  const run = useCallback((key: string, work: () => void | Promise<void>) => {
+    const result = work();
+    if (!result) return;
+    setBusy((b) => new Set(b).add(key));
+    void result.finally(() =>
+      setBusy((b) => {
+        const next = new Set(b);
+        next.delete(key);
+        return next;
+      })
+    );
+  }, []);
+  return { busy, run };
+}
+
 /** Menu of a downloadable link: Popcorn's own client or the external one (the default first). */
 function LinkMenuItems({ link, openLink }: { link: FileLink; openLink: FileCardProps['openLink'] }) {
   const internalLabel = link.kind === 'Direct' ? 'Download in Popcorn' : 'Download with Popcorn torrent client';
@@ -146,10 +168,10 @@ function LinkMenuItems({ link, openLink }: { link: FileLink; openLink: FileCardP
 }
 
 /** Magnet / .torrent link as a small pill: secondary to Add, opens a menu to pick the client. */
-function LinkPill({ link, openLink }: { link: FileLink; openLink: FileCardProps['openLink'] }) {
+function LinkPill({ link, openLink, busy }: { link: FileLink; openLink: FileCardProps['openLink']; busy: boolean }) {
   const label = link.label ?? PILL_LABELS[link.kind] ?? link.kind;
   return (
-    <Menu position="bottom-end" withinPortal>
+    <Menu position="bottom-end" withinPortal disabled={busy}>
       <Menu.Target>
         <Badge
           component="button"
@@ -158,7 +180,10 @@ function LinkPill({ link, openLink }: { link: FileLink; openLink: FileCardProps[
           color="gray"
           size="lg"
           radius="xl"
-          style={{ cursor: 'pointer', textTransform: 'none', fontWeight: 500 }}
+          disabled={busy}
+          aria-busy={busy}
+          leftSection={busy ? <Loader size={12} color="gray" /> : undefined}
+          style={{ cursor: busy ? 'wait' : 'pointer', textTransform: 'none', fontWeight: 500 }}
         >
           {label}
         </Badge>
@@ -175,16 +200,18 @@ function FileLinkButton({
   link,
   openLink,
   defaultTarget,
+  busy,
 }: {
   link: FileLink;
   openLink: FileCardProps['openLink'];
   defaultTarget: FileCardProps['defaultTarget'];
+  busy: boolean;
 }) {
   const label = link.label ?? LINK_LABELS[link.kind] ?? link.kind;
   const target = defaultTarget(link.kind);
   if (!target)
     return (
-      <Button size="compact-sm" variant="subtle" onClick={() => openLink(link)}>
+      <Button size="compact-sm" variant="subtle" loading={busy} onClick={() => openLink(link)}>
         {label}
       </Button>
     );
@@ -197,6 +224,7 @@ function FileLinkButton({
           size="compact-sm"
           variant="light"
           leftSection={target === 'internal' ? <IconDownload size={14} /> : <IconExternalLink size={14} />}
+          loading={busy}
           onClick={() => openLink(link)}
         >
           {label}
@@ -204,7 +232,7 @@ function FileLinkButton({
       </Tooltip>
       <Menu position="bottom-end" withinPortal>
         <Menu.Target>
-          <Button size="compact-sm" variant="light" px={4} aria-label={`${label}: download options`}>
+          <Button size="compact-sm" variant="light" px={4} disabled={busy} aria-label={`${label}: download options`}>
             <IconChevronDown size={14} />
           </Button>
         </Menu.Target>
@@ -217,6 +245,7 @@ function FileLinkButton({
 }
 
 export function DefaultFileCard({ file, openLink, defaultTarget, add }: FileCardProps) {
+  const { busy, run } = useBusy();
   return (
     <Group className="plugin-file-card" p="sm" gap="sm" justify="space-between" wrap="nowrap" align="flex-start">
       <Stack gap={4} style={{ minWidth: 0 }}>
@@ -236,16 +265,23 @@ export function DefaultFileCard({ file, openLink, defaultTarget, add }: FileCard
         {file.badges.length > 0 && <Badges badges={file.badges} size="sm" />}
       </Stack>
       <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
-        {file.links.map((link, i) =>
-          link.kind === 'Magnet' || link.kind === 'Torrent' ? (
-            <LinkPill key={`${link.kind}-${i}`} link={link} openLink={openLink} />
+        {file.links.map((link, i) => {
+          const key = `${link.kind}-${i}`;
+          const open: FileCardProps['openLink'] = (l, target) => run(key, () => openLink(l, target));
+          return link.kind === 'Magnet' || link.kind === 'Torrent' ? (
+            <LinkPill key={key} link={link} openLink={open} busy={busy.has(key)} />
           ) : (
-            <FileLinkButton key={`${link.kind}-${i}`} link={link} openLink={openLink} defaultTarget={defaultTarget} />
-          )
-        )}
+            <FileLinkButton key={key} link={link} openLink={open} defaultTarget={defaultTarget} busy={busy.has(key)} />
+          );
+        })}
         {add && (
           <Tooltip label={add.hint} openDelay={400}>
-            <Button size="compact-sm" leftSection={<IconPlus size={14} />} onClick={add.onAdd}>
+            <Button
+              size="compact-sm"
+              leftSection={<IconPlus size={14} />}
+              loading={busy.has('add')}
+              onClick={() => run('add', add.onAdd)}
+            >
               Add
             </Button>
           </Tooltip>

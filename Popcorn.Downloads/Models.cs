@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Popcorn.Domain.Models;
 
 namespace Popcorn.Downloads;
 
@@ -72,6 +73,9 @@ public class DownloadRecord
     public bool AddToLibrary { get; set; }
     public string? MediaTitle { get; set; }
     public string? PosterUrl { get; set; }
+    public string? BackdropUrl { get; set; }
+    /// <summary>Media page the download was started from: given to the library item (<see cref="MediaItem.Source"/>).</summary>
+    public MediaSourceRef? MediaSource { get; set; }
     public Guid? MediaItemId { get; set; }
     /// <summary>
     /// Downloaded for this existing library item: saved in a folder inside the item's folder and its videos are added
@@ -149,6 +153,8 @@ public record AddDownloadOptions
     public bool AddToLibrary { get; init; }
     public string? MediaTitle { get; init; }
     public string? PosterUrl { get; init; }
+    public string? BackdropUrl { get; init; }
+    public MediaSourceRef? MediaSource { get; init; }
     /// <summary>Existing library item to add the files to (<see cref="DownloadRecord.AttachToItemId"/>).</summary>
     public Guid? MediaItemId { get; init; }
 }

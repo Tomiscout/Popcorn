@@ -372,7 +372,12 @@ public interface IImageProvider
 * `SearchImagesAsync`: only called with a `kind` listed in `ImageKinds`. Best match first; return `[]` for no
   results, throw on failure (shown under the provider's results). `ImageResult.Url` must be an absolute http(s) URL
   of the full-size image (the server downloads and stores the picked one: jpeg/png/webp/gif, at most 20 MB);
-  `ThumbnailUrl` is shown in the picker. All image providers of a kind are queried in parallel.
+  `ThumbnailUrl` is shown in the picker. All image providers of a kind are queried in parallel. Identify the title
+  in this order: `ImageQuery.MediaId` (your own `MediaDetails.Id`, set only when the item was added from your
+  plugin's media page), `ImdbId` (from the media page the item was added from, or written in its name), and only
+  then `Title`/`Year`/`Kind`. A name search can be ambiguous (a show and its remake share the name), so return images
+  of several matches with `ImageResult.Group` set to a heading per title (e.g. `"Dune (2021) · Movie"`), the best
+  match's group first: the picker shows each group under its heading.
 * Each call gets a 30 s timeout through `cancellationToken`.
 
 Models (serialized to the UI as camelCase JSON):
@@ -419,13 +424,13 @@ On the search page only `Text` is set.
 | `Links` | `FileLink(Kind, Url, Label?)`, one button each. `Kind`: `Magnet` (magnet: URI), `Torrent` (.torrent URL), `Direct` (the file itself, http/https/ftp), `Page` (a web page about it). `Label` overrides the button text. `Resolve = true`: fetched on use, see [below](#resolve). |
 | `Data` | Any object, for your UI components. |
 
-| `ImageQuery` | input of an image search |
+| `ImageQuery` | input of an image search: `Title`, `Year`, `Kind`, `ImdbId`, `MediaId` |
 |---|---|
 | `Title` (required) | The item name (folder name or what the user typed), cleaned of release tags when it parses (`The.Matrix.1999.1080p` → `The Matrix`). |
 | `Year` | When the name has one. |
 | `Kind` | `MediaKind.Show` when the name looks like episodes/seasons, else null (unknown). |
 
-| `ImageResult` | one picture |
+| `ImageResult` | one picture (`Url`, `ThumbnailUrl`, `Title` tooltip, `Group` heading) |
 |---|---|
 | `Url` (required) | Full-size image, absolute http(s). |
 | `ThumbnailUrl` | Smaller version for the picker; null = `Url`. |
@@ -436,13 +441,17 @@ by the kind it returns. Each download link can go to one of two targets:
 
 * **internal**: Popcorn's own downloader (Downloads page): `Magnet`/`Torrent` → built-in torrent client, `Direct` →
   built-in HTTP downloader. Downloads started from a media details page are added to the library under that item's
-  title and poster, and can be played while they download. Only `magnet:` and `http(s):` URLs.
-* **external**: in a browser, `Magnet` goes to the OS (torrent program) and the rest opens in a new tab; in the
-  desktop app the server opens them with the system handler (`xdg-open`). Only `magnet:`, `http(s):` and `ftp:` URLs.
+  title and poster, and can be played while they download. Only `magnet:`, `http(s):` and .torrent `data:` URLs.
+* **external**: in a browser, `Magnet` goes to the OS (torrent program), a .torrent `data:` URL is saved as a
+  .torrent file and the rest opens in a new tab; in the desktop app the server opens them with the system handler
+  (`xdg-open`; a .torrent `data:` URL as a temporary .torrent file). Only `magnet:`, `http(s):`, `ftp:` and .torrent
+  `data:` URLs.
 
 The default target per kind is a user setting (Settings → Downloads); the built-in card has a menu for the other one.
 `Page` links are always external. A link that needs a login (private trackers) only works if the browser (external)
-is logged in too — the internal downloader sends no cookies.
+is logged in too — the internal downloader sends no cookies. For .torrent files behind your plugin's own login,
+return a `Torrent` link with `Resolve = true` and download the file in `ResolveLinkAsync` with your session: return
+it as `data:application/x-bittorrent;base64,<file>` (both targets accept that).
 
 <a id="resolve"></a>**Links fetched on use.** When the link is not in the search results (e.g. the magnet is only on
 each torrent's own page), don't fetch every result's page during the search: return the link with `Resolve = true`,

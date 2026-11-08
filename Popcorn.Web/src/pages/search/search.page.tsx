@@ -11,6 +11,7 @@ import { PluginSearchRequest, PluginSearchResponse } from '../../model/plugin.co
 import { pluginDetailsPath, usePlugins } from '../../plugins/plugins.hook';
 import { PluginSearchCard } from '../../plugins/plugin-components';
 import { loadingResults, ProviderResults, useFileSearch } from '../../plugins/file-sources';
+import { SourceFilter } from '../../plugins/source-filter';
 import { FileResults } from '../../plugins/file-results';
 import { ProviderGroup } from '../../plugins/provider-group';
 
@@ -38,7 +39,13 @@ const SearchPage: React.FC = () => {
   const setMediaResults = useSearchStore((s) => s.setMediaResults);
   const setFiles = useSearchStore((s) => s.setFiles);
   const navigate = useNavigate();
-  const { sources, start: startFileSearch, refresh: refreshFiles } = useFileSearch(files, setFiles);
+  const {
+    sources,
+    enabled,
+    setEnabled,
+    start: startFileSearch,
+    refresh: refreshFiles,
+  } = useFileSearch(files, setFiles);
 
   const mediaSources = useMemo(() => plugins?.filter((p) => p.media) ?? [], [plugins]);
   const fileSources = sources ?? [];
@@ -137,8 +144,9 @@ const SearchPage: React.FC = () => {
         <Tabs.Panel value="files">
           <Stack mt="md">
             {fileSources.length === 0 && noSources('file')}
-            {files && fileSources.length > 0 && (
-              <FileResults section="files" sources={fileSources} search={files} onRefresh={refreshFiles} />
+            <SourceFilter sources={fileSources} enabled={enabled ?? []} onChange={setEnabled} />
+            {files && enabled && enabled.length > 0 && (
+              <FileResults section="files" sources={enabled} search={files} onRefresh={refreshFiles} />
             )}
           </Stack>
         </Tabs.Panel>

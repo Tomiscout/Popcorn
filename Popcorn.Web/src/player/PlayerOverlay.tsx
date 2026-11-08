@@ -10,6 +10,7 @@ import { FinOverlay } from './Components/FinOverlay/FinOverlay';
 import { useEventListeners } from './Utlis/listener.utils';
 import { needsBuffering, usePlayerStore } from '../state/player.store';
 import { CenterPlayButton } from './Components/CenterPlayButton/CenterPlayButton';
+import { SubtitleSync } from './Components/SubtitleSync/SubtitleSync';
 import { isTouchDevice } from '../utils/platform';
 
 interface PlayerOverlayProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
@@ -33,6 +34,7 @@ export const PlayerOverlay = forwardRef<HTMLDivElement, PlayerOverlayProps>(
     useImperativeHandle(ref, () => containerRef.current!, []);
 
     const metadata = usePlayerStore((s) => s.metadata);
+    const subtitleSyncOpen = usePlayerStore((s) => s.subtitleSyncOpen);
     const [controlsActive, setShowControls] = useState(true);
     const holdControls = usePlayerStore((s) => s.holdControls);
     const showControls = controlsActive || holdControls;
@@ -120,6 +122,7 @@ export const PlayerOverlay = forwardRef<HTMLDivElement, PlayerOverlayProps>(
             <ControlBar showControls={showControls} />
             {isTouchDevice && !isFloating && <CenterPlayButton visible={showControls} />}
             <PlaybackNotificationControl />
+            {subtitleSyncOpen && !isFloating && <SubtitleSync />}
             {children}
           </>
         )}

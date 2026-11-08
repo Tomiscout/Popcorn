@@ -9,6 +9,7 @@ import PlayerList, { newPlayerId } from './player-list';
 import PluginList from './plugin-list';
 import DownloadSettingsSection from './download-settings';
 import UpdateSection from './update-section';
+import LanguageSettings from './language-settings';
 
 // Own chunk: date picker + virtual list, only needed on the Logs tab.
 const LogViewer = lazy(() => import('./logs/log-viewer'));
@@ -111,6 +112,8 @@ const SettingsPage: React.FC = () => {
                 onAddProgram={() => client.sendEvent(SocketRequests.PickPlayerProgram)}
               />
             </Stack>
+
+            <LanguageSettings settings={settings} onChange={saveSettings} />
 
             <Stack mt={30} maw={720} gap="xs">
               <Title order={3}>Intros and outros</Title>

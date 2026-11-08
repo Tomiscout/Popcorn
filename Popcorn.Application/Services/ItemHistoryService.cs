@@ -19,6 +19,7 @@ public class ItemHistoryService(IMediaItemRepository mediaItemRepository, IMedia
             var file = files.FirstOrDefault(f => f.Id == h.FileId);
             return new ItemHistoryDto
             {
+                Id = h.Id,
                 Title = file?.ShortTitle ?? file?.Title ?? string.Empty,
                 PlaybackTime = h.PlaybackTime,
                 FileId = h.FileId,

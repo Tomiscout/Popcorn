@@ -5,7 +5,8 @@ import { useMemo, useState } from 'react';
 import { DownloadAddBatchRequest, DownloadKind } from '../../model/download.contract';
 import { MediaItem } from '../../model/media.contract';
 import { FileResults } from '../../plugins/file-results';
-import { FileSearch, LinkMedia, useFileSearch } from '../../plugins/file-sources';
+import { FileSearch, LinkMedia, searchLabel, useFileSearch } from '../../plugins/file-sources';
+import { SourceFilter } from '../../plugins/source-filter';
 import { SocketRequests } from '../../socket/socket-requests';
 import { useWebSocket } from '../../state/websocket-context';
 
@@ -95,7 +96,7 @@ export function ItemFileSources({ item, initialQuery }: { item: MediaItem; initi
   const title = item.shortTitle || item.title;
   const [text, setText] = useState(initialQuery ?? title);
   const [search, setSearch] = useState<FileSearch | null>(null);
-  const { sources, start, refresh } = useFileSearch(search, setSearch);
+  const { sources, enabled, setEnabled, start, refresh } = useFileSearch(search, setSearch);
   const media = useMemo<LinkMedia>(() => ({ title, itemId: item.id }), [title, item.id]);
   const query = text.trim();
 
@@ -103,22 +104,25 @@ export function ItemFileSources({ item, initialQuery }: { item: MediaItem; initi
     <Stack gap="md" p="sm">
       <AddLinks itemId={item.id} />
       {sources?.length ? (
-        <Group gap="sm" align="flex-end">
-          <TextInput
-            style={{ flex: 1, maxWidth: 480 }}
-            label="Search file sources"
-            value={text}
-            onChange={(e) => setText(e.currentTarget.value)}
-            onKeyDown={(e) => e.key === 'Enter' && query && start({ text: query, title: query })}
-          />
-          <Button
-            leftSection={<IconSearch size={16} />}
-            disabled={!query}
-            onClick={() => start({ text: query, title: query })}
-          >
-            Search {sources.length === 1 ? sources[0].name : `${sources.length} sources`}
-          </Button>
-        </Group>
+        <Stack gap="xs">
+          <Group gap="sm" align="flex-end">
+            <TextInput
+              style={{ flex: 1, maxWidth: 480 }}
+              label="Search file sources"
+              value={text}
+              onChange={(e) => setText(e.currentTarget.value)}
+              onKeyDown={(e) => e.key === 'Enter' && query && start({ text: query, title: query })}
+            />
+            <Button
+              leftSection={<IconSearch size={16} />}
+              disabled={!query || !enabled?.length}
+              onClick={() => start({ text: query, title: query })}
+            >
+              {searchLabel(enabled ?? [])}
+            </Button>
+          </Group>
+          <SourceFilter sources={sources} enabled={enabled ?? []} onChange={setEnabled} />
+        </Stack>
       ) : (
         sources && (
           <Text c="dimmed" size="sm">
@@ -126,8 +130,8 @@ export function ItemFileSources({ item, initialQuery }: { item: MediaItem; initi
           </Text>
         )
       )}
-      {search && sources && (
-        <FileResults section="item-file-sources" sources={sources} search={search} media={media} onRefresh={refresh} />
+      {search && enabled && (
+        <FileResults section="item-file-sources" sources={enabled} search={search} media={media} onRefresh={refresh} />
       )}
     </Stack>
   );
