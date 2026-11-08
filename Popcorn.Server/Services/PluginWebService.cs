@@ -13,6 +13,7 @@ namespace Popcorn.Server.Services;
 public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFileService fileService, ILogger<PluginWebService> logger)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan ActionTimeout = TimeSpan.FromMinutes(2);
 
     [WebSocketEvent(SocketRequests.PluginList)]
     public async Task SendPluginList()
@@ -28,11 +29,12 @@ public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFi
                 Media = e.Loaded?.Media is not null,
                 FileSources = FileSources(e),
                 ImageKinds = ImageKinds(e.Loaded),
-                HasSettings = e.Manifest?.Settings.Count > 0,
+                HasSettings = e.Manifest?.Settings.Count > 0 || e.Loaded?.Actions is not null,
                 Enabled = e.Enabled,
                 Loaded = e.Loaded is not null,
                 Bundled = e.Bundled,
                 Error = e.Error,
+                Status = e.Loaded?.Status.Messages ?? [],
             })
             .ToList();
         await bus.SendEventAsync(SocketRequests.PluginList, plugins);
@@ -72,14 +74,29 @@ public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFi
         PluginSettingsResponse response;
         try
         {
-            var settings = pluginManager.GetSettings(request.PluginId);
-            response = new PluginSettingsResponse
+            var entry = pluginManager.Entries.FirstOrDefault(e => e.Id == request.PluginId)
+                        ?? throw new KeyNotFoundException($"Plugin '{request.PluginId}' is not installed");
+            var actions = ActionsOf(entry.Loaded);
+            if (entry.Manifest is { Settings.Count: > 0 })
             {
-                PluginId = request.PluginId,
-                Fields = settings.Fields,
-                Values = settings.PublicValues(),
-                SecretsSet = settings.SecretsSet(),
-            };
+                var settings = pluginManager.GetSettings(request.PluginId);
+                response = new PluginSettingsResponse
+                {
+                    PluginId = request.PluginId,
+                    Fields = settings.Fields,
+                    Values = settings.PublicValues(),
+                    SecretsSet = settings.SecretsSet(),
+                    Actions = actions,
+                };
+            }
+            else if (actions.Count > 0)
+            {
+                response = new PluginSettingsResponse { PluginId = request.PluginId, Actions = actions };
+            }
+            else
+            {
+                throw new InvalidOperationException($"Plugin '{request.PluginId}' has no settings");
+            }
         }
         catch (Exception ex)
         {
@@ -104,6 +121,54 @@ public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFi
         }
         await bus.SendEventAsync(SocketRequests.PluginSettingsSave, new PluginSettingsSaveResponse { PluginId = request.PluginId, Error = error });
         await SendPluginList();
+    }
+
+    [WebSocketEvent(SocketRequests.PluginAction)]
+    public Task RunAction(PluginActionRequest request)
+    {
+        // May take minutes: not on the socket's message loop, the answer comes as its own event.
+        _ = Task.Run(async () =>
+        {
+            var response = await RunActionAsync(request);
+            try
+            {
+                await bus.SendEventAsync(SocketRequests.PluginAction, response);
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Plugin action answer not delivered (page closed?)");
+            }
+        });
+        return Task.CompletedTask;
+    }
+
+    private async Task<PluginActionResponse> RunActionAsync(PluginActionRequest request)
+    {
+        IPluginActions? actions = null;
+        try
+        {
+            actions = GetPlugin(request.PluginId).Actions ?? throw new InvalidOperationException($"Plugin '{request.PluginId}' has no actions");
+            var action = actions.Actions.FirstOrDefault(a => a.Id == request.ActionId)
+                         ?? throw new KeyNotFoundException($"Plugin '{request.PluginId}' has no action '{request.ActionId}'");
+            if (action.Disabled) throw new InvalidOperationException($"{action.Label} is not available right now");
+            using var cts = new CancellationTokenSource(ActionTimeout);
+            logger.LogInformation("Running action {action} of plugin {plugin}", request.ActionId, request.PluginId);
+            var result = await actions.RunActionAsync(request.ActionId, cts.Token);
+            return new PluginActionResponse
+            {
+                PluginId = request.PluginId,
+                ActionId = request.ActionId,
+                Message = result.Message,
+                Warning = result.Warning,
+                Actions = ActionsOf(actions),
+            };
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Action {action} of plugin {plugin} failed", request.ActionId, request.PluginId);
+            var error = ex is OperationCanceledException ? "The action took too long and was cancelled" : ex.Message;
+            return new PluginActionResponse { PluginId = request.PluginId, ActionId = request.ActionId, Error = error, Actions = ActionsOf(actions) };
+        }
     }
 
     [WebSocketEvent(SocketRequests.PluginSearch)]
@@ -223,6 +288,71 @@ public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFi
     }
 
     /// <summary>Opens a file link on the server machine (desktop app: the UI cannot hand magnet: links to the OS).</summary>
+    /// <summary>
+    /// Fetches <see cref="FileLink.Resolve"/> links (e.g. a magnet from its torrent page, through FlareSolverr) when they
+    /// are used. Off the socket loop like actions: it may take a while and searches must not wait for it.
+    /// </summary>
+    [WebSocketEvent(SocketRequests.PluginResolveLinks)]
+    public Task ResolveLinks(PluginResolveLinksRequest request)
+    {
+        _ = Task.Run(async () =>
+        {
+            var response = await ResolveLinksAsync(request);
+            try
+            {
+                await bus.SendEventAsync(SocketRequests.PluginResolveLinks, response);
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Resolved links not delivered (page closed?)");
+            }
+        });
+        return Task.CompletedTask;
+    }
+
+    private async Task<PluginResolveLinksResponse> ResolveLinksAsync(PluginResolveLinksRequest request)
+    {
+        IFileLinkResolver resolver;
+        try
+        {
+            var source = GetPlugin(request.PluginId).GetFileSources().FirstOrDefault(s => s.Id == request.SourceId)
+                         ?? throw new KeyNotFoundException($"Plugin '{request.PluginId}' has no file source '{request.SourceId}'");
+            resolver = source.Source as IFileLinkResolver
+                       ?? throw new InvalidOperationException($"Plugin '{request.PluginId}' cannot fetch links");
+        }
+        catch (Exception ex)
+        {
+            return new PluginResolveLinksResponse
+            {
+                RequestId = request.RequestId,
+                Links = request.Links.Select(_ => (FileLink?)null).ToList(),
+                Errors = request.Links.Select(_ => (string?)ex.Message).ToList(),
+            };
+        }
+
+        using var cts = new CancellationTokenSource(Timeout);
+        var results = await Task.WhenAll(request.Links.Select(async link =>
+        {
+            try
+            {
+                var resolved = await resolver.ResolveLinkAsync(link with { Resolve = true }, cts.Token);
+                if (resolved.Resolve) throw new InvalidOperationException("The plugin returned a link that still needs fetching");
+                return (Link: (FileLink?)resolved, Error: (string?)null);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Plugin {plugin} could not fetch link {url}", request.PluginId, link.Url);
+                return (null, ex is OperationCanceledException ? "Fetching the link took too long" : ex.Message);
+            }
+        }));
+        return new PluginResolveLinksResponse
+        {
+            RequestId = request.RequestId,
+            Links = results.Select(r => r.Link).ToList(),
+            Errors = results.Select(r => r.Error).ToList(),
+        };
+    }
+
     [WebSocketEvent(SocketRequests.OpenLink)]
     public Task OpenLink(OpenLinkRequest request)
     {
@@ -289,6 +419,26 @@ public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFi
     /// <summary>URL of a file in the plugin's <c>web/</c> folder; the version suffix keeps browsers off a replaced plugin's copy.</summary>
     private static string? WebUrl(LoadedPlugin plugin, string? path) =>
         path is null ? null : $"/plugins/{plugin.Manifest.Id}/{path.TrimStart('/')}?v={plugin.LoadedAt}";
+
+    private IReadOnlyList<PluginAction> ActionsOf(LoadedPlugin? plugin) => ActionsOf(plugin?.Actions);
+
+    /// <summary>The plugin's buttons; a plugin that throws listing them gets none (logged).</summary>
+    private IReadOnlyList<PluginAction> ActionsOf(IPluginActions? actions)
+    {
+        if (actions is null) return [];
+        try
+        {
+            var list = actions.Actions;
+            if (list.Select(a => a.Id).Distinct(StringComparer.Ordinal).Count() != list.Count)
+                throw new InvalidDataException("Action ids are not unique");
+            return list;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not list plugin actions");
+            return [];
+        }
+    }
 
     private static InvalidOperationException NotA(string id, string kind) => new($"Plugin '{id}' is not a {kind} source");
 

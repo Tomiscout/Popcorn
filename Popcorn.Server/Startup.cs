@@ -55,6 +55,7 @@ public class Startup
 
         var pluginManager = app.ApplicationServices.GetRequiredService<PluginManager>();
         pluginManager.LoadAll();
+        app.ApplicationServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping.Register(pluginManager.UnloadAll);
         app.UseStaticFiles(new StaticFileOptions
         {
             RequestPath = "/plugins",
@@ -107,7 +108,38 @@ public class Startup
 
             var bus = new WebSocketBus(webSocket, serviceScopeFactory);
             WebSocketServices.RegisterWebServices(bus, typeof(Startup).Assembly);
-            await bus.ListenAsync();
+
+            // Plugin status messages change on their own (IPluginStatus): push the plugin list, a burst as one.
+            var pluginManager = context.RequestServices.GetRequiredService<PluginManager>();
+            var statusPending = 0;
+            void OnPluginStatus()
+            {
+                if (Interlocked.Exchange(ref statusPending, 1) == 1) return;
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(200);
+                    Interlocked.Exchange(ref statusPending, 0);
+                    if (webSocket.State != WebSocketState.Open) return;
+                    try
+                    {
+                        using var scope = serviceScopeFactory.CreateScope();
+                        await ActivatorUtilities.CreateInstance<Services.PluginWebService>(scope.ServiceProvider, bus).SendPluginList();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Debug(ex, "Could not send plugin status change");
+                    }
+                });
+            }
+            pluginManager.StatusChanged += OnPluginStatus;
+            try
+            {
+                await bus.ListenAsync();
+            }
+            finally
+            {
+                pluginManager.StatusChanged -= OnPluginStatus;
+            }
 
             if (webSocket.State == WebSocketState.Open)
             {

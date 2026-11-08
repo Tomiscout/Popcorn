@@ -20,14 +20,17 @@ public class PluginInfo
     public IReadOnlyList<FileSourceInfo> FileSources { get; init; } = [];
     /// <summary>Image kinds a loaded image provider supplies (posters/backdrops of library items); empty = none.</summary>
     public IReadOnlyList<ImageKind> ImageKinds { get; init; } = [];
-    /// <summary>plugin.json declares settings (<see cref="PluginSettingsResponse"/>).</summary>
+    /// <summary>plugin.json declares settings or the loaded plugin has actions: it has a settings dialog (<see cref="PluginSettingsResponse"/>).</summary>
     public bool HasSettings { get; init; }
     public bool Enabled { get; init; }
     /// <summary>Enabled and loaded without errors: usable for search.</summary>
     public bool Loaded { get; init; }
     /// <summary>Ships with the program (can be disabled, not uninstalled).</summary>
     public bool Bundled { get; init; }
+    /// <summary>Did not load (or plugin.json is unreadable).</summary>
     public string? Error { get; init; }
+    /// <summary>Messages of the loaded plugin (<see cref="IPluginStatus"/>); empty = none.</summary>
+    public IReadOnlyList<PluginStatusMessage> Status { get; init; } = [];
 }
 
 /// <summary>A <see cref="FileSource"/>; a plugin that is itself the file source has one with id "".</summary>
@@ -71,7 +74,28 @@ public class PluginSettingsResponse
     public IReadOnlyDictionary<string, JsonElement> Values { get; init; } = new Dictionary<string, JsonElement>();
     /// <summary>Keys of the password fields that have a value.</summary>
     public IReadOnlyList<string> SecretsSet { get; init; } = [];
+    /// <summary>Buttons of a loaded plugin (<see cref="IPluginActions"/>); empty = none.</summary>
+    public IReadOnlyList<PluginAction> Actions { get; init; } = [];
     public string? Error { get; init; }
+}
+
+public class PluginActionRequest
+{
+    public string PluginId { get; set; } = string.Empty;
+    public string ActionId { get; set; } = string.Empty;
+}
+
+public class PluginActionResponse
+{
+    public required string PluginId { get; init; }
+    public required string ActionId { get; init; }
+    /// <summary><see cref="PluginActionResult.Message"/> of a successful run.</summary>
+    public string? Message { get; init; }
+    public bool Warning { get; init; }
+    /// <summary>Set when the action failed (threw, timed out, plugin not loaded).</summary>
+    public string? Error { get; init; }
+    /// <summary>The plugin's actions after the run (they may change).</summary>
+    public IReadOnlyList<PluginAction> Actions { get; init; } = [];
 }
 
 public class PluginSettingsSaveRequest
@@ -132,6 +156,25 @@ public class PluginFileSearchResponse
     public required string RequestId { get; init; }
     public IReadOnlyList<FileResult> Results { get; init; } = [];
     public string? Error { get; init; }
+}
+
+/// <summary><see cref="FileLink.Resolve"/> links of one file source to turn into usable ones.</summary>
+public class PluginResolveLinksRequest
+{
+    public string PluginId { get; set; } = string.Empty;
+    public string SourceId { get; set; } = string.Empty;
+    /// <summary>Echoed in the response.</summary>
+    public string RequestId { get; set; } = string.Empty;
+    public List<FileLink> Links { get; set; } = [];
+}
+
+public class PluginResolveLinksResponse
+{
+    public required string RequestId { get; init; }
+    /// <summary>Same order as the request; null where it failed (see <see cref="Errors"/>).</summary>
+    public IReadOnlyList<FileLink?> Links { get; init; } = [];
+    /// <summary>Per link, null where it worked.</summary>
+    public IReadOnlyList<string?> Errors { get; init; } = [];
 }
 
 public class OpenLinkRequest

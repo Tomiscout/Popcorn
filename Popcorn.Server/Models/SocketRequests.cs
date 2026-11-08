@@ -49,6 +49,8 @@ public static class SocketRequests
     public const string PluginFileSearch = "PluginFileSearch";
     public const string PluginSettings = "PluginSettings";
     public const string PluginSettingsSave = "PluginSettingsSave";
+    public const string PluginAction = "PluginAction";
+    public const string PluginResolveLinks = "PluginResolveLinks";
     public const string OpenLink = "OpenLink";
     public const string SegmentsState = "SegmentsState";
     public const string SegmentsDetect = "SegmentsDetect";

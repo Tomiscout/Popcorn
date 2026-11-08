@@ -3,7 +3,13 @@ import type { FileLink, FileLinkKind, FileQuery, FileResult, FileSortField, Link
 import { notifications } from '@mantine/notifications';
 import { DownloadAddBatchRequest, DownloadAddRequest, DownloadKind } from '../model/download.contract';
 import { useSettings } from '../state/settings.store';
-import { OpenLinkRequest, PluginFileSearchRequest, PluginFileSearchResponse } from '../model/plugin.contract';
+import {
+  OpenLinkRequest,
+  PluginFileSearchRequest,
+  PluginFileSearchResponse,
+  PluginResolveLinksRequest,
+  PluginResolveLinksResponse,
+} from '../model/plugin.contract';
 import { SocketRequests } from '../socket/socket-requests';
 import { useSocketEvents } from '../socket/useSocketEvents.hook';
 import { useWebSocket } from '../state/websocket-context';
@@ -141,12 +147,15 @@ const INTERNAL_LINK = /^(magnet:|https?:)/i;
  */
 export type LinkMedia = { title: string; posterUrl?: string | null; itemId?: string };
 
+/** The file source a result came from: fetches its `resolve` links. */
+export type LinkSource = Pick<FileSource, 'pluginId' | 'sourceId'>;
+
 const LINK_PREFERENCE: FileLinkKind[] = ['Magnet', 'Torrent', 'Direct'];
 
 /** The link of a result Popcorn's own client downloads in a batch (magnet first), null if it has none. */
 export function downloadableLink(file: FileResult): FileLink | null {
   for (const kind of LINK_PREFERENCE) {
-    const link = file.links.find((l) => l.kind === kind && INTERNAL_LINK.test(l.url));
+    const link = file.links.find((l) => l.kind === kind && (l.resolve || INTERNAL_LINK.test(l.url)));
     if (link) return link;
   }
   return null;
@@ -154,19 +163,117 @@ export function downloadableLink(file: FileResult): FileLink | null {
 
 const downloadKind = (kind: FileLinkKind): DownloadKind => (kind === 'Direct' ? 'Direct' : 'Torrent');
 
+/** Server limit 30 s (FlareSolverr solving a challenge) plus some slack. */
+const RESOLVE_TIMEOUT_MS = 40_000;
+
+function requestResolve(client: WebSocketClient, source: LinkSource, links: FileLink[]) {
+  const requestId = `${Date.now()}-${++requestCounter}`;
+  return new Promise<PluginResolveLinksResponse>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      off();
+      reject(new Error('The server did not answer'));
+    }, RESOLVE_TIMEOUT_MS);
+    const off = client.onEvent<PluginResolveLinksResponse>(SocketRequests.PluginResolveLinks, (r) => {
+      if (r.requestId !== requestId) return;
+      clearTimeout(timer);
+      off();
+      resolve(r);
+    });
+    client.sendEvent<PluginResolveLinksRequest>(SocketRequests.PluginResolveLinks, {
+      pluginId: source.pluginId,
+      sourceId: source.sourceId,
+      requestId,
+      links,
+    });
+  });
+}
+
+type Resolved = { link: FileLink | null; error: string | null };
+
+/** Links of one source, `resolve` ones fetched from the plugin (one request), the rest as they are. */
+async function resolveLinks(client: WebSocketClient, source: LinkSource, links: FileLink[]): Promise<Resolved[]> {
+  const pending = links.filter((l) => l.resolve);
+  if (pending.length === 0) return links.map((link) => ({ link, error: null }));
+  let response: PluginResolveLinksResponse;
+  try {
+    response = await requestResolve(client, source, pending);
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    return links.map((link) => (link.resolve ? { link: null, error } : { link, error: null }));
+  }
+  let i = 0;
+  return links.map((link) => {
+    if (!link.resolve) return { link, error: null };
+    const k = i++;
+    const resolved = response.links[k] ?? null;
+    return { link: resolved, error: resolved ? null : (response.errors[k] ?? 'The plugin found no link') };
+  });
+}
+
+/** Runs `work` with a "Getting the link…" notification when it has links to fetch; errors replace it. */
+async function withFetchNotice<T>(needed: boolean, count: number, work: () => Promise<T>): Promise<T> {
+  if (!needed) return work();
+  const id = notifications.show({
+    loading: true,
+    autoClose: false,
+    withCloseButton: false,
+    message: count === 1 ? 'Getting the link…' : `Getting ${count} links…`,
+  });
+  try {
+    return await work();
+  } finally {
+    notifications.hide(id);
+  }
+}
+
 /**
  * Downloads several results with Popcorn's own client into one library item (`media.itemId`, else a new item named
- * after `media` / `fallbackTitle`), e.g. the episodes of a season. One link per result, see `downloadableLink`.
+ * after `media` / `fallbackTitle`), e.g. the episodes of a season. One link per result, see `downloadableLink`; links
+ * the plugins fetch on use are fetched first (one request per source).
  */
 export function useDownloadFiles() {
   const { client } = useWebSocket();
   return useCallback(
-    (files: FileResult[], media: LinkMedia | undefined, fallbackTitle: string) => {
-      const links = files.map(downloadableLink).filter((l): l is FileLink => l !== null);
-      if (links.length === 0) {
+    async (items: { plugin: LinkSource; file: FileResult }[], media: LinkMedia | undefined, fallbackTitle: string) => {
+      const wanted = items
+        .map((i) => ({ source: i.plugin, link: downloadableLink(i.file) }))
+        .filter((w): w is { source: LinkSource; link: FileLink } => w.link !== null);
+      if (wanted.length === 0) {
         notifications.show({ color: 'red', message: 'None of these results has a link Popcorn can download' });
         return;
       }
+
+      const bySource = new Map<string, { source: LinkSource; indexes: number[] }>();
+      wanted.forEach((w, index) => {
+        const key = sourceKey(w.source.pluginId, w.source.sourceId);
+        const group = bySource.get(key) ?? { source: w.source, indexes: [] };
+        group.indexes.push(index);
+        bySource.set(key, group);
+      });
+      const toFetch = wanted.filter((w) => w.link.resolve).length;
+      const resolved: Resolved[] = new Array(wanted.length);
+      await withFetchNotice(toFetch > 0, toFetch, () =>
+        Promise.all(
+          [...bySource.values()].map(async ({ source, indexes }) => {
+            const results = await resolveLinks(
+              client,
+              source,
+              indexes.map((i) => wanted[i].link)
+            );
+            results.forEach((r, k) => (resolved[indexes[k]] = r));
+          })
+        )
+      );
+
+      const links = resolved.map((r) => r.link).filter((l): l is FileLink => l !== null && INTERNAL_LINK.test(l.url));
+      const failed = resolved.filter((r) => r.error);
+      if (failed.length > 0)
+        notifications.show({
+          color: 'red',
+          autoClose: 8000,
+          message: `${failed.length} of ${resolved.length} links could not be fetched: ${failed[0].error}`,
+        });
+      if (links.length === 0) return;
       client.sendEvent<DownloadAddBatchRequest>(SocketRequests.DownloadAddBatch, {
         links: links.map((l) => ({ kind: downloadKind(l.kind), url: l.url })),
         mediaItemId: media?.itemId ?? null,
@@ -183,7 +290,7 @@ export function useDownloadFiles() {
  * client (`internal`: Downloads page, added to the library) or out (`external`): in a browser magnet: goes to the OS
  * handler (torrent program) and the rest opens in a new tab; the desktop app has no such handoff, so the server opens
  * it with the system handler. Page links always open externally. Without a target the user's default applies
- * (Settings → Downloads).
+ * (Settings → Downloads). `resolve` links are fetched from their `source` first.
  */
 export function useOpenLink() {
   const { client } = useWebSocket();
@@ -199,7 +306,7 @@ export function useOpenLink() {
     [settings]
   );
 
-  const openLink = useCallback(
+  const openResolved = useCallback(
     (link: FileLink, target?: LinkTarget, media?: LinkMedia) => {
       if (!SAFE_LINK.test(link.url)) {
         console.error('Refusing to open link', link.url);
@@ -222,9 +329,24 @@ export function useOpenLink() {
       }
       if (isDesktopApp) client.sendEvent<OpenLinkRequest>(SocketRequests.OpenLink, { url: link.url });
       else if (link.kind === 'Magnet') window.location.href = link.url;
+      // after fetching a `resolve` link this is no longer the click, so a popup blocker may stop it
       else window.open(link.url, '_blank', 'noopener,noreferrer');
     },
     [client, defaultTarget]
+  );
+
+  const openLink = useCallback(
+    async (link: FileLink, target?: LinkTarget, media?: LinkMedia, source?: LinkSource) => {
+      if (!link.resolve) return openResolved(link, target, media);
+      if (!source) {
+        console.error('A link to fetch without its file source', link);
+        return;
+      }
+      const [{ link: resolved, error }] = await withFetchNotice(true, 1, () => resolveLinks(client, source, [link]));
+      if (resolved) openResolved(resolved, target, media);
+      else notifications.show({ color: 'red', autoClose: 8000, message: `Could not get the link: ${error}` });
+    },
+    [client, openResolved]
   );
 
   return { openLink, defaultTarget };

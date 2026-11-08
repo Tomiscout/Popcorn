@@ -79,6 +79,11 @@ export interface FileLink {
   url: string;
   /** Button text; null = the app's default for the kind. */
   label?: string | null;
+  /**
+   * True = not the link yet: the plugin fetches it when it is used (`IFileLinkResolver`); `url` is the plugin's key for
+   * it. `openLink` does that for you.
+   */
+  resolve?: boolean;
 }
 
 export interface FileResult<TData = unknown> {

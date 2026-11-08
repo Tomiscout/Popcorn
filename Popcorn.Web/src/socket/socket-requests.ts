@@ -45,6 +45,8 @@ export enum SocketRequests {
   PluginFileSearch = 'PluginFileSearch',
   PluginSettings = 'PluginSettings',
   PluginSettingsSave = 'PluginSettingsSave',
+  PluginAction = 'PluginAction',
+  PluginResolveLinks = 'PluginResolveLinks',
   OpenLink = 'OpenLink',
   SegmentsState = 'SegmentsState',
   SegmentsDetect = 'SegmentsDetect',

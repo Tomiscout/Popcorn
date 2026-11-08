@@ -18,6 +18,7 @@ import { IconGripVertical, IconSettings, IconTrash, IconUpload } from '@tabler/i
 import { PluginSetEnabledRequest, PluginSetOrderRequest, PluginUninstallRequest } from '../../model/plugin.contract';
 import { PluginIcon } from '../../plugins/provider-group';
 import PluginSettingsDialog from './plugin-settings-dialog';
+import PluginStatus from './plugin-status';
 import { usePluginStore } from '../../state/plugin.store';
 import { usePluginEntries } from '../../plugins/plugins.hook';
 import { SocketRequests } from '../../socket/socket-requests';
@@ -130,9 +131,9 @@ const PluginList: React.FC = () => {
                                     {kind === 'Poster' ? 'Posters' : 'Backdrops'}
                                   </Badge>
                                 ))}
-                                {plugin.error && (
+                                {(plugin.error || plugin.status?.some((s) => s.level === 'Error')) && (
                                   <Badge size="xs" variant="light" color="red">
-                                    Error
+                                    {plugin.error ? 'Error' : 'Needs attention'}
                                   </Badge>
                                 )}
                               </Group>
@@ -141,6 +142,7 @@ const PluginList: React.FC = () => {
                                   {plugin.error}
                                 </Text>
                               )}
+                              <PluginStatus status={plugin.status ?? []} variant="line" />
                             </Stack>
                           </Group>
                           <Group gap="xs" wrap="nowrap">

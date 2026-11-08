@@ -134,6 +134,121 @@ old values start over and values can be read once in the constructor. Settings c
 disabled or failed to load, and saving retries the load, so a constructor may throw on a bad value and the user can
 still fix it. Throw from a search with a message pointing to Settings → Plugins when something required is missing.
 
+### Actions
+
+Buttons in the plugin's settings dialog ("Test connection", "Log in", "Clear cache"...). Implement `IPluginActions` on
+the plugin class, next to its other interfaces:
+
+```csharp
+public sealed class MySite(IPluginSettings settings) : IFileSourcePlugin, IPluginActions
+{
+    public IReadOnlyList<PluginAction> Actions =>
+    [
+        new("test", "Test connection") { Group = "Account", Description = "Logs in with the saved credentials" },
+        new("clear-cache", "Clear cache") { Color = "red", Confirm = "Forget all cached results?" },
+    ];
+
+    public async Task<PluginActionResult> RunActionAsync(string actionId, CancellationToken cancellationToken)
+    {
+        switch (actionId)
+        {
+            case "test":
+                await LoginAsync(cancellationToken);              // throw on failure: the message is shown
+                return PluginActionResult.Ok("Logged in");
+            case "clear-cache":
+                var count = ClearCache();
+                return count == 0 ? new("Nothing to clear", Warning: true) : PluginActionResult.Ok($"{count} entries removed");
+            default:
+                throw new ArgumentException($"Unknown action {actionId}");
+        }
+    }
+}
+```
+
+* A plugin with actions gets the settings dialog (gear in Settings → Plugins) even without `settings` fields. Actions
+  only show while the plugin is loaded.
+* `Group` puts the button under the settings group of that name (plugin.json `group`, or a new heading), null under
+  the fields without a group. `Description` is shown next to it, `Color` is a Mantine color, `Confirm` asks the user
+  that question first, `Disabled` greys it out.
+* Actions run on the loaded instance, so they see the **saved** settings: the buttons are disabled while the form has
+  unsaved changes. Saving keeps the dialog open when the plugin has actions (the reloaded plugin's actions and values
+  are shown).
+* The result's `Message` is shown in a notification (green, or yellow with `Warning`); an exception is shown as an
+  error. Actions run off the socket's message loop and are cancelled after 2 minutes.
+* `Actions` is read when the dialog opens and after every run, so it can change (e.g. "Log out" once logged in).
+  Ids must be unique, or the plugin shows no actions (logged).
+
+### Shared variables
+
+Plugins can share values through the app, which acts as the mediator: no plugin references another one. A plugin
+publishes a string under a name and any plugin that knows the name reads it. Ask for `IPluginVariables` in the
+constructor:
+
+```csharp
+// publisher, e.g. a proxy plugin: the value comes from its own settings
+public sealed class ProxyPlugin(IPluginSettings settings, IPluginVariables variables) : IFileSourcePlugin
+{
+    // in the constructor body (or wherever the value becomes known)
+    // variables.Set("proxy.url", settings.GetString("url"));   // null removes it
+}
+
+// consumer: read it when it is used, not once in the constructor
+public sealed class MySite(IPluginVariables variables) : IFileSourcePlugin
+{
+    private string? Proxy => variables.Get("proxy.url");
+}
+```
+
+* Values live in memory only. Each one belongs to the plugin that set it last and is **removed when that plugin is
+  unloaded** (disabled, uninstalled, updated, reloaded after its settings were saved), so publish values again in the
+  constructor; a reloaded plugin does that by itself.
+* Plugins load in no particular order and others may come and go at runtime: read values when you need them (a
+  dictionary lookup) and handle `null` (nobody publishes it). `GetAll()` returns every current value.
+* Names are case-sensitive and global: prefix them with a topic (`proxy.url`). Setting a name
+  another plugin set replaces its value (logged).
+* Values are strings so that no types cross plugin load contexts; use JSON for anything structured.
+
+### Status messages
+
+Tell the user what is wrong (mainly "not set up yet") without waiting for a search to fail. Ask for `IPluginStatus` in
+the constructor; messages show on the plugin's row in Settings → Plugins (an `Error` adds a "Needs attention" badge)
+and at the top of its settings dialog:
+
+```csharp
+public sealed class MySite : IFileSourcePlugin
+{
+    private readonly IPluginStatus _status;
+
+    public MySite(IPluginSettings settings, IPluginStatus status)
+    {
+        _status = status;
+        if (string.IsNullOrWhiteSpace(settings.GetString("apiKey")))
+            status.Set(PluginStatusLevel.Error, "Set the API key in the plugin settings", "setup");
+    }
+
+    public async Task<IReadOnlyList<FileResult>> SearchFilesAsync(FileQuery query, CancellationToken ct)
+    {
+        try
+        {
+            var results = await SearchSiteAsync(query, ct);
+            _status.Clear("connection");
+            return results;
+        }
+        catch (HttpRequestException ex)
+        {
+            _status.Set(PluginStatusLevel.Warning, $"Site unreachable: {ex.Message}", "connection");
+            throw;
+        }
+    }
+}
+```
+
+* Levels `Info`, `Warning`, `Error`. Messages are kept by key (default `""`), in the order the keys were first set;
+  `Set` replaces the message of its key, `Clear` removes it.
+* They can change at any time (constructor, searches, actions, timers): open pages update right away.
+* They belong to the loaded instance, so unloading the plugin (also the reload after saving settings) clears them; the
+  new instance's constructor checks its settings again.
+
 ### Where plugins are loaded from
 
 The server scans these at startup and again whenever plugins are managed from **Settings → Plugins**:
@@ -217,10 +332,15 @@ public interface IImageProvider
 ```
 
 * The assembly must contain **exactly one** public, non-abstract class implementing `IMediaSourcePlugin`,
-  `IFileSourcePlugin`, `IFileSourceProvider` or `IImageProvider` (a class can implement several, but not both file
-  kinds).
+  `IFileSourcePlugin`, `IFileSourceProvider`, `IImageProvider` or `IServicePlugin` (a class can implement several, but
+  not both file kinds). `IServicePlugin` = no search role: a plugin that only serves others or the user through
+  [shared variables](#shared-variables), [status messages](#status-messages) and [actions](#actions), e.g. one that
+  runs a helper program and publishes its address. Implement `IDisposable` to stop what it started: plugins are
+  disposed when unloaded and when the server stops.
 * It is created **once** (singleton) with `ActivatorUtilities`, so its constructor can take host services. The ones
-  safe to depend on are `ILogger<T>` / `ILoggerFactory` and `IPluginSettings` ([Settings](#settings)). Calls can run
+  safe to depend on are `ILogger<T>` / `ILoggerFactory`, `IPluginSettings` ([Settings](#settings)) and
+  `IPluginVariables` ([Shared variables](#shared-variables)) and `IPluginStatus` ([Status messages](#status-messages)). The class may also implement `IPluginActions`
+  ([Actions](#actions)): buttons in its settings dialog. Calls can run
   concurrently.
 * `SearchAsync`: return `[]` for no results. Throw on failure. The exception message is shown on the search page.
 * `GetDetailsAsync`: `id` is a `MediaCard.Id` your plugin returned. Return `null` for "not found".
@@ -296,7 +416,7 @@ On the search page only `Text` is set.
 | `Description` | Up to 2 lines. |
 | `Badges` | quality, category, seeders... (as above) |
 | `SortValues` | Key → number for the plugin's `SortFields`, e.g. `{ "seeders": 120, "size": 1.8e9 }`. |
-| `Links` | `FileLink(Kind, Url, Label?)`, one button each. `Kind`: `Magnet` (magnet: URI), `Torrent` (.torrent URL), `Direct` (the file itself, http/https/ftp), `Page` (a web page about it). `Label` overrides the button text. |
+| `Links` | `FileLink(Kind, Url, Label?)`, one button each. `Kind`: `Magnet` (magnet: URI), `Torrent` (.torrent URL), `Direct` (the file itself, http/https/ftp), `Page` (a web page about it). `Label` overrides the button text. `Resolve = true`: fetched on use, see [below](#resolve). |
 | `Data` | Any object, for your UI components. |
 
 | `ImageQuery` | input of an image search |
@@ -323,6 +443,13 @@ by the kind it returns. Each download link can go to one of two targets:
 The default target per kind is a user setting (Settings → Downloads); the built-in card has a menu for the other one.
 `Page` links are always external. A link that needs a login (private trackers) only works if the browser (external)
 is logged in too — the internal downloader sends no cookies.
+
+<a id="resolve"></a>**Links fetched on use.** When the link is not in the search results (e.g. the magnet is only on
+each torrent's own page), don't fetch every result's page during the search: return the link with `Resolve = true`,
+its `Kind` = the kind it will be and `Url` = whatever you need to find it (the page URL), and implement
+`IFileLinkResolver` on the file source. When the user downloads or opens it (also several at once, for a batch
+download), Popcorn calls `ResolveLinkAsync(link)` (30 s limit) and uses the link it returns. Check the `Url` you get:
+it comes from the browser.
 
 ### Loading rules (assembly isolation)
 
@@ -448,13 +575,15 @@ Copy `dist/*` into the plugin's `web/` folder.
 * **Vite dev server** (`npm run dev` in Popcorn.Web): the import map points at Vite's own module URLs, and plugin UI
   modules are imported from the backend (`:5000/plugins/...`; CORS is enabled in Development).
 * **Protocol** (if you build another client): `PluginList` → `PluginInfo[] { id, name, version, uiUrl, iconUrl,
-  media, fileSources: { id, name, iconUrl, sortFields }[], hasSettings, enabled, loaded, bundled, error }` (all plugin folders in
-  the user's order; only `loaded` ones can be searched; `media` = media source; `fileSources` empty = no file source,
+  media, fileSources: { id, name, iconUrl, sortFields }[], hasSettings, enabled, loaded, bundled, error, status: { level, message }[] }` (all plugin folders in
+  the user's order, also pushed unasked when a plugin's status messages change; only `loaded` ones can be searched; `media` = media source; `fileSources` empty = no file source,
   one with id `""` = the plugin itself is the file source);
   `PluginSetEnabled { pluginId, enabled }`, `PluginSetOrder { pluginIds }` and `PluginUninstall { pluginId }` →
   `PluginList`;
-  `PluginSettings { pluginId }` → `{ pluginId, fields, values, secretsSet, error }` (`values` without passwords,
-  `secretsSet` = password keys that have a value);
+  `PluginSettings { pluginId }` → `{ pluginId, fields, values, secretsSet, actions, error }` (`values` without passwords,
+  `secretsSet` = password keys that have a value, `actions` = buttons of the loaded plugin);
+  `PluginAction { pluginId, actionId }` → `{ pluginId, actionId, message, warning, error, actions }` (runs off the
+  socket's message loop, `actions` = the list after the run);
   `PluginSettingsSave { pluginId, values }` → `{ pluginId, error }`, then `PluginList` (a key left out stays as it is,
   null or blank removes the value);
   `PluginSearch { pluginId, query }` → `{ pluginId, query, results, error }`;

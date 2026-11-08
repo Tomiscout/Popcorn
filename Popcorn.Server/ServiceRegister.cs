@@ -64,6 +64,7 @@ public static class ServiceRegister
         }
 
         services.TryAddSingleton<INativeAutostart, UnsupportedAutostart>();
+        services.AddSingleton<PluginVariableStore>();
         services.AddSingleton<PluginManager>();
         services.AddSingleton<IMediaDescriptionProvider, PluginMediaDescriptions>();
         

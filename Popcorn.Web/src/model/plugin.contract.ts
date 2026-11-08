@@ -1,4 +1,4 @@
-import type { FileQuery, FileResult, FileSortField, MediaCard, MediaDetails } from '@popcorn/plugin-sdk';
+import type { FileLink, FileQuery, FileResult, FileSortField, MediaCard, MediaDetails } from '@popcorn/plugin-sdk';
 
 // Popcorn.Server/Models/Requests/PluginRequests.cs
 export interface PluginInfo {
@@ -15,14 +15,24 @@ export interface PluginInfo {
   fileSources: FileSourceInfo[];
   /** Image kinds a loaded image provider supplies (posters/backdrops of library items); empty = none. */
   imageKinds: ImageKind[];
-  /** plugin.json declares settings. */
+  /** plugin.json declares settings or the loaded plugin has actions: it has a settings dialog. */
   hasSettings: boolean;
   enabled: boolean;
   /** Enabled and loaded without errors: usable for search. */
   loaded: boolean;
   /** Ships with the program (can be disabled, not uninstalled). */
   bundled: boolean;
+  /** Did not load (or plugin.json is unreadable). */
   error: string | null;
+  /** Messages of the loaded plugin (C# `IPluginStatus`); empty = none. */
+  status: PluginStatusMessage[];
+}
+
+export type PluginStatusLevel = 'Info' | 'Warning' | 'Error';
+
+export interface PluginStatusMessage {
+  level: PluginStatusLevel;
+  message: string;
 }
 
 /** A file source of a plugin; a plugin that is itself the file source has one with id "". */
@@ -78,7 +88,41 @@ export interface PluginSettingsResponse {
   values: Record<string, PluginSettingValue>;
   /** Keys of the password fields that have a value. */
   secretsSet: string[];
+  /** Buttons of a loaded plugin; empty = none. */
+  actions: PluginAction[];
   error: string | null;
+}
+
+/** A button in the plugin's settings dialog (C# `IPluginActions`, Popcorn.Plugins.Abstractions). */
+export interface PluginAction {
+  id: string;
+  label: string;
+  description: string | null;
+  /** Settings group to show it in; null = after the fields without a group. */
+  group: string | null;
+  /** Mantine color name; null = default. */
+  color: string | null;
+  /** Question the user confirms before it runs; null = runs right away. */
+  confirm: string | null;
+  disabled: boolean;
+}
+
+export interface PluginActionRequest {
+  pluginId: string;
+  actionId: string;
+}
+
+export interface PluginActionResponse {
+  pluginId: string;
+  actionId: string;
+  /** Message of a successful run. */
+  message: string | null;
+  /** It ran but the plugin reports a warning. */
+  warning: boolean;
+  /** Set when it failed. */
+  error: string | null;
+  /** The plugin's actions after the run. */
+  actions: PluginAction[];
 }
 
 export interface PluginSettingsSaveRequest {
@@ -130,6 +174,21 @@ export interface PluginFileSearchResponse {
   requestId: string;
   results: FileResult[];
   error: string | null;
+}
+
+export interface PluginResolveLinksRequest {
+  pluginId: string;
+  sourceId: string;
+  /** Echoed in the response. */
+  requestId: string;
+  links: FileLink[];
+}
+
+export interface PluginResolveLinksResponse {
+  requestId: string;
+  /** Same order as the request; null where it failed. */
+  links: (FileLink | null)[];
+  errors: (string | null)[];
 }
 
 export interface OpenLinkRequest {

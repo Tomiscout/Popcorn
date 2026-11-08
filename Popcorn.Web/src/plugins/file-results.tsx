@@ -127,12 +127,12 @@ function FileCard({ source, file, media }: { source: FileSource; file: FileResul
       pluginId={source.pluginId}
       sourceId={source.sourceId}
       file={file}
-      openLink={(link, target) => openLink(link, target, media)}
+      openLink={(link, target) => void openLink(link, target, media, source)}
       defaultTarget={defaultTarget}
       add={
         link
           ? {
-              onAdd: () => openLink(link, 'internal', media),
+              onAdd: () => void openLink(link, 'internal', media, source),
               hint: media?.itemId
                 ? 'Download with Popcorn into this item'
                 : `Download with Popcorn into the library${media ? ` as “${media.title}”` : ''}`,
@@ -275,13 +275,7 @@ function EpisodeGroup({
           variant="light"
           leftSection={<IconDownload size={14} />}
           disabled={items.length === 0}
-          onClick={() =>
-            downloadFiles(
-              items.map((i) => i.file),
-              media,
-              titleOf(items[0].file)
-            )
-          }
+          onClick={() => void downloadFiles(items, media, titleOf(items[0].file))}
         >
           Download all
         </Button>
@@ -396,11 +390,7 @@ function SelectionBar({ items, media, onClear }: { items: Item[]; media?: LinkMe
             <Button
               leftSection={<IconDownload size={16} />}
               onClick={() => {
-                downloadFiles(
-                  items.map((i) => i.file),
-                  media,
-                  titleOf(items[0].file)
-                );
+                void downloadFiles(items, media, titleOf(items[0].file));
                 onClear();
               }}
             >

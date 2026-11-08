@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionIcon,
   Alert,
@@ -13,11 +13,17 @@ import {
   Skeleton,
   Stack,
   Switch,
+  Text,
   TextInput,
+  Tooltip,
 } from '@mantine/core';
+import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import {
+  PluginAction,
+  PluginActionRequest,
+  PluginActionResponse,
   PluginInfo,
   PluginSettingField,
   PluginSettingsRequest,
@@ -29,6 +35,7 @@ import {
 import { SocketRequests } from '../../socket/socket-requests';
 import { useSocketEvents } from '../../socket/useSocketEvents.hook';
 import { useWebSocket } from '../../state/websocket-context';
+import PluginStatus from './plugin-status';
 
 interface Props {
   plugin: PluginInfo;
@@ -47,10 +54,24 @@ const cleanList = (field: PluginSettingField, list: ListDraft): PluginSettingVal
     ? list.filter((item): item is number => typeof item === 'number')
     : list.filter((item): item is string => typeof item === 'string' && item.trim() !== '');
 
-/** Fields split by `group`, groups in order of first use; fields without one form a group without heading. */
-const groupFields = (fields: PluginSettingField[]) => {
-  const groups = new Map<string | null, PluginSettingField[]>();
-  for (const field of fields) groups.set(field.group, [...(groups.get(field.group) ?? []), field]);
+interface FormGroup {
+  fields: PluginSettingField[];
+  actions: PluginAction[];
+}
+
+/**
+ * Fields and actions split by `group`, groups in order of first use (fields first); the ones without a group form a
+ * group without heading.
+ */
+const groupFields = (fields: PluginSettingField[], actions: PluginAction[]) => {
+  const groups = new Map<string | null, FormGroup>();
+  const get = (group: string | null) => {
+    let entry = groups.get(group);
+    if (!entry) groups.set(group, (entry = { fields: [], actions: [] }));
+    return entry;
+  };
+  for (const field of fields) get(field.group).fields.push(field);
+  for (const action of actions) get(action.group).actions.push(action);
   return [...groups];
 };
 
@@ -130,6 +151,14 @@ const PluginSettingsDialog: React.FC<Props> = ({ plugin, onClose }) => {
   const [secrets, setSecrets] = useState<Record<string, string | ListDraft | null>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actions, setActions] = useState<PluginAction[]>([]);
+  /** Ids of the actions waiting for their answer. */
+  const [running, setRunning] = useState<string[]>([]);
+  /** Labels of the actions run, for the answer's notification (the list may have changed by then). */
+  const actionLabels = useRef(new Map<string, string>());
+  /** With actions the dialog stays open after saving, so they can be run with the new settings. */
+  const hasActions = useRef(false);
+  hasActions.current = actions.length > 0;
 
   useSocketEvents(
     useMemo(
@@ -138,7 +167,23 @@ const PluginSettingsDialog: React.FC<Props> = ({ plugin, onClose }) => {
           if (response.pluginId !== plugin.id) return;
           setLoaded(response);
           setValues(response.values);
+          setActions(response.actions ?? []);
           setError(response.error);
+        },
+        [SocketRequests.PluginAction]: (response: PluginActionResponse) => {
+          if (response.pluginId !== plugin.id) return;
+          setRunning((r) => r.filter((id) => id !== response.actionId));
+          setActions(response.actions ?? []);
+          const label = actionLabels.current.get(response.actionId) ?? response.actionId;
+          notifications.show(
+            response.error
+              ? { color: 'red', title: `${label} failed`, message: response.error }
+              : {
+                  color: response.warning ? 'yellow' : 'green',
+                  title: `${plugin.name}: ${label}`,
+                  message: response.message ?? 'Done',
+                }
+          );
         },
         [SocketRequests.PluginSettingsSave]: (response: PluginSettingsSaveResponse) => {
           if (response.pluginId !== plugin.id) return;
@@ -146,16 +191,70 @@ const PluginSettingsDialog: React.FC<Props> = ({ plugin, onClose }) => {
           setError(response.error);
           if (response.error) return;
           notifications.show({ color: 'green', message: `${plugin.name} settings saved` });
-          onClose();
+          if (!hasActions.current) return onClose();
+          // The plugin was reloaded: fresh values and actions from the new instance
+          setSecrets({});
+          setLoaded(null);
+          client.sendEvent<PluginSettingsRequest>(SocketRequests.PluginSettings, { pluginId: plugin.id });
         },
       }),
-      [plugin.id, plugin.name, onClose]
+      [client, plugin.id, plugin.name, onClose]
     )
   );
 
   useEffect(() => {
     client.sendEvent<PluginSettingsRequest>(SocketRequests.PluginSettings, { pluginId: plugin.id });
   }, [client, plugin.id]);
+
+  /** Unsaved edits: actions run on the loaded plugin, which only knows the saved settings. */
+  const dirty =
+    !!loaded && (Object.keys(secrets).length > 0 || JSON.stringify(values) !== JSON.stringify(loaded.values));
+
+  const runAction = (action: PluginAction) => {
+    const run = () => {
+      actionLabels.current.set(action.id, action.label);
+      setRunning((r) => [...r, action.id]);
+      client.sendEvent<PluginActionRequest>(SocketRequests.PluginAction, { pluginId: plugin.id, actionId: action.id });
+    };
+    if (!action.confirm) return run();
+    modals.openConfirmModal({
+      title: action.label,
+      children: <Text size="sm">{action.confirm}</Text>,
+      labels: { confirm: action.label, cancel: 'Cancel' },
+      confirmProps: { color: action.color ?? undefined },
+      onConfirm: run,
+    });
+  };
+
+  const renderActions = (list: PluginAction[]) =>
+    list.length > 0 && (
+      <Stack gap={6}>
+        {list.map((action) => (
+          <Group key={action.id} gap="sm" wrap="nowrap" align="center">
+            <Tooltip label="Save your changes first: actions use the saved settings" disabled={!dirty}>
+              {/* wrapper: a disabled button gets no hover events */}
+              <span>
+                <Button
+                  variant="light"
+                  size="compact-sm"
+                  color={action.color ?? undefined}
+                  loading={running.includes(action.id)}
+                  disabled={action.disabled || dirty || saving}
+                  onClick={() => runAction(action)}
+                >
+                  {action.label}
+                </Button>
+              </span>
+            </Tooltip>
+            {action.description && (
+              <Text size="xs" c="dimmed">
+                {action.description}
+              </Text>
+            )}
+          </Group>
+        ))}
+      </Stack>
+    );
 
   const setValue = (key: string, value: Draft) => setValues((v) => ({ ...v, [key]: value }));
 
@@ -297,18 +396,25 @@ const PluginSettingsDialog: React.FC<Props> = ({ plugin, onClose }) => {
     <Modal opened onClose={onClose} title={`${plugin.name} settings`} size="md">
       <form onSubmit={save}>
         <Stack gap="sm">
+          <PluginStatus status={plugin.status ?? []} variant="alert" />
           {error && (
             <Alert color="red" variant="light" style={{ overflowWrap: 'anywhere' }}>
               {error}
             </Alert>
           )}
           {loaded ? (
-            groupFields(loaded.fields).map(([group, fields]) =>
+            groupFields(loaded.fields, actions).map(([group, { fields, actions: groupActions }]) =>
               group === null ? (
-                <React.Fragment key="">{fields.map(renderField)}</React.Fragment>
+                <React.Fragment key="">
+                  {fields.map(renderField)}
+                  {renderActions(groupActions)}
+                </React.Fragment>
               ) : (
                 <Fieldset key={group} legend={group} variant="filled">
-                  <Stack gap="sm">{fields.map(renderField)}</Stack>
+                  <Stack gap="sm">
+                    {fields.map(renderField)}
+                    {renderActions(groupActions)}
+                  </Stack>
                 </Fieldset>
               )
             )
@@ -317,11 +423,13 @@ const PluginSettingsDialog: React.FC<Props> = ({ plugin, onClose }) => {
           )}
           <Group justify="flex-end" gap="xs" mt="xs">
             <Button variant="default" onClick={onClose}>
-              Cancel
+              {loaded && loaded.fields.length === 0 ? 'Close' : 'Cancel'}
             </Button>
-            <Button type="submit" loading={saving} disabled={!loaded || !!loaded.error}>
-              Save
-            </Button>
+            {loaded?.fields.length !== 0 && (
+              <Button type="submit" loading={saving} disabled={!loaded || !!loaded.error}>
+                Save
+              </Button>
+            )}
           </Group>
         </Stack>
       </form>

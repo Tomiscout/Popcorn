@@ -24,7 +24,7 @@ public class PluginManifest
     public List<PluginSettingField> Settings { get; set; } = [];
 }
 
-public sealed class LoadedPlugin(PluginManifest manifest, string directory, object instance, PluginLoadContext context)
+public sealed class LoadedPlugin(PluginManifest manifest, string directory, object instance, PluginLoadContext context, PluginVariables variables, PluginStatus status)
 {
     public PluginManifest Manifest { get; } = manifest;
     public string Directory { get; } = directory;
@@ -32,6 +32,10 @@ public sealed class LoadedPlugin(PluginManifest manifest, string directory, obje
     public IMediaSourcePlugin? Media { get; } = instance as IMediaSourcePlugin;
     /// <summary>Set when the plugin provides posters and/or backdrops.</summary>
     public IImageProvider? Images { get; } = instance as IImageProvider;
+    /// <summary>Set when the plugin has buttons for its settings dialog.</summary>
+    public IPluginActions? Actions { get; } = instance as IPluginActions;
+    /// <summary>What the plugin reports through <see cref="IPluginStatus"/>.</summary>
+    public PluginStatus Status { get; } = status;
     /// <summary>
     /// File sources: the plugin itself (<see cref="IFileSourcePlugin"/>, id "", plugin name and icon) or the ones of its
     /// <see cref="IFileSourceProvider"/>. Throws when the provider throws or returns invalid / duplicate ids.
@@ -72,6 +76,8 @@ public sealed class LoadedPlugin(PluginManifest manifest, string directory, obje
         {
             logger.LogWarning(ex, "Plugin {id} threw on dispose", Manifest.Id);
         }
+        variables.Release();
+        status.Release();
         (WebFiles as IDisposable)?.Dispose();
         context.Unload(); // collected once in-flight calls drop their references
     }
@@ -93,7 +99,7 @@ public sealed record PluginEntry(
 /// zip into the data folder and uninstalled at runtime; each one lives in its own collectible load context.
 /// A plugin that fails to load is kept in the list with its error.
 /// </summary>
-public sealed class PluginManager(IServiceProvider services, ILogger<PluginManager> logger)
+public sealed class PluginManager(IServiceProvider services, PluginVariableStore variableStore, ILogger<PluginManager> logger)
 {
     public static readonly string UserRoot = Path.Combine(DirectoryUtils.DataFolder, "plugins");
     public static readonly string BundledRoot = Path.Combine(AppContext.BaseDirectory, "plugins");
@@ -111,6 +117,9 @@ public sealed class PluginManager(IServiceProvider services, ILogger<PluginManag
 
     /// <summary>All plugin folders (first one per id), including disabled and broken ones, in the user's order.</summary>
     public IReadOnlyList<PluginEntry> Entries => _entries;
+
+    /// <summary>A loaded plugin changed its <see cref="IPluginStatus"/> messages (raised outside of any lock).</summary>
+    public event Action? StatusChanged;
 
     public IEnumerable<LoadedPlugin> Plugins => _entries.Select(e => e.Loaded).OfType<LoadedPlugin>();
 
@@ -210,6 +219,16 @@ public sealed class PluginManager(IServiceProvider services, ILogger<PluginManag
             {
                 if (Directory.Exists(staging)) Directory.Delete(staging, recursive: true);
             }
+        }
+    }
+
+    /// <summary>Server shutdown: disposes every loaded plugin (they may own processes, e.g. a helper server).</summary>
+    public void UnloadAll()
+    {
+        lock (_gate)
+        {
+            foreach (var entry in _entries) entry.Loaded?.Unload(logger);
+            _entries = _entries.Select(e => e.Loaded is null ? e : e with { Loaded = null }).ToList();
         }
     }
 
@@ -365,24 +384,30 @@ public sealed class PluginManager(IServiceProvider services, ILogger<PluginManag
         }
 
         var context = new PluginLoadContext(assemblyPath);
+        var variables = variableStore.For(manifest.Id);
+        var status = new PluginStatus(manifest.Id, OnStatusChanged, logger);
         try
         {
             var assembly = context.LoadFromAssemblyPath(assemblyPath);
             var types = assembly.GetExportedTypes()
                 .Where(t => t is { IsClass: true, IsAbstract: false }
                             && (typeof(IMediaSourcePlugin).IsAssignableFrom(t) || typeof(IFileSourcePlugin).IsAssignableFrom(t)
-                                || typeof(IFileSourceProvider).IsAssignableFrom(t) || typeof(IImageProvider).IsAssignableFrom(t)))
+                                || typeof(IFileSourceProvider).IsAssignableFrom(t) || typeof(IImageProvider).IsAssignableFrom(t)
+                                || typeof(IServicePlugin).IsAssignableFrom(t)))
                 .ToList();
             if (types.Count != 1)
                 throw new InvalidDataException(
-                    $"{manifest.Assembly} must contain exactly one public IMediaSourcePlugin/IFileSourcePlugin/IFileSourceProvider/IImageProvider implementation, found {types.Count}");
+                    $"{manifest.Assembly} must contain exactly one public IMediaSourcePlugin/IFileSourcePlugin/IFileSourceProvider/IImageProvider/IServicePlugin implementation, found {types.Count}");
             if (typeof(IFileSourcePlugin).IsAssignableFrom(types[0]) && typeof(IFileSourceProvider).IsAssignableFrom(types[0]))
                 throw new InvalidDataException($"{types[0].Name} implements both IFileSourcePlugin and IFileSourceProvider, pick one");
 
-            return new LoadedPlugin(manifest, dir, ActivatorUtilities.CreateInstance(new PluginServices(services, settings), types[0]), context);
+            var instance = ActivatorUtilities.CreateInstance(new PluginServices(services, settings, variables, status), types[0]);
+            return new LoadedPlugin(manifest, dir, instance, context, variables, status);
         }
         catch
         {
+            variables.Release(); // whatever the constructor set before it threw
+            status.Release();
             context.Unload();
             throw;
         }
@@ -417,15 +442,31 @@ public sealed class PluginManager(IServiceProvider services, ILogger<PluginManag
     }
 
     /// <summary>The host's services + what is per plugin, for the plugin class constructor.</summary>
-    private sealed class PluginServices(IServiceProvider inner, IPluginSettings settings) : IServiceProvider, IServiceProviderIsService
+    private void OnStatusChanged()
+    {
+        try
+        {
+            StatusChanged?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Plugin status listener failed");
+        }
+    }
+
+    private sealed class PluginServices(IServiceProvider inner, IPluginSettings settings, IPluginVariables variables, IPluginStatus status)
+        : IServiceProvider, IServiceProviderIsService
     {
         public object? GetService(Type serviceType) =>
             serviceType == typeof(IPluginSettings) ? settings
+            : serviceType == typeof(IPluginVariables) ? variables
+            : serviceType == typeof(IPluginStatus) ? status
             : serviceType == typeof(IServiceProviderIsService) ? this
             : inner.GetService(serviceType);
 
         public bool IsService(Type serviceType) =>
-            serviceType == typeof(IPluginSettings) || inner.GetService<IServiceProviderIsService>()?.IsService(serviceType) == true;
+            serviceType == typeof(IPluginSettings) || serviceType == typeof(IPluginVariables) || serviceType == typeof(IPluginStatus)
+            || inner.GetService<IServiceProviderIsService>()?.IsService(serviceType) == true;
     }
 
     private sealed class PluginState

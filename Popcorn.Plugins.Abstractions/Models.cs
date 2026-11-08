@@ -111,7 +111,15 @@ public enum FileLinkKind
 }
 
 /// <param name="Label">Button text; null = the app's default for the kind.</param>
-public record FileLink(FileLinkKind Kind, string Url, string? Label = null);
+public record FileLink(FileLinkKind Kind, string Url, string? Label = null)
+{
+    /// <summary>
+    /// True = not the link yet: <see cref="Url"/> is whatever the plugin's <see cref="IFileLinkResolver"/> needs to get
+    /// it (e.g. the page the magnet link is on), asked for only when the user uses the link, instead of fetching it for
+    /// every result of a search. <see cref="Kind"/> is the kind of the link it resolves to.
+    /// </summary>
+    public bool Resolve { get; init; }
+}
 
 /// <summary>A numeric column file results can be sorted by.</summary>
 /// <param name="Key">Key in <see cref="FileResult.SortValues"/>.</param>
