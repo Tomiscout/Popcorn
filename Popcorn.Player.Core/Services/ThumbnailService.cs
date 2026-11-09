@@ -4,7 +4,7 @@ using Popcorn.Player.Core.Core;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Shared.Ffmpeg;
 using Popcorn.Shared.Utils;
-using PopcornPlayer.Shared;
+using Popcorn.Application.Utils;
 using Serilog;
 
 namespace Popcorn.Player.Core.Services;
@@ -62,9 +62,6 @@ public class ThumbnailService(Lazy<PlayerCore> playerCore, Lazy<WebEventHandler>
         return true;
     }
 
-    // TODO argument caching, since for file it would be reused, except of output file path and timestamp
-    // But need to benchmark if it's necessary at all, since caching may be too complex.
-    // Although it would be beneficial, because if some method fails to generate, fallback would be faster and multiple ffmpeg instances / file checks wouldnt be called
     public byte[]? GetThumbnailBytes(string inputFilePath, IMediaAnalysis metadata, string id, long timeInSeconds, CancellationToken ct)
     {
         var outputFilePath = $"{OutputFolder + Path.DirectorySeparatorChar + id}-{timeInSeconds}.jpg"; // HDR generates png output, but jpg is kept for now
@@ -74,20 +71,9 @@ public class ThumbnailService(Lazy<PlayerCore> playerCore, Lazy<WebEventHandler>
             return File.ReadAllBytes(outputFilePath);
         }
 
-        string command = ThumbnailUtils.BuildDecoderCommand(timeInSeconds, metadata, inputFilePath, outputFilePath);
-
-        FFmpegWrapper.RunCommand(command, ct);
-        thumbFile.Refresh();
-        if (thumbFile.Exists && thumbFile.Length > 0)
-        {
-            return File.ReadAllBytes(outputFilePath);
-        }
-
-        if (ct.IsCancellationRequested) return null; // If ct canceled - dont attempt cpu command
-
-        FFmpegWrapper.RunCommand(ThumbnailUtils.GetCpuCommand(inputFilePath, outputFilePath, metadata, timeInSeconds), ct);
-        thumbFile.Refresh();
-
-        return thumbFile.Exists && thumbFile.Length > 0 ? File.ReadAllBytes(thumbFile.FullName) : null;
+        // Hardware decoding where it is faster, CPU otherwise and when it fails
+        return ThumbnailRenderer.Render(inputFilePath, metadata, outputFilePath, timeInSeconds, ct)
+            ? File.ReadAllBytes(outputFilePath)
+            : null;
     }
 }

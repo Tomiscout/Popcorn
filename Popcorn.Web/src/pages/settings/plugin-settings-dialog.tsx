@@ -22,13 +22,10 @@ import { notifications } from '@mantine/notifications';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import {
   PluginAction,
-  PluginActionRequest,
   PluginActionResponse,
   PluginInfo,
   PluginSettingField,
-  PluginSettingsRequest,
   PluginSettingsResponse,
-  PluginSettingsSaveRequest,
   PluginSettingsSaveResponse,
   PluginSettingValue,
 } from '../../model/plugin.contract';
@@ -195,7 +192,7 @@ const PluginSettingsDialog: React.FC<Props> = ({ plugin, onClose }) => {
           // The plugin was reloaded: fresh values and actions from the new instance
           setSecrets({});
           setLoaded(null);
-          client.sendEvent<PluginSettingsRequest>(SocketRequests.PluginSettings, { pluginId: plugin.id });
+          client.sendEvent(SocketRequests.PluginSettings, { pluginId: plugin.id });
         },
       }),
       [client, plugin.id, plugin.name, onClose]
@@ -203,7 +200,7 @@ const PluginSettingsDialog: React.FC<Props> = ({ plugin, onClose }) => {
   );
 
   useEffect(() => {
-    client.sendEvent<PluginSettingsRequest>(SocketRequests.PluginSettings, { pluginId: plugin.id });
+    client.sendEvent(SocketRequests.PluginSettings, { pluginId: plugin.id });
   }, [client, plugin.id]);
 
   /** Unsaved edits: actions run on the loaded plugin, which only knows the saved settings. */
@@ -214,7 +211,7 @@ const PluginSettingsDialog: React.FC<Props> = ({ plugin, onClose }) => {
     const run = () => {
       actionLabels.current.set(action.id, action.label);
       setRunning((r) => [...r, action.id]);
-      client.sendEvent<PluginActionRequest>(SocketRequests.PluginAction, { pluginId: plugin.id, actionId: action.id });
+      client.sendEvent(SocketRequests.PluginAction, { pluginId: plugin.id, actionId: action.id });
     };
     if (!action.confirm) return run();
     modals.openConfirmModal({
@@ -280,7 +277,7 @@ const PluginSettingsDialog: React.FC<Props> = ({ plugin, onClose }) => {
     }
     setSaving(true);
     setError(null);
-    client.sendEvent<PluginSettingsSaveRequest>(SocketRequests.PluginSettingsSave, {
+    client.sendEvent(SocketRequests.PluginSettingsSave, {
       pluginId: plugin.id,
       values: out,
     });

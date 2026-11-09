@@ -2,7 +2,7 @@ import { Button, FileButton, Group, Paper, Stack, Text, Textarea, TextInput } fr
 import { notifications } from '@mantine/notifications';
 import { IconDownload, IconSearch, IconUpload } from '@tabler/icons-react';
 import { useMemo, useState } from 'react';
-import { DownloadAddBatchRequest, DownloadKind } from '../../model/download.contract';
+import { DownloadKind } from '../../model/download.contract';
 import { MediaItem } from '../../model/media.contract';
 import { FileResults } from '../../plugins/file-results';
 import { FileSearch, LinkMedia, searchLabel, useFileSearch } from '../../plugins/file-sources';
@@ -38,7 +38,7 @@ function AddLinks({ itemId }: { itemId: string }) {
 
   const add = () => {
     if (valid.length === 0) return;
-    client.sendEvent<DownloadAddBatchRequest>(SocketRequests.DownloadAddBatch, { links: valid, mediaItemId: itemId });
+    client.sendEvent(SocketRequests.DownloadAddBatch, { links: valid, mediaItemId: itemId });
     setText('');
   };
 

@@ -95,6 +95,14 @@ export interface FileResult<TData = unknown> {
   links: FileLink[];
   /** Values of the plugin's sort fields by key; a missing key sorts last. */
   sortValues: Record<string, number>;
+  /**
+   * The provider the result really comes from, as a tag shared by every plugin that returns its results (lowercase
+   * name or domain, e.g. "1337x"). Same `origin` + `originId` from different plugins = the same item, shown once when
+   * duplicates are removed. Null = unknown, never deduplicated.
+   */
+  origin?: string | null;
+  /** The result's id at `origin`, the same whichever plugin returns it; null = `id`. */
+  originId?: string | null;
   /** Plugin-defined, whatever the C# side put into `Data`. */
   data?: TData | null;
 }

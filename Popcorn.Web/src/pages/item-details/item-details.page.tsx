@@ -7,12 +7,9 @@ import {
   MediaFile,
   MediaItem,
   MediaItemHistory,
-  MediaItemRequest,
   ContinueWatching,
   RemoveMediaItemRequest,
   MediaItemFlatFileList,
-  RenameMediaItemRequest,
-  DeleteMediaItemHistoryRequest,
 } from '../../model/media.contract';
 import { ContinueProgress, MarqueeText } from '../../components/continue-watching/continue-watching';
 import { useWebSocket } from '../../state/websocket-context';
@@ -132,7 +129,7 @@ const ItemDetailsPage: React.FC = () => {
     setEditingTitle(null);
     if (!mediaItem || !title || title === (mediaItem.shortTitle || mediaItem.title)) return;
     setMediaItem({ ...mediaItem, title, shortTitle: title }); // shown at once, the server answers with the item
-    client.sendEvent<RenameMediaItemRequest>(SocketRequests.RenameMediaItem, { id: mediaItem.id, title });
+    client.sendEvent(SocketRequests.RenameMediaItem, { id: mediaItem.id, title });
   };
 
   // Per item, not per item update (renames and picture changes resend the item): keeps the open folder.
@@ -145,10 +142,10 @@ const ItemDetailsPage: React.FC = () => {
   useEffect(() => {
     if (!id) return;
 
-    client.sendEvent<MediaItemRequest>(SocketRequests.MediaItem, { id });
-    // client.sendEvent<MediaItemRequest>(SocketRequests.MediaItemFileList, { id });
-    // client.sendEvent<MediaItemRequest>(SocketRequests.MediaItemHistory, { id });
-    // client.sendEvent<MediaItemRequest>(SocketRequests.NextFile, { id });
+    client.sendEvent(SocketRequests.MediaItem, { id });
+    // client.sendEvent(SocketRequests.MediaItemFileList, { id });
+    // client.sendEvent(SocketRequests.MediaItemHistory, { id });
+    // client.sendEvent(SocketRequests.NextFile, { id });
   }, [id]);
 
   useEffect(() => {
@@ -216,15 +213,15 @@ const ItemDetailsPage: React.FC = () => {
       openFileWith(continueWatching.fileId, isDesktopApp ? null : WEB_PLAYER_ID);
       return;
     }
-    client.sendEvent(SocketRequests.NextFile, mediaItem?.id);
+    if (mediaItem) client.sendEvent(SocketRequests.NextFile, mediaItem.id);
   }
 
   function refreshFiles() {
-    client.sendEvent(SocketRequests.RefreshMediaItem, mediaItem?.id);
+    if (mediaItem) client.sendEvent(SocketRequests.RefreshMediaItem, mediaItem.id);
   }
 
   function openFolder() {
-    client.sendEvent(SocketRequests.OpenMediaItemFolder, mediaItem?.id);
+    if (mediaItem) client.sendEvent(SocketRequests.OpenMediaItemFolder, mediaItem.id);
   }
 
   function mediaFilesReceived(newFiles: MediaFile[]) {
@@ -232,7 +229,7 @@ const ItemDetailsPage: React.FC = () => {
     setCurrentMediaFiles(newFiles);
   }
 
-  function onBreadcrumbClick(id: string | null, index: number) {
+  function onBreadcrumbClick(id: string, index: number) {
     setIsOpeningFolder(true);
     setBreadcrumbs(breadcrumbs.slice(0, index + 1));
     client.sendEvent(SocketRequests.FolderOpen, id);
@@ -350,7 +347,7 @@ const ItemDetailsPage: React.FC = () => {
     const send = () => {
       if (historyId === undefined) setMediaHistory([]);
       else setMediaHistory((prev) => prev?.filter((h) => h.id !== historyId));
-      client.sendEvent<DeleteMediaItemHistoryRequest>(SocketRequests.MediaItemHistoryDelete, {
+      client.sendEvent(SocketRequests.MediaItemHistoryDelete, {
         itemId: mediaItem.id,
         historyId,
       });

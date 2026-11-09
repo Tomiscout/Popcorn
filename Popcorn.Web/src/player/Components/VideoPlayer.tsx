@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useRef, SyntheticEvent, useState } from 'react';
 import { usePlayerStore } from '../../state/player.store';
 import { resolveServerHost } from '../../utils/url-resolver';
+import { isAbortError, readJsonLines } from '../../utils/json-lines';
 import { postMessage } from '../../utils/events';
 import { Loader } from '@mantine/core';
 import './VideoPlayer.css';
@@ -46,12 +47,20 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>((_prop
   const convertedRef = useRef(false);
   /** The converted file is there: the next reload uses it. */
   const convertedReadyRef = useRef(false);
-  /** Bumped on every track or file change: answers and polls of the previous one are dropped. */
+  /** Bumped on every track or file change (`nextAudioGeneration`): answers for the previous one are dropped. */
   const audioGeneration = useRef(0);
+  /** The open conversion request of the current generation (it keeps the conversion alive on the server). */
+  const prepareAbort = useRef<AbortController | null>(null);
   const [videoContainsAudio, setVideoContainsAudio] = useState(false);
 
   const audioTrackUrl = (fileId: string, trackIndex: number) =>
     `http://${resolveServerHost()}/api/video/${fileId}/audio/${trackIndex}`;
+
+  function nextAudioGeneration() {
+    prepareAbort.current?.abort();
+    prepareAbort.current = null;
+    return ++audioGeneration.current;
+  }
 
   function loadAudioAt(time: number) {
     const audio = audioRef.current;
@@ -75,42 +84,35 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>((_prop
 
   /**
    * Starts the selected track: asks the server to convert it (or whether it has), plays the converted file or the
-   * live stream meanwhile, and keeps asking while it converts (which keeps the conversion alive: leaving the player
-   * stops it).
+   * live stream meanwhile. The request stays open while it converts, which keeps the conversion alive (leaving the
+   * player stops it), and its next line says when the file is ready.
    */
-  async function startExternalAudio(generation: number) {
+  function startExternalAudio(generation: number) {
     const { fileId, currentAudio: track } = usePlayerStore.getState();
     if (!fileId || !track) return;
-    const prepareUrl = `${audioTrackUrl(fileId, track.index)}/prepare`;
-    const prepare = async (): Promise<{ ready: boolean; converting: boolean }> => {
-      const response = await fetch(prepareUrl);
-      if (!response.ok) throw new Error(`Audio track prepare: ${response.status}`);
-      return response.json();
+    const abort = new AbortController();
+    prepareAbort.current = abort;
+
+    let started = false;
+    const start = () => {
+      if (started || generation !== audioGeneration.current) return;
+      started = true;
+      loadAudioAt(videoRef.current?.currentTime ?? 0);
     };
-
-    let state = { ready: false, converting: false };
-    try {
-      state = await prepare();
-    } catch (error) {
-      console.error(error); // the stream may still work
-    }
-    if (generation !== audioGeneration.current) return;
-    convertedReadyRef.current = state.ready;
-    loadAudioAt(videoRef.current?.currentTime ?? 0);
-
-    while (state.converting) {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      if (generation !== audioGeneration.current) return;
-      try {
-        state = await prepare();
-      } catch (error) {
-        console.error(error);
-        state = { ready: false, converting: false };
+    readJsonLines<{ ready: boolean; converting: boolean }>(
+      `${audioTrackUrl(fileId, track.index)}/prepare`,
+      { signal: abort.signal },
+      (state) => {
+        if (generation !== audioGeneration.current) return;
+        convertedReadyRef.current = state.ready;
+        if (!started) start();
+        else switchToConvertedWhilePaused();
       }
-      if (generation !== audioGeneration.current) return;
-      convertedReadyRef.current = state.ready;
-      switchToConvertedWhilePaused();
-    }
+    )
+      .catch((error) => {
+        if (!isAbortError(error)) console.error('Audio track prepare', error); // the stream may still work
+      })
+      .finally(start);
   }
 
   /** Moves from the live stream to the converted file while the video is paused (no hiccup to see). */
@@ -135,7 +137,7 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>((_prop
   useEffect(() => {
     const video = videoRef.current;
     if (!metadata || !currentAudio || !video) return;
-    const generation = ++audioGeneration.current;
+    const generation = nextAudioGeneration();
     const external = metadata.audioDefaultIndex !== currentAudio.index || !videoContainsAudio;
     externalRef.current = external;
     convertedRef.current = convertedReadyRef.current = false;
@@ -150,7 +152,7 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>((_prop
   // Another file or the player closed: no stream or conversion of the old one may go on.
   useEffect(
     () => () => {
-      audioGeneration.current++;
+      nextAudioGeneration();
       externalRef.current = false;
       stopAudio();
       if (videoRef.current) videoRef.current.muted = false;
@@ -196,7 +198,7 @@ export const VideoPlayer = forwardRef<HTMLVideoElement, VideoPlayerProps>((_prop
       video.removeEventListener('seeking', onSeeking);
       video.removeEventListener('ratechange', onRate);
       video.removeEventListener('volumechange', onVolume);
-      audioGeneration.current++;
+      nextAudioGeneration();
       stopAudio();
     };
   }, []);

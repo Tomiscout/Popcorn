@@ -20,7 +20,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Popcorn.Application\Popcorn.Application.csproj" />
+		<ProjectReference Include="..\Popcorn.Core\Popcorn.Core.csproj" />
 	</ItemGroup>
 
 </Project>

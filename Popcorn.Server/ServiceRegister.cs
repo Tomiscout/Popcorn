@@ -6,16 +6,14 @@ using Popcorn.Domain.Services;
 using Popcorn.Downloads;
 using Popcorn.Persistence;
 using Popcorn.Persistence.Repositories;
-using Popcorn.PlayerServer;
-using Popcorn.PlayerServer.Linux;
-using Popcorn.PlayerServer.Windows;
+using Popcorn.Platform.Linux;
+using Popcorn.Platform.Windows;
 using Popcorn.SegmentFinder;
 using Popcorn.Server.PluginHost;
+using Popcorn.Server.Push;
 using Popcorn.Server.Services;
 using Popcorn.Server.Services.Disk;
 using Popcorn.Shared.Interfaces;
-using Popcorn.Shared.Linux;
-using Popcorn.Shared.Windows;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Popcorn.Server;
@@ -42,6 +40,8 @@ public static class ServiceRegister
         services.AddSingleton<UpdateService>();
         services.AddScoped<FileStreamService>();
         services.AddSingleton<AudioTrackService>();
+        services.AddSingleton<SocketSubscriptions>();
+        services.AddHostedService<LivePushService>();
         
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -51,7 +51,7 @@ public static class ServiceRegister
             services.AddSingleton<INativeFileAssosiation, WindowsFileAssociation>();
             services.AddSingleton<INativeProcessRunner, WindowsProcessRunner>();
             services.AddSingleton<INativeAutostart, WindowsAutostart>();
-            services.AddSingleton<ITrayManager, Popcorn.Windows.Tray.TrayManager>();
+            services.AddSingleton<ITrayManager, WindowsTrayManager>();
             services.AddHostedService<ServerTrayHostedService>();
         } else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
@@ -60,7 +60,7 @@ public static class ServiceRegister
             services.AddSingleton<INativeFileAssosiation, LinuxFileAssociation>();
             services.AddSingleton<INativeProcessRunner, LinuxProcessRunner>();
             services.AddSingleton<INativeAutostart, LinuxAutostart>();
-            services.AddSingleton<ITrayManager, Popcorn.Linux.Tray.TrayManager>();
+            services.AddSingleton<ITrayManager, LinuxTrayManager>();
             services.AddHostedService<ServerTrayHostedService>();
         }
 

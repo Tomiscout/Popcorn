@@ -77,7 +77,7 @@ const FoldersPage: React.FC = () => {
   };
 
   const createMediaItem = (request: CreateMediaItemRequest) => {
-    client.sendEvent<CreateMediaItemRequest>(SocketRequests.CreateMediaItem, request);
+    client.sendEvent(SocketRequests.CreateMediaItem, request);
     scanLibrary(); // handled after the create (one connection's events run in order): the folder leaves the list
   };
 

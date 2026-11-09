@@ -109,7 +109,7 @@ function Publish-Dotnet {
 # binutils on PATH. POPCORN_UPDATE_REPO (owner/name) set here is built in as the release repository.
 function Build-Installer {
     Write-Output "Building $InstallerDir..."
-    Invoke-Native cargo build --release --manifest-path (Join-Path $InstallerDir "Cargo.toml")
+    Invoke-Native cargo build --profile installer -p popcorn-installer  # root Cargo workspace, its own profile (Cargo.toml)
 }
 
 
@@ -187,7 +187,7 @@ function Bundle-Windows {
     Copy-Item -Force -Path (Join-Path $MpvOutputDir "*") -Destination $PlayerBundleDir
     Write-Output "Copied libmpv to $PlayerBundleDir"
 
-    $InstallerExe = Join-Path $InstallerDir "target\release\popcorn-installer.exe"
+    $InstallerExe = "./target/installer/popcorn-installer.exe"
     Copy-Item -Force -Path $InstallerExe -Destination (Join-Path $BundleDir "Popcorn.Installer.exe")
     Write-Output "Copied Popcorn.Installer to $BundleDir"
 

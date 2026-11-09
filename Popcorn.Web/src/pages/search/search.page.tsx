@@ -7,7 +7,7 @@ import { useWebSocket } from '../../state/websocket-context';
 import { SocketRequests } from '../../socket/socket-requests';
 import { useSocketEvents } from '../../socket/useSocketEvents.hook';
 import { SearchTab, useSearchStore } from '../../state/search.store';
-import { PluginSearchRequest, PluginSearchResponse } from '../../model/plugin.contract';
+import { PluginSearchResponse } from '../../model/plugin.contract';
 import { pluginDetailsPath, usePlugins } from '../../plugins/plugins.hook';
 import { PluginSearchCard } from '../../plugins/plugin-components';
 import { loadingResults, ProviderResults, useFileSearch } from '../../plugins/file-sources';
@@ -69,7 +69,7 @@ const SearchPage: React.FC = () => {
     const query = searchQuery.trim();
     if (!isClientReady || !plugins?.length || !query) return;
     for (const plugin of mediaSources) {
-      client.sendEvent<PluginSearchRequest>(SocketRequests.PluginSearch, { pluginId: plugin.id, query });
+      client.sendEvent(SocketRequests.PluginSearch, { pluginId: plugin.id, query });
     }
     startSearch(query, loadingResults(mediaSources.map((p) => p.id))); // resets files: searched again if on Files
   };

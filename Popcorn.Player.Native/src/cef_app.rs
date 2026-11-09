@@ -5,9 +5,9 @@
 //! painted pixels) and `crate::send_cmd`. BrowserHost methods used from the Wayland thread
 //! (input, resize) are safe to call from any thread: CEF posts them to its UI thread.
 //!
-//! The overlay bundle is served from disk as `http://app.local/...` (the base href baked into
-//! `index-chrome.html` by Popcorn.Web's `post-build-player.js`), with `Config::inject_script` added
-//! to HTML pages so they find the C# WebSocket bridge (`window.wsAddress`).
+//! The overlay bundle (Popcorn.Web `npm run build:player`, relative asset URLs) is served from disk
+//! as `http://app.local/...`, with `Config::inject_script` added to HTML pages so they find the C#
+//! WebSocket bridge (`window.wsAddress`).
 
 use std::ffi::{CString, c_char, c_int};
 use std::path::{Component, Path, PathBuf};

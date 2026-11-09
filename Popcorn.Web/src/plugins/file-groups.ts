@@ -97,6 +97,35 @@ export function bestPerEpisode<T>(members: GroupMember<T>[], file: (item: T) => 
   return [...best.values()];
 }
 
+/** Identity of a result across plugins (`origin` + its id there), null = unknown. */
+function originKey(file: FileResult): string | null {
+  const origin = file.origin?.trim().toLowerCase();
+  return origin ? `${origin}\n${file.originId ?? file.id}` : null;
+}
+
+/**
+ * Drops results that are the same item at the same origin (e.g. an aggregator's copy of another plugin's result),
+ * keeping the one with the most seeders (ties: the first, i.e. provider order) at the place of the first copy.
+ * Results without an origin are all kept.
+ */
+export function dedupeFiles<T>(items: T[], file: (item: T) => FileResult): { item: T; duplicates: number }[] {
+  const kept: { item: T; duplicates: number }[] = [];
+  const byKey = new Map<string, { item: T; duplicates: number }>();
+  for (const item of items) {
+    const key = originKey(file(item));
+    const current = key === null ? undefined : byKey.get(key);
+    if (current) {
+      current.duplicates++;
+      if (seeders(file(item)) > seeders(file(current.item))) current.item = item;
+      continue;
+    }
+    const entry = { item, duplicates: 0 };
+    kept.push(entry);
+    if (key !== null) byKey.set(key, entry);
+  }
+  return kept;
+}
+
 /** One episode of a group: the best of its duplicates (most seeders), and how many others there were. */
 export type GroupMember<T> = { item: T; episodes: number[]; duplicates: number };
 
@@ -116,9 +145,14 @@ export type FileEntry<T> =
  * name from several sources) are merged into the one with the most seeders. Results of one source are never merged
  * with each other: there the same name is a different torrent (another upload), so the n-th of a name from each
  * source are the duplicates. A group or file takes the place of its first item, so the order of `items` (the user's
- * sort) is kept.
+ * sort) is kept. `hidden` = duplicates already dropped per item (`dedupeFiles`), added to the counts.
  */
-export function groupFiles<T>(items: T[], file: (item: T) => FileResult, source: (item: T) => string): FileEntry<T>[] {
+export function groupFiles<T>(
+  items: T[],
+  file: (item: T) => FileResult,
+  source: (item: T) => string,
+  hidden: (item: T) => number = () => 0
+): FileEntry<T>[] {
   type Candidate = { item: T; name: EpisodeName | null; index: number; key: string };
   const occurrences = new Map<string, number>();
   const candidates: Candidate[] = items.map((item, index) => {
@@ -139,9 +173,9 @@ export function groupFiles<T>(items: T[], file: (item: T) => FileResult, source:
   const best = new Map<string, { candidate: Candidate; duplicates: number }>();
   for (const c of candidates) {
     const current = best.get(c.key);
-    if (!current) best.set(c.key, { candidate: c, duplicates: 0 });
+    if (!current) best.set(c.key, { candidate: c, duplicates: hidden(c.item) });
     else {
-      current.duplicates++;
+      current.duplicates += 1 + hidden(c.item);
       if (seeders(file(c.item)) > seeders(file(current.candidate.item))) current.candidate = c;
     }
   }

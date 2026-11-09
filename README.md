@@ -115,7 +115,10 @@ Start from the bundled TMDb plugin, [`Plugins/Popcorn.Plugin.Tmdb`](Plugins/Popc
 
 ## Learn more
 
-- [CLAUDE.md](CLAUDE.md) — architecture, project map and detailed build notes
+- [CLAUDE.md](CLAUDE.md) — project map, build commands, conventions and gotchas
+- [Docs/Architecture.md](Docs/Architecture.md) — how the apps fit together and talk to each other
+- [Docs/Features.md](Docs/Features.md) — how the library and player features work
+- [Docs/Building.md](Docs/Building.md) — builds, bundles, releases
 - [Docs/Plugins.md](Docs/Plugins.md) — plugin API
 - [Popcorn.Installer/README.md](Popcorn.Installer/README.md) — installer and updater
 - [Popcorn.FilenameParser/README.md](Popcorn.FilenameParser/README.md) — release name parser (derived from Sonarr/Radarr, GPL-3.0)

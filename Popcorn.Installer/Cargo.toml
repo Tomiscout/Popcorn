@@ -1,9 +1,9 @@
 [package]
 name = "popcorn-installer"
 description = "Popcorn installer (Windows, Linux): installs Popcorn, replaces an installed bundle with a GitHub release (or a package zip), uninstalls it"
-version = "1.1.0"
-edition = "2024"
-publish = false
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
 
 [dependencies]
 anyhow = "1"
@@ -18,7 +18,7 @@ zip = { version = "9", default-features = false, features = ["deflate"] }
 
 # Linux: signals / flock / local time, and BtbN's Linux FFmpeg builds come as .tar.xz (pure Rust xz: no C library).
 [target.'cfg(target_os = "linux")'.dependencies]
-libc = "0.2"
+libc.workspace = true
 lzma-rust2 = { version = "0.25", default-features = false, features = ["std", "xz", "optimization"] }
 tar = { version = "0.4", default-features = false }
 
@@ -38,9 +38,3 @@ windows-sys = { version = "0.61", features = [
 # Exe icon (Explorer, taskbar before the window sets its own): the Windows SDK's rc.exe, or windres on windows-gnu.
 [target.'cfg(windows)'.build-dependencies]
 winresource = "0.1"
-
-[profile.release]
-lto = "thin"
-codegen-units = 1
-strip = true
-opt-level = "s"

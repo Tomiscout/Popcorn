@@ -4,15 +4,15 @@ import { useMemo, useState } from 'react';
 import { DownloadStats } from '../../model/download.contract';
 import { SocketRequests } from '../../socket/socket-requests';
 import { useSocketEvents } from '../../socket/useSocketEvents.hook';
-import { usePolling } from './downloads.hooks';
+import { useSubscription } from '../../socket/useSubscription.hook';
 import { formatRate } from './format';
 import { SpeedLimitDialog } from './speed-limit-dialog';
 
-/** Download / upload speed of all downloads, at the bottom of the nav bar, updated every second. Click: speed limits. */
+/** Download / upload speed of all downloads, at the bottom of the nav bar, pushed by the server as they change. Click: speed limits. */
 export function NetworkStats() {
   const [stats, setStats] = useState<DownloadStats | null>(null);
   useSocketEvents(useMemo(() => ({ [SocketRequests.DownloadStats]: setStats }), []));
-  usePolling(SocketRequests.DownloadStats);
+  useSubscription(SocketRequests.DownloadStats);
   const [limitsOpened, setLimitsOpened] = useState(false);
 
   return (

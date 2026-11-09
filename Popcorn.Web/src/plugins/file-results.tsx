@@ -8,6 +8,7 @@ import {
   Group,
   Loader,
   Paper,
+  Popover,
   Select,
   Stack,
   Switch,
@@ -15,14 +16,29 @@ import {
   Tooltip,
   UnstyledButton,
 } from '@mantine/core';
-import { IconChevronDown, IconDownload, IconRefresh, IconSortAscending, IconSortDescending } from '@tabler/icons-react';
+import {
+  IconAdjustmentsHorizontal,
+  IconChevronDown,
+  IconDownload,
+  IconRefresh,
+  IconSortAscending,
+  IconSortDescending,
+} from '@tabler/icons-react';
 import { useCallback, useMemo, useState } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { FileResult, FileSortField } from '@popcorn/plugin-sdk';
 import type { FileSearch, FileSource, LinkMedia } from './file-sources';
 import { downloadableLink, useDownloadFiles, useOpenLink } from './file-sources';
-import { bestPerEpisode, episodeRange, FileEntry, groupFiles, missingEpisodes, parseEpisodeName } from './file-groups';
+import {
+  bestPerEpisode,
+  dedupeFiles,
+  episodeRange,
+  FileEntry,
+  groupFiles,
+  missingEpisodes,
+  parseEpisodeName,
+} from './file-groups';
 import { PluginFileCard } from './plugin-components';
 import { PluginIcon, ProviderGroup, RefreshButton } from './provider-group';
 
@@ -38,18 +54,23 @@ const useFileResultsView = create<{
   combined: boolean;
   /** Combined list: episodes of one release as a group, duplicates merged. */
   grouped: boolean;
+  /** Combined list: the same item of the same origin from several plugins (`FileResult.origin`) shown once. */
+  deduped: boolean;
   sort: Sort | null;
   setCombined: (combined: boolean) => void;
   setGrouped: (grouped: boolean) => void;
+  setDeduped: (deduped: boolean) => void;
   setSort: (sort: Sort) => void;
 }>()(
   persist(
     (set) => ({
       combined: true,
       grouped: true,
+      deduped: true,
       sort: null,
       setCombined: (combined) => set({ combined }),
       setGrouped: (grouped) => set({ grouped }),
+      setDeduped: (deduped) => set({ deduped }),
       setSort: (sort) => set({ sort }),
     }),
     { name: 'popcorn-file-results-view' }
@@ -143,7 +164,14 @@ function FileCard({ source, file, media }: { source: FileSource; file: FileResul
   );
 }
 
-type Item = { plugin: FileSource; file: FileResult };
+/** `hidden` = copies of it from other plugins dropped by Remove duplicates. */
+type Item = { plugin: FileSource; file: FileResult; hidden?: number };
+
+/** Provider icon tooltip: the plugin, and where an aggregator got the result from. */
+function providerLabel({ plugin, file }: Item): string {
+  const origin = file.origin?.trim();
+  return origin && origin.toLowerCase() !== plugin.name.toLowerCase() ? `${plugin.name} · from ${origin}` : plugin.name;
+}
 
 const itemKey = (i: Item) => `${i.plugin.id}\n${i.file.id}`;
 
@@ -192,7 +220,7 @@ function SelectableFile({
         />
       </Tooltip>
       {showProvider && (
-        <Tooltip label={plugin.name}>
+        <Tooltip label={providerLabel(item)}>
           <div style={{ marginTop: 12, flexShrink: 0 }}>
             <PluginIcon plugin={plugin} size={20} />
           </div>
@@ -310,6 +338,7 @@ function CombinedResults({
   search,
   sort,
   grouped,
+  deduped,
   media,
   selection,
   onRefresh,
@@ -318,6 +347,7 @@ function CombinedResults({
   search: FileSearch;
   sort: Sort;
   grouped: boolean;
+  deduped: boolean;
   media?: LinkMedia;
   selection: Selection;
   onRefresh: (sourceId: string) => void;
@@ -326,19 +356,22 @@ function CombinedResults({
   const shown = useMemo(() => sources.filter((p) => search.results[p.id]), [sources, search]);
   const { key, descending } = sort;
   const entries = useMemo((): FileEntry<Item>[] => {
-    const items = sortFiles(
-      shown.flatMap((plugin) => search.results[plugin.id].results.map((file) => ({ plugin, file }))),
-      (i) => i.file,
-      { key, descending }
-    );
+    // Provider order first, so duplicates with equal seeders keep the first provider's copy.
+    const all: Item[] = shown.flatMap((plugin) => search.results[plugin.id].results.map((file) => ({ plugin, file })));
+    const unique = deduped
+      ? dedupeFiles(all, (i) => i.file).map(({ item, duplicates }) => ({ ...item, hidden: duplicates }))
+      : all;
+    const items = sortFiles(unique, (i) => i.file, { key, descending });
     return grouped
       ? groupFiles(
           items,
           (i) => i.file,
-          (i) => i.plugin.id
+          // Deduplicated: same-named results of one origin are other uploads, whichever plugin listed them.
+          (i) => (deduped && i.file.origin?.trim() ? `origin:${i.file.origin.trim().toLowerCase()}` : i.plugin.id),
+          (i) => i.hidden ?? 0
         )
-      : items.map((item) => ({ kind: 'file', key: itemKey(item), item, duplicates: 0 }));
-  }, [shown, search, key, descending, grouped]);
+      : items.map((item) => ({ kind: 'file', key: itemKey(item), item, duplicates: item.hidden ?? 0 }));
+  }, [shown, search, key, descending, grouped, deduped]);
   const visible = expanded ? entries : entries.slice(0, COMBINED_PREVIEW_COUNT);
   const loading = shown.some((p) => search.results[p.id].loading);
 
@@ -383,6 +416,70 @@ function CombinedResults({
         </Button>
       )}
     </Stack>
+  );
+}
+
+/** Button with a popover of the list's view options (combine providers, group episodes, remove duplicates). */
+function ViewOptions({
+  combined,
+  grouped,
+  deduped,
+  setCombined,
+  setGrouped,
+  setDeduped,
+}: {
+  combined: boolean;
+  grouped: boolean;
+  deduped: boolean;
+  setCombined: (combined: boolean) => void;
+  setGrouped: (grouped: boolean) => void;
+  setDeduped: (deduped: boolean) => void;
+}) {
+  const active = [combined, combined && grouped, combined && deduped].filter(Boolean).length;
+  return (
+    <Popover position="bottom-start" shadow="md" withArrow>
+      <Popover.Target>
+        <Button
+          size="xs"
+          variant="light"
+          color="gray"
+          leftSection={<IconAdjustmentsHorizontal size={14} />}
+          rightSection={
+            active > 0 ? (
+              <Badge size="xs" circle>
+                {active}
+              </Badge>
+            ) : undefined
+          }
+        >
+          View
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Stack gap="sm" maw={300}>
+          <Switch
+            label="Combine providers"
+            description="One list of all providers instead of a list per provider"
+            checked={combined}
+            onChange={(e) => setCombined(e.currentTarget.checked)}
+          />
+          <Switch
+            label="Group episodes"
+            description="Episodes of one release as a group; same-named results of different providers merged into the one with the most seeders"
+            disabled={!combined}
+            checked={grouped}
+            onChange={(e) => setGrouped(e.currentTarget.checked)}
+          />
+          <Switch
+            label="Remove duplicates"
+            description="The same item listed by several providers (e.g. an aggregator and the site it got it from) shown once, the copy with the most seeders"
+            disabled={!combined}
+            checked={deduped}
+            onChange={(e) => setDeduped(e.currentTarget.checked)}
+          />
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 
@@ -440,7 +537,7 @@ export function FileResults({
   /** Searches one source (`FileSource.id`) again. */
   onRefresh: (sourceId: string) => void;
 }) {
-  const { combined, grouped, setCombined, setGrouped, setSort } = useFileResultsView();
+  const { combined, grouped, deduped, setCombined, setGrouped, setDeduped, setSort } = useFileResultsView();
   const options = useMemo(() => sortOptions(sources), [sources]);
   const preferred = useFileResultsView((s) => s.sort);
   const fallback = options.length > 2 ? options[1] : options[0]; // first plugin column, else provider order
@@ -476,12 +573,14 @@ export function FileResults({
   return (
     <Stack gap="md">
       <Group gap="md">
-        <Switch label="Combine providers" checked={combined} onChange={(e) => setCombined(e.currentTarget.checked)} />
-        {combined && (
-          <Tooltip label="Episodes of one release as a group; duplicates keep the one with the most seeders">
-            <Switch label="Group episodes" checked={grouped} onChange={(e) => setGrouped(e.currentTarget.checked)} />
-          </Tooltip>
-        )}
+        <ViewOptions
+          combined={combined}
+          grouped={grouped}
+          deduped={deduped}
+          setCombined={setCombined}
+          setGrouped={setGrouped}
+          setDeduped={setDeduped}
+        />
         <Group gap={4}>
           <Select
             size="xs"
@@ -524,6 +623,7 @@ export function FileResults({
           search={search}
           sort={sort}
           grouped={grouped}
+          deduped={deduped}
           media={media}
           selection={selection}
           onRefresh={onRefresh}

@@ -53,18 +53,20 @@ CONFIG=Release
 # Popcorn.Linux (Rust + CEF). The cef crate's build script downloads the CEF binary distribution
 # matching its version into $(CEF_PATH)/<cef version>/cef_linux_<arch> on first build.
 CEF_PATH ?= $(HOME)/.cache/popcorn/cef
-POPCORN_LINUX_EXE=$(POPCORN_DIR_LINUX)/target/release/popcorn-linux
+# Rust crates: one Cargo workspace (root Cargo.toml), built per crate (-p) into ./target
+CARGO_TARGET=./target/release
+POPCORN_LINUX_EXE=$(CARGO_TARGET)/popcorn-linux
 # Installer / updater (Rust + egui, Popcorn.Installer/README.md): in the bundle as Popcorn.Installer.Linux, which also
 # makes Settings → Updates work (UpdateService looks for it next to the server)
 POPCORN_INSTALLER_DIR=./Popcorn.Installer
-POPCORN_INSTALLER_EXE=$(POPCORN_INSTALLER_DIR)/target/release/popcorn-installer
+POPCORN_INSTALLER_EXE=./target/installer/popcorn-installer
 # Player native layer (Rust): libpopcorn_player.so (P/Invoked by Popcorn.Player.Linux) + CEF helper executable
 # Optional libmpv with the DMA-BUF render API (render_dmabuf.h): the one from `make mpv` when it has been built, or
 # any other with MPV_LIB=<path>. Bundled next to libpopcorn_player.so (found through its $$ORIGIN rpath); without it
 # the player uses the system libmpv and falls back to the OpenGL video output.
 MPV_LIB ?= $(wildcard $(MPV_SO))
-POPCORN_PLAYER_NATIVE_FILES=$(POPCORN_PLAYER_NATIVE_DIR)/target/release/libpopcorn_player.so $(POPCORN_PLAYER_NATIVE_DIR)/target/release/popcorn-player-cef
-CEF_VERSION=$(shell awk '/^name = "cef-dll-sys"/ { getline; sub(/.*\+/, ""); sub(/"/, ""); print }' $(POPCORN_DIR_LINUX)/Cargo.lock)
+POPCORN_PLAYER_NATIVE_FILES=$(CARGO_TARGET)/libpopcorn_player.so $(CARGO_TARGET)/popcorn-player-cef
+CEF_VERSION=$(shell awk '/^name = "cef-dll-sys"/ { getline; sub(/.*\+/, ""); sub(/"/, ""); print }' Cargo.lock)
 CEF_DIR=$(CEF_PATH)/$(CEF_VERSION)/cef_linux_$(shell uname -m)
 CEF_RUNTIME_FILES=libcef.so chrome-sandbox chrome_100_percent.pak chrome_200_percent.pak resources.pak \
 	icudtl.dat v8_context_snapshot.bin libvk_swiftshader.so libvulkan.so.1 vk_swiftshader_icd.json
@@ -122,10 +124,10 @@ build-popcorn-server: build-popcorn-web build-plugins
 
 # Desktop shell (CEF window showing the server's UI)
 build-popcorn-linux:
-	cd $(POPCORN_DIR_LINUX) && CEF_PATH=$(CEF_PATH) cargo build --release
+	CEF_PATH=$(CEF_PATH) cargo build --release -p popcorn-linux
 
 build-popcorn-installer:
-	cd $(POPCORN_INSTALLER_DIR) && cargo build --release
+	cargo build --profile installer -p popcorn-installer
 
 # Player overlay: Popcorn.Web's player UI as a standalone page (player.html), post-build copies it to Popcorn.Player.Linux/web-player
 build-player-web: npm-ci-popcorn-web
@@ -133,7 +135,7 @@ build-player-web: npm-ci-popcorn-web
 
 # Player window / video / CEF overlay (Rust cdylib, shares the CEF runtime with Popcorn.Linux)
 build-popcorn-player-native:
-	cd $(POPCORN_PLAYER_NATIVE_DIR) && CEF_PATH=$(CEF_PATH) cargo build --release
+	CEF_PATH=$(CEF_PATH) cargo build --release -p popcorn-player-native
 
 build-popcorn-player-linux: build-player-web build-popcorn-player-native
 	rm -rf $(POPCORN_PLAYER_PUBLISH_DIR)
@@ -143,7 +145,7 @@ build-popcorn-player-linux: build-player-web build-popcorn-player-native
 bundle-linux:
 	rm -rf $(LINUX_DIR)
 	mkdir -p $(LINUX_DIR)/locales
-	# Player first, server last: both ship Popcorn.Application/Domain/Persistence/Shared.dll and the server's
+	# Player first, server last: both ship Popcorn.Core/Platform.dll and the server's
 	# copies must win (a stale player build would otherwise break the server with MissingMethodException).
 	cp -r $(POPCORN_PLAYER_PUBLISH_DIR)/* $(LINUX_DIR)
 	cp -r $(POPCORN_SERVER_PUBLISH_DIR)/* $(LINUX_DIR)

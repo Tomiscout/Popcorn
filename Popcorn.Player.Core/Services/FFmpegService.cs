@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using PopcornPlayer.Shared;
+using Popcorn.Application.Utils;
 
 namespace Popcorn.Player.Core.Services;
 

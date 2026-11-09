@@ -5,7 +5,6 @@ using Popcorn.Player.Core.Player;
 using Popcorn.Player.Core.Services;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Player.Core.Contracts;
-using PopcornPlayer.Shared.PipeEvents.Server;
 using Serilog;
 using Popcorn.Domain;
 using Popcorn.Application.Services;
@@ -58,7 +57,7 @@ public class PlayerCore
     public bool IsStreamingDownload => _downloadRanges is not null;
     /// <summary>Downloaded parts of the current file, null when it is not a download in progress.</summary>
     private double[][]? _downloadRanges;
-    private CancellationTokenSource? _downloadPolling;
+    private CancellationTokenSource? _downloadWatch;
 
     public async Task LoadFileId(Guid fileId)
     {
@@ -99,7 +98,7 @@ public class PlayerCore
     {
         await SaveProgress();
         _isLoadingTrack = true;
-        StopDownloadPolling();
+        StopDownloadWatch();
 
         // A file the built-in downloader is still fetching (may not even exist yet) plays from the server's stream,
         // which fetches the parts mpv reads first and waits for them.
@@ -142,7 +141,7 @@ public class PlayerCore
             Log.Information("Subtitle files for {Path}: {Subtitles}", file.Path, _externalSubtitles.Select(s => s.Path));
         }
         SetDownloadRanges(download is { Complete: false } ? download.Ranges : null);
-        if (download is { Complete: false }) StartDownloadPolling(file.Path);
+        if (download is { Complete: false }) StartDownloadWatch(file.Path);
 
         // Before mpv gets the file (its track lists must come after this, which resets them in the overlay), not
         // only once it plays.
@@ -260,28 +259,22 @@ public class PlayerCore
         _webSocket.Value.PostEvent("download_ranges", ranges);
     }
 
-    /// <summary>Sends the downloaded parts of the playing file to the seek bar until it is complete.</summary>
-    private void StartDownloadPolling(string path)
+    /// <summary>Sends the downloaded parts of the playing file to the seek bar as they arrive, until it is complete.</summary>
+    private void StartDownloadWatch(string path)
     {
-        var cts = _downloadPolling = new CancellationTokenSource();
-        _ = Task.Run(async () =>
+        var cts = _downloadWatch = new CancellationTokenSource();
+        // Stays on the stream when it completes (mpv keeps its position); the bar is just full.
+        _ = Task.Run(() => _downloads.WatchAsync(path, download =>
         {
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
-            while (await timer.WaitForNextTickAsync(cts.Token).ConfigureAwait(false))
-            {
-                var download = await _downloads.GetAsync(path);
-                if (cts.IsCancellationRequested) return;
-                // Stays on the stream when it completes (mpv keeps its position); the bar is just full.
+            if (!cts.IsCancellationRequested)
                 SetDownloadRanges(download is null ? null : download.Complete ? [[0, 1]] : download.Ranges);
-                if (download is null or { Complete: true }) return;
-            }
-        }, cts.Token);
+        }, cts.Token));
     }
 
-    private void StopDownloadPolling()
+    private void StopDownloadWatch()
     {
-        _downloadPolling?.Cancel();
-        _downloadPolling = null;
+        _downloadWatch?.Cancel();
+        _downloadWatch = null;
         if (_downloadRanges is not null) SetDownloadRanges(null);
     }
 

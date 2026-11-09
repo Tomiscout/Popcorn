@@ -7,7 +7,6 @@ using Popcorn.Player.Core.Core;
 using Popcorn.Player.Core.Player;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Player.Windows.Native;
-using Popcorn.Player.Windows.Pipe;
 using Popcorn.Shared.Ffmpeg;
 using Popcorn.Shared.Logging;
 using Popcorn.Shared.Utils;
@@ -18,7 +17,7 @@ namespace Popcorn.Player.Windows;
 /// <summary>
 /// Windows player. The window, video output and WebView2 overlay are native (popcorn_player.dll,
 /// Popcorn.Player.Windows.Native); this process hosts the player logic: DB, file navigation, mpv control, the overlay's
-/// WebSocket bridge and the named-pipe link to Popcorn.Server. Works standalone when the server isn't running.
+/// WebSocket bridge and the link to Popcorn.Server (PlayerLink). Works standalone when the server isn't running.
 /// Same structure as Popcorn.Player.Linux.
 /// </summary>
 public class Program
@@ -70,7 +69,6 @@ public class Program
         services.AddPopcornPlayer();
         // The mpv core is created by the native layer (it owns the video output); we only attach a client.
         services.AddSingleton<IMpvClient>(sp => new LibMpvClient(PlayerNative.MpvCore, sp.GetRequiredService<ILogger<LibMpvClient>>()));
-        services.AddSingleton<ClientPipeManager>();
         Services = services.BuildServiceProvider();
 
         var webEventHandler = Services.GetRequiredService<WebEventHandler>();
@@ -80,7 +78,7 @@ public class Program
         PlayerNative.Init(new PlayerNativeOptions
         {
             OverlayDir = Path.Combine(baseDir, "web-player"),
-            OverlayPage = "index-chrome.html",
+            OverlayPage = "index.html",
             // playerHost: what the overlay offers on top of Linux (dropping files, the host's subtitle file picker).
             InjectScript = $"window.wsAddress = {JsonSerializer.Serialize(wsAddress)}; window.playerHost = 'windows';",
             UserDataDir = Path.Combine(DirectoryUtils.DataFolder, "webview2-player"),
@@ -102,7 +100,7 @@ public class Program
         player.Initialize();
 
         // Nothing plays before the overlay page is up (the window shows the logo until then), and the server link
-        // comes after it too, so a LoadMedia can't arrive before the player is usable. If the page never connects
+        // comes after it too, so the server can't send a file before the player is usable. If the page never connects
         // (WebView2 broken), play anyway after a while.
         var started = 0;
         void Start(string reason)
@@ -110,7 +108,7 @@ public class Program
             if (Interlocked.Exchange(ref started, 1) != 0) return;
             Log.Information("Starting playback ({reason})", reason);
             StartPlayer(args);
-            _ = ConnectToServerAsync();
+            Services.GetRequiredService<ServerLink>().Start();
         }
         webEventHandler.OverlayConnected += () => Start("overlay connected");
         PlayerNative.Ready += () => Log.Information("Overlay WebView2 created");
@@ -125,7 +123,7 @@ public class Program
         var exitCode = PlayerNative.Run();
         Log.Information("Player window closed ({exitCode})", exitCode);
 
-        TryDispose("pipe client", () => Services.GetService<ClientPipeManager>()?.Dispose());
+        TryDispose("server link", () => Services.GetService<ServerLink>()?.Dispose());
         TryDispose("player core", () => Services.GetService<PlayerCore>()?.Dispose());
         TryDispose("player", player.Dispose);
         PlayerNative.Destroy();
@@ -179,18 +177,6 @@ public class Program
         catch (Exception ex)
         {
             Log.Error(ex, "Could not open dropped files");
-        }
-    }
-
-    private static async Task ConnectToServerAsync()
-    {
-        try
-        {
-            await Services.GetRequiredService<ClientPipeManager>().Initialize();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Could not connect to Popcorn");
         }
     }
 

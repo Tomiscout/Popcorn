@@ -69,7 +69,7 @@ public class Program
         PlayerNative.Init(new PlayerNativeOptions
         {
             OverlayDir = Path.Combine(baseDir, "web-player"),
-            OverlayPage = "index-chrome.html",
+            OverlayPage = "index.html",
             InjectScript = $"window.wsAddress = {JsonSerializer.Serialize(wsAddress)};",
             CacheDir = cacheDir,
             CefLogFile = Path.Combine(DirectoryUtils.DataFolder, "logs", "cef-player.log"),
@@ -91,18 +91,19 @@ public class Program
         using var sigint = PosixSignalRegistration.Create(PosixSignal.SIGINT, OnQuitSignal);
 
         // Only after CEF start-up: loading runs ffprobe/ffmpeg, see PlayerNative.Ready. The server link comes after it
-        // too, so a LoadMediaEvent can't arrive before the player is usable.
+        // too, so the server can't send a file before the player is usable.
         PlayerNative.Ready += () =>
         {
             Log.Information("Player ready");
             StartPlayer(args);
-            _ = Task.Run(ConnectToSocketAsync);
+            Services.GetRequiredService<ServerLink>().Start();
         };
 
         Log.Information("Showing player window");
         var exitCode = PlayerNative.Run();
         Log.Information("Player window closed ({exitCode})", exitCode);
 
+        Services.GetService<ServerLink>()?.Dispose();
         Services.GetService<PlayerCore>()?.Dispose();
         player.Dispose();
         PlayerNative.Destroy();
@@ -174,33 +175,5 @@ public class Program
         Log.Fatal((Exception)e.ExceptionObject, "An unhandled exception occurred.");
         Log.CloseAndFlush();
         Environment.Exit(1);
-    }
-
-    private const string SocketPath = "/tmp/popcorn_bridge.sock";
-    public static PopcornSocketClient? PopcornClient { get; private set; }
-
-    private static Task ConnectToSocketAsync()
-    {
-        if (!File.Exists(SocketPath))
-        {
-            Log.Information("Could not find popcorn socket file, Popcorn is not started.");
-            return Task.CompletedTask;
-        }
-
-        PopcornClient = new PopcornSocketClient(SocketPath);
-        PopcornClient.MessageReceived += (_, @event) =>
-        {
-            _ = Task.Run(() => Services.GetRequiredService<PopcornPipeEventHandler>().Handle(@event));
-        };
-
-        try
-        {
-            PopcornClient.Start();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Popcorn socket client error");
-        }
-        return Task.CompletedTask;
     }
 }

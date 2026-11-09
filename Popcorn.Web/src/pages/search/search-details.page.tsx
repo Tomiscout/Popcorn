@@ -6,7 +6,7 @@ import type { FileQuery, MediaDetails } from '@popcorn/plugin-sdk';
 import { useSocketEvents } from '../../socket/useSocketEvents.hook';
 import { SocketRequests } from '../../socket/socket-requests';
 import { useWebSocket } from '../../state/websocket-context';
-import { PluginDetailsRequest, PluginDetailsResponse } from '../../model/plugin.contract';
+import { PluginDetailsResponse } from '../../model/plugin.contract';
 import { pluginDetailsPath } from '../../plugins/plugins.hook';
 import { PluginDetails } from '../../plugins/plugin-components';
 import { FileSearch, LinkMedia, searchLabel, useFileSearch } from '../../plugins/file-sources';
@@ -66,7 +66,7 @@ const SearchDetailsPage: React.FC = () => {
 
   useEffect(() => {
     if (!isClientReady) return;
-    client.sendEvent<PluginDetailsRequest>(SocketRequests.PluginDetails, { pluginId, id });
+    client.sendEvent(SocketRequests.PluginDetails, { pluginId, id });
   }, [client, isClientReady, pluginId, id]);
 
   const current = state?.key === key ? state : null; // ignore the previous item's state while the next one loads

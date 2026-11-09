@@ -7,12 +7,7 @@ import type { MediaImageKind } from '../../model/media.contract';
 import { usePlugins } from '../../plugins/plugins.hook';
 import { SourceFilter } from '../../plugins/source-filter';
 import { useExcludedImageProviders } from '../../plugins/excluded-sources.store';
-import type {
-  ImageResult,
-  MediaImageProviderResult,
-  MediaImageSearchRequest,
-  MediaImageSearchResponse,
-} from '../../model/plugin.contract';
+import type { ImageResult, MediaImageProviderResult, MediaImageSearchResponse } from '../../model/plugin.contract';
 import './media-image-picker.css';
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // MediaImageService.MaxImageBytes
@@ -54,7 +49,7 @@ function useImageSearch(name: string, kind: MediaImageKind, itemId: string | und
     const timer = setTimeout(() => {
       const requestId = `${Date.now()}-${++requestCounter}`;
       pending.current = requestId;
-      client.sendEvent<MediaImageSearchRequest>(SocketRequests.MediaImageSearch, {
+      client.sendEvent(SocketRequests.MediaImageSearch, {
         name: trimmed,
         kind,
         itemId: itemId ?? null,

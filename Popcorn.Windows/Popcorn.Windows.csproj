@@ -19,9 +19,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <!-- Same log file names as the other apps (Popcorn.Shared itself isn't referenced, see Program.DataFolder). -->
-        <Compile Include="..\Popcorn.Shared\Logging\LogFileName.cs" Link="Logging\LogFileName.cs" />
-        <Compile Include="..\Popcorn.Shared\Logging\DailyLogFileSink.cs" Link="Logging\DailyLogFileSink.cs" />
+        <!-- Same log file names as the other apps (Popcorn.Core itself isn't referenced, see Program.DataFolder). -->
+        <Compile Include="..\Popcorn.Core\Shared\Logging\LogFileName.cs" Link="Logging\LogFileName.cs" />
+        <Compile Include="..\Popcorn.Core\Shared\Logging\DailyLogFileSink.cs" Link="Logging\DailyLogFileSink.cs" />
     </ItemGroup>
 
     <ItemGroup>

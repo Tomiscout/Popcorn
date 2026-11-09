@@ -1,9 +1,9 @@
 [package]
 name = "popcorn-player-windows-native"
 description = "Native layer of the Windows player: Win32 window, mpv video and WebView2 overlay, loaded by Popcorn.Player.Windows (C#)"
-version = "1.1.0"
-edition = "2024"
-publish = false
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
 
 [lib]
 # popcorn_player.dll, P/Invoked from Popcorn.Player.Windows (see src/lib.rs for the C ABI).
@@ -27,9 +27,3 @@ windows = { version = "0.62", features = [
     "Win32_UI_WindowsAndMessaging",
 ] }
 windows-core = "0.62"
-
-[profile.release]
-lto = "thin"
-codegen-units = 1
-strip = true
-panic = "abort"

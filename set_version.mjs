@@ -2,7 +2,8 @@
 // Sets the product version everywhere it is declared, so every build (make, build_windows.ps1) carries it:
 //   VERSION                              .NET assemblies (Directory.Build.props reads it), build_windows.ps1 /
 //                                        release_windows.ps1 default (release.json, tag v<version>)
-//   */Cargo.toml + Cargo.lock            Rust crates (Popcorn.Installer's --version / User-Agent / exe file version)
+//   Cargo.toml + Cargo.lock              Rust crates (one workspace version; Popcorn.Installer's --version / User-Agent /
+//                                        exe file version)
 //   Popcorn.Web/package.json + lock
 // Not touched: plugin versions (plugin.json, Plugins/*/ui) and Popcorn.Web/plugin-sdk (versioned with PluginApi).
 //
@@ -59,16 +60,20 @@ function updateJson(text, eol, apply) {
 try {
     update('VERSION', (_, eol) => version + eol);
 
-    for (const crate of crates) {
-        let name;
-        update(`${crate}/Cargo.toml`, (text) => {
-            name = /\[package\][^[]*?^name\s*=\s*"([^"]+)"/m.exec(text)?.[1];
-            return replaceOnce(text, /(\[package\][^[]*?^version\s*=\s*")[^"]*(")/m);
-        });
-        // The crate's own entry; otherwise the next cargo build rewrites it (and --locked fails).
-        update(`${crate}/Cargo.lock`, (text) =>
-            replaceOnce(text, new RegExp(`(\\[\\[package\\]\\]\\r?\\nname = "${name}"\\r?\\nversion = ")[^"]*(")`)));
-    }
+    // The crates take `version.workspace = true`
+    update('Cargo.toml', (text) => replaceOnce(text, /(\[workspace\.package\][^[]*?^version\s*=\s*")[^"]*(")/m));
+    // The crates' own entries; otherwise the next cargo build rewrites them (and --locked fails).
+    const names = crates.map((crate) =>
+        /\[package\][^[]*?^name\s*=\s*"([^"]+)"/m.exec(readFileSync(join(root, crate, 'Cargo.toml'), 'utf8'))[1]);
+    update('Cargo.lock', (text) => {
+        for (const name of names) {
+            text = replaceOnce(text, new RegExp(`(\\[\\[package\\]\\]\\r?\\nname = "${name}"\\r?\\nversion = ")[^"]*(")`));
+            if (text === null) {
+                return null;
+            }
+        }
+        return text;
+    });
 
     for (const project of npmProjects) {
         update(`${project}/package.json`, (text, eol) => updateJson(text, eol, (json) => {

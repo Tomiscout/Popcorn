@@ -7,17 +7,6 @@ import { SocketRequests } from '../../socket/socket-requests';
 import { useSocketEvents } from '../../socket/useSocketEvents.hook';
 import { useWebSocket } from '../../state/websocket-context';
 
-/** Sends `event` now and every `ms` while the socket is ready. */
-export function usePolling(event: SocketRequests, ms = 1000) {
-  const { client, isClientReady } = useWebSocket();
-  useEffect(() => {
-    if (!isClientReady) return;
-    client.sendEvent(event);
-    const timer = setInterval(() => client.sendEvent(event), ms);
-    return () => clearInterval(timer);
-  }, [client, isClientReady, event, ms]);
-}
-
 /** Tells the user whether a download started from anywhere in the app was added. */
 export function useDownloadAddedNotifications() {
   useSocketEvents(

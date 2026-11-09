@@ -34,7 +34,7 @@ const WatchPage: React.FC<WatchPageProps> = ({ pageLoaded }) => {
   useEffect(() => {
     if (!isClientReady) return;
 
-    client.sendEvent<any>(SocketRequests.MediaList, {} as any);
+    client.sendEvent(SocketRequests.MediaList);
   }, [isClientReady]);
 
   useSocketEvents({

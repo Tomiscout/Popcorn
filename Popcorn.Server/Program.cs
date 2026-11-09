@@ -9,6 +9,13 @@ public abstract class Program
 {
     public static async Task Main(string[] args)
     {
+        // Build step (csproj): the web UI's socket contract, nothing else is started.
+        if (args is ["--write-socket-contracts", var contractDir])
+        {
+            Contracts.SocketContractWriter.Write(contractDir);
+            return;
+        }
+
         // Before the first file is opened: old <App>-YYYYMMDD.txt names → YYYY-MM-DD-<App>.txt (all apps' files).
         var renamedLogs = LogFileName.MigrateLegacyNames(DirectoryUtils.LogsFolder);
         Log.Logger = new LoggerConfiguration()

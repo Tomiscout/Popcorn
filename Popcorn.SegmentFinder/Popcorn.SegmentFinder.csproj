@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Popcorn.Domain\Popcorn.Domain.csproj" />
+    <ProjectReference Include="..\Popcorn.Core\Popcorn.Core.csproj" />
   </ItemGroup>
 
 </Project>

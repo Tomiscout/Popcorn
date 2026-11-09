@@ -1,0 +1,39 @@
+# One Cargo workspace for every Rust crate: one Cargo.lock, one target/ (CEF's build is shared by Popcorn.Linux
+# and Popcorn.Player.Native). Build one crate with `cargo build --release -p <name>`; output in target/release/
+# (the installer has its own profile, below).
+# Popcorn.Player.Windows.Native only builds on Windows, Popcorn.Linux / Popcorn.Player.Native only on Linux, so
+# a plain `cargo build` at the root fails on both: always pick the crate.
+[workspace]
+resolver = "3"
+members = [
+    "Popcorn.Installer",
+    "Popcorn.Linux",
+    "Popcorn.Player.Native",
+    "Popcorn.Player.Windows.Native",
+]
+
+# set_version.mjs writes this version
+[workspace.package]
+version = "1.1.0"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+# Keep exact: the CEF binary distribution (libcef.so + resources) is tied to this version, and Popcorn.Linux and
+# Popcorn.Player.Native share the one bundled next to them. Bump together with the CEF cache directory used by the
+# makefile.
+cef = { version = "=156.3.0", default-features = false }
+libc = "0.2"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
+
+# Popcorn.Installer: `cargo build --profile installer -p popcorn-installer` -> target/installer/. Its own profile
+# because opt-level has to cover its dependencies too (eframe/wgpu are most of the binary), and it keeps unwinding.
+[profile.installer]
+inherits = "release"
+opt-level = "s"
+panic = "unwind"

@@ -14,6 +14,8 @@ using Popcorn.Server.Controllers.Models;
 using Popcorn.Server.Services;
 using Popcorn.Shared.Ffmpeg;
 
+using Popcorn.Server.Push;
+
 namespace Popcorn.Server.Controllers;
 
 [ApiController]
@@ -115,16 +117,32 @@ public class VideoController(
     }
 
     /// <summary>
-    /// Audio track for the web player when the video has none it can play: whether the converted track is ready; else
-    /// starts its conversion (kept alive by asking again). Files still downloading are not converted (it would read
-    /// the whole download), they only have the live stream.
+    /// Audio track for the web player when the video has none it can play, as JSON lines (<see cref="JsonLines"/>):
+    /// whether the converted track is ready; else starts its conversion and answers again when it is done. The open
+    /// request keeps the conversion alive. Files still downloading are not converted (it would read the whole
+    /// download), they only have the live stream.
     /// </summary>
     [HttpGet("{fileId}/audio/{trackId}/prepare")]
-    public async Task<ActionResult<AudioTrackState>> PrepareAudioTrack(Guid fileId, int trackId)
+    public async Task PrepareAudioTrack(Guid fileId, int trackId)
     {
-        if (await FindAudioTrack(fileId, trackId) is not { } source) return NotFound();
-        if (source.InputUrl is not null) return new AudioTrackState(Ready: false, Converting: false);
-        return audioTracks.Prepare(source.File, source.Track);
+        var ct = HttpContext.RequestAborted;
+        if (await FindAudioTrack(fileId, trackId) is not { } source)
+        {
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+        JsonLines.Begin(Response);
+        try
+        {
+            if (source.InputUrl is not null)
+                await JsonLines.WriteAsync(Response, new AudioTrackState(Ready: false, Converting: false), ct);
+            else
+                await audioTracks.Watch(source.File, source.Track, state => JsonLines.WriteAsync(Response, state, ct), ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // the player left (or switched tracks)
+        }
     }
 
     /// <summary>The converted track (seekable, ranges), 404 until <see cref="PrepareAudioTrack"/> says it is ready.</summary>

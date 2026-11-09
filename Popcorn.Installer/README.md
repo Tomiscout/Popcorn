@@ -37,6 +37,14 @@ when `Popcorn.Server.exe` is in it.
 
 Single-dash spellings work too (`-update-check`, `-confirm`, `-uninstall`).
 
+## Started from Popcorn
+
+The tray (Check for updates) and Settings → General → Updates (`UpdateService` + `UpdateWebService` in the server,
+`pages/settings/update-section.tsx`; sockets `UpdateStatus`/`UpdateCheck`/`UpdateInstall`) use it: the check runs
+`--update-check` hidden on the server (answer as its own event, not on the socket loop), only an available release
+asks (version + notes modal), yes starts the installer window with `--from-app`. The server finds it next to itself
+(`Popcorn.Installer.exe` / `Popcorn.Installer.Linux`).
+
 ## Releases it looks for
 
 `GET api.github.com/repos/<repo>/releases/latest` (`--prerelease`: newest non-draft). Repo: `--repo`, else
@@ -88,7 +96,7 @@ Log: `<data>/logs/YYYY-MM-DD-Popcorn.Installer.txt` (`%TEMP%` for `--uninstall`)
 From [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds/releases), release `latest` (rebuilt daily): the
 asset `*-win64-gpl-shared*.zip` of the newest release branch (`ffmpeg-n9.0-latest-win64-gpl-shared-9.0.zip`), the
 master build if there is none. Its `bin/` contents go next to `Popcorn.Server.exe`, without `ffplay.exe`; the server
-and the players run them from there (`Popcorn.Shared/Ffmpeg/FfmpegBinaries.cs`; PATH is never changed). `ffmpeg-files.txt` in the
+and the players run them from there (`Popcorn.Core/Shared/Ffmpeg/FfmpegBinaries.cs`; PATH is never changed). `ffmpeg-files.txt` in the
 install folder lists the files (the DLL names change with FFmpeg versions), first line `# <asset> <digest>`.
 
 - Same build as installed (digest): not downloaded again, the listed files are copied from the current install.

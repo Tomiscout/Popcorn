@@ -509,8 +509,10 @@ public class SegmentFinderService
             finally
             {
                 lock (state) state.Job = null;
+                OnStateChanged(itemId);
             }
         });
+        OnStateChanged(itemId);
         return true;
     }
 
@@ -530,11 +532,27 @@ public class SegmentFinderService
         return references;
     }
 
-    private ItemState GetItemState(Guid itemId) => _states.GetOrAdd(itemId, _ => new ItemState());
+    private ItemState GetItemState(Guid itemId) => _states.GetOrAdd(itemId, id => new ItemState(id));
 
-    private static void SetJob(ItemState state, string step, int done, int total)
+    private void SetJob(ItemState state, string step, int done, int total)
     {
         lock (state) state.Job = state.Job! with { Step = step, Done = done, Total = total };
+        OnStateChanged(state.ItemId);
+    }
+
+    /// <summary>A job of the item started, progressed or ended (its <see cref="GetStateAsync"/> changed): pushed to the open dialogs.</summary>
+    public event Action<Guid>? StateChanged;
+
+    private void OnStateChanged(Guid itemId)
+    {
+        try
+        {
+            StateChanged?.Invoke(itemId);
+        }
+        catch (Exception e)
+        {
+            _logger.LogWarning(e, "Segment state listener failed");
+        }
     }
 
     /// <summary>The item's video files in episode order (parsed season / episode, then path).</summary>
@@ -631,8 +649,9 @@ public class SegmentFinderService
     /// <summary>A scan's find in a file, <see cref="Start"/> as in <see cref="SegmentLocation"/>.</summary>
     private record SegmentMatch(Guid SegmentId, SegmentType Type, double Start, double Length, bool FromChapter, bool Suggested);
 
-    private class ItemState
+    private class ItemState(Guid itemId)
     {
+        public readonly Guid ItemId = itemId;
         public SegmentJob? Job;
         public string? Message;
         public string? Error;

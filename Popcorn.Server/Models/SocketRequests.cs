@@ -2,6 +2,9 @@ namespace Popcorn.Server.Models;
 
 public static class SocketRequests
 {
+    /// <summary>Push instead of polling: <c>SubscriptionRequest</c> topic (+ key) the server sends whenever it changes, the current state right away.</summary>
+    public const string Subscribe = "Subscribe";
+    public const string Unsubscribe = "Unsubscribe";
     public const string MediaList = "MediaList";
     public const string PlaybackProgress = "PlaybackProgress";
     /// <summary>Item page: <c>ContinueWatching</c> of the item (null when it has no file), sent with <see cref="MediaItem"/>.</summary>

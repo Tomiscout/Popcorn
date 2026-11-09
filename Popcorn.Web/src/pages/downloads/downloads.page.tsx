@@ -35,14 +35,7 @@ import {
 } from '@tabler/icons-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  Download,
-  DownloadAddRequest,
-  DownloadKind,
-  DownloadPriority,
-  DownloadState,
-  FilePriority,
-} from '../../model/download.contract';
+import { Download, DownloadKind, DownloadPriority, DownloadState, FilePriority } from '../../model/download.contract';
 import { MediaItem, MediaListResponse } from '../../model/media.contract';
 import { SocketRequests } from '../../socket/socket-requests';
 import { useSocketEvents } from '../../socket/useSocketEvents.hook';
@@ -51,7 +44,8 @@ import { useWebSocket } from '../../state/websocket-context';
 import { isDesktopApp, useIsMobile } from '../../utils/platform';
 import { formatBytes, formatDuration, formatRate } from './format';
 import { DownloadEntry, groupDownloads } from './download-groups';
-import { useColumnWidths, usePolling } from './downloads.hooks';
+import { useColumnWidths } from './downloads.hooks';
+import { useSubscription } from '../../socket/useSubscription.hook';
 import { ResizableTh } from './resizable-columns';
 
 const STATE_COLORS: Record<DownloadState, string> = {
@@ -89,7 +83,7 @@ function useLibraryItems(enabled: boolean) {
     )
   );
   useEffect(() => {
-    if (enabled && isClientReady) client.sendEvent(SocketRequests.MediaList, {});
+    if (enabled && isClientReady) client.sendEvent(SocketRequests.MediaList);
   }, [enabled, isClientReady, client]);
   return items;
 }
@@ -122,7 +116,7 @@ function AddDownloadDialog({ kind, opened, onClose }: { kind: DownloadKind; open
 
   const add = () => {
     if (!url.trim()) return;
-    client.sendEvent<DownloadAddRequest>(SocketRequests.DownloadAdd, { kind, url: url.trim(), ...library });
+    client.sendEvent(SocketRequests.DownloadAdd, { kind, url: url.trim(), ...library });
     close();
   };
 
@@ -756,7 +750,7 @@ const DownloadsPage: React.FC = () => {
     if (locationState?.tab) setTab(locationState.tab);
   }, [locationState]);
   useSocketEvents(useMemo(() => ({ [SocketRequests.DownloadList]: setDownloads }), []));
-  usePolling(SocketRequests.DownloadList);
+  useSubscription(SocketRequests.DownloadList);
 
   const byKind = (kind: DownloadKind) => (downloads ?? []).filter((d) => d.kind === kind);
   const count = (kind: DownloadKind) => {

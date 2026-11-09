@@ -1,8 +1,8 @@
 using System.Net.WebSockets;
 using System.Text.Json.Serialization;
-using FluentMigrator.Runner;
 using Popcorn.Persistence;
 using Popcorn.Server.PluginHost;
+using Popcorn.Server.Push;
 using Popcorn.Server.Services.Disk;
 using Serilog;
 
@@ -38,11 +38,7 @@ public class Startup
     
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
     {
-        if (!env.IsDevelopment()) //For some reason it cant resolve IMigrationRunner when Development
-        {
-            var runner = app.ApplicationServices.GetRequiredService<IMigrationRunner>();
-            runner.MigrateUp();
-        }
+        app.ApplicationServices.MigrateDatabase();
         
         var scratchFilesService = app.ApplicationServices.GetRequiredService<ScratchFilesCleanupService>();
         scratchFilesService.InitialCleanup();
@@ -132,6 +128,7 @@ public class Startup
                 });
             }
             pluginManager.StatusChanged += OnPluginStatus;
+            var subscriptions = context.RequestServices.GetRequiredService<SocketSubscriptions>();
             try
             {
                 await bus.ListenAsync();
@@ -139,6 +136,7 @@ public class Startup
             finally
             {
                 pluginManager.StatusChanged -= OnPluginStatus;
+                subscriptions.RemoveConnection(bus);
             }
 
             if (webSocket.State == WebSocketState.Open)

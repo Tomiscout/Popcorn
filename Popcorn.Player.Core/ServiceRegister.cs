@@ -8,8 +8,8 @@ using Popcorn.Player.Core.Player;
 using Popcorn.Player.Core.Services;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Shared.Interfaces;
-using Popcorn.Shared.Linux;
-using Popcorn.Shared.Windows;
+using Popcorn.Platform.Linux;
+using Popcorn.Platform.Windows;
 
 namespace Popcorn.Player.Core;
 
@@ -26,7 +26,7 @@ public static class ServiceRegister
         services.AddSingleton<WebEventHandler>();
         services.AddSingleton<IPlayer, MpvPlayer>();
         services.AddSingleton<ImageRepository>();
-        services.AddSingleton<PopcornPipeEventHandler>();
+        services.AddSingleton<ServerLink>();
         services.AddSingleton<FFmpegService>();
         services.AddSingleton<SettingsRepository>();
         services.AddSingleton<SegmentSkipService>();

@@ -25,7 +25,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Popcorn.Player.Core\Popcorn.Player.Core.csproj" />
-    <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
   </ItemGroup>
 
 

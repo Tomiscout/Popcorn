@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Divider, Group, Modal, Stack } from '@mantine/core';
 import { MediaImagePicker } from '../../components/image-picker/media-image-picker';
-import { MediaImageKind, MediaItem, SetMediaItemImageRequest } from '../../model/media.contract';
+import { MediaImageKind, MediaItem } from '../../model/media.contract';
 import { useWebSocket } from '../../state/websocket-context';
 import { SocketRequests } from '../../socket/socket-requests';
 
@@ -34,7 +34,7 @@ function EditImagesForm({ item, onClose, posterUrl, backdropUrl }: Omit<EditImag
   const save = () => {
     const send = (kind: MediaImageKind, url: Change) => {
       if (url === undefined) return;
-      client.sendEvent<SetMediaItemImageRequest>(SocketRequests.SetMediaItemImage, { id: item.id, kind, url });
+      client.sendEvent(SocketRequests.SetMediaItemImage, { id: item.id, kind, url });
     };
     send('Poster', poster);
     send('Backdrop', backdrop);

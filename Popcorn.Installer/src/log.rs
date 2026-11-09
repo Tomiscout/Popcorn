@@ -1,5 +1,5 @@
 //! Minimal logger (same format as Popcorn.Linux): stderr + daily file in `<data>/logs/YYYY-MM-DD-Popcorn.Installer.txt`
-//! (the name the .NET apps use too, see `Popcorn.Shared/Logging/LogFileName.cs`), rolled over at local midnight.
+//! (the name the .NET apps use too, see `Popcorn.Core/Shared/Logging/LogFileName.cs`), rolled over at local midnight.
 
 use std::fs::{File, OpenOptions};
 use std::io::Write;

@@ -21,17 +21,14 @@ import {
 import { IconAlertCircle, IconTrash } from '@tabler/icons-react';
 import { useWebSocket } from '../../state/websocket-context';
 import { useSocketEvents } from '../../socket/useSocketEvents.hook';
+import { useSubscription } from '../../socket/useSubscription.hook';
 import { SocketRequests } from '../../socket/socket-requests';
 import { resolveServerHost } from '../../utils/url-resolver';
 import {
   SegmentFileState,
   SegmentJobKind,
   SegmentOption,
-  SegmentsApplyRequest,
-  SegmentsDeleteRequest,
-  SegmentsDetectRequest,
   SegmentSpan,
-  SegmentsSetTypeRequest,
   SegmentsState,
   SegmentType,
 } from '../../model/segments.contract';
@@ -44,7 +41,6 @@ interface SegmentsDialogProps {
 
 type Tab = 'candidates' | 'apply';
 
-const POLL_MS = 1000;
 /** Most files one detection compares, same limit as `MaxDetectFiles` on the server. */
 const MAX_DETECT_FILES = 5;
 const TYPES = [SegmentType.Intro, SegmentType.Outro];
@@ -123,16 +119,9 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
   );
   useSocketEvents(events);
 
-  useEffect(() => {
-    if (opened) client.sendEvent(SocketRequests.SegmentsState, itemId);
-  }, [opened, itemId]);
-
+  // The current state, then every job step pushed by the server while the dialog is open.
+  useSubscription(SocketRequests.SegmentsState, itemId, opened);
   const running = state?.job != null;
-  useEffect(() => {
-    if (!opened || !running) return;
-    const timer = setInterval(() => client.sendEvent(SocketRequests.SegmentsState, itemId), POLL_MS);
-    return () => clearInterval(timer);
-  }, [opened, running, itemId]);
 
   // Preselect two files to compare: the first two missing a segment, or the first two of the item.
   const missingFiles = useMemo(() => (state ? state.files.filter((f) => missing(f, state)) : []), [state]);
@@ -157,20 +146,18 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
   const toggleFile = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].slice(-MAX_DETECT_FILES)));
 
-  const detect = () =>
-    client.sendEvent<SegmentsDetectRequest>(SocketRequests.SegmentsDetect, { itemId, fileIds: selected });
+  const detect = () => client.sendEvent(SocketRequests.SegmentsDetect, { itemId, fileIds: selected });
   const scan = () => client.sendEvent(SocketRequests.SegmentsScan, itemId);
   const setType = (segmentId: string, type: SegmentType) =>
-    client.sendEvent<SegmentsSetTypeRequest>(SocketRequests.SegmentsSetType, { itemId, segmentId, type });
-  const remove = (segmentId: string) =>
-    client.sendEvent<SegmentsDeleteRequest>(SocketRequests.SegmentsDelete, { itemId, segmentId });
+    client.sendEvent(SocketRequests.SegmentsSetType, { itemId, segmentId, type });
+  const remove = (segmentId: string) => client.sendEvent(SocketRequests.SegmentsDelete, { itemId, segmentId });
 
   /** Adds / removes one segment of a file; saved right away. */
   const toggleOption = (f: SegmentFileState, option: SegmentOption) => {
     const segments = f.segments
       .filter((o) => (o === option ? !o.applied : o.applied))
       .map(({ segmentId, start, length }) => ({ segmentId, start, length }));
-    client.sendEvent<SegmentsApplyRequest>(SocketRequests.SegmentsApply, { itemId, files: { [f.id]: segments } });
+    client.sendEvent(SocketRequests.SegmentsApply, { itemId, files: { [f.id]: segments } });
   };
 
   const shownFiles = filter === 'missing' ? missingFiles : state.files;

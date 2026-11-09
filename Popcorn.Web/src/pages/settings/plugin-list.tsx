@@ -15,7 +15,6 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconGripVertical, IconSettings, IconTrash, IconUpload } from '@tabler/icons-react';
-import { PluginSetEnabledRequest, PluginSetOrderRequest, PluginUninstallRequest } from '../../model/plugin.contract';
 import { PluginIcon } from '../../plugins/provider-group';
 import PluginSettingsDialog from './plugin-settings-dialog';
 import PluginStatus from './plugin-status';
@@ -41,17 +40,17 @@ const PluginList: React.FC = () => {
     const [moved] = next.splice(source.index, 1);
     next.splice(destination.index, 0, moved);
     setPlugins(next); // the server answers with the same list
-    client.sendEvent<PluginSetOrderRequest>(SocketRequests.PluginSetOrder, { pluginIds: next.map((p) => p.id) });
+    client.sendEvent(SocketRequests.PluginSetOrder, { pluginIds: next.map((p) => p.id) });
   };
 
   const refresh = () => client.sendEvent(SocketRequests.PluginList);
 
   const setEnabled = (pluginId: string, enabled: boolean) =>
-    client.sendEvent<PluginSetEnabledRequest>(SocketRequests.PluginSetEnabled, { pluginId, enabled });
+    client.sendEvent(SocketRequests.PluginSetEnabled, { pluginId, enabled });
 
   const uninstall = (pluginId: string, name: string) => {
     if (!window.confirm(`Uninstall plugin ${name}?`)) return;
-    client.sendEvent<PluginUninstallRequest>(SocketRequests.PluginUninstall, { pluginId });
+    client.sendEvent(SocketRequests.PluginUninstall, { pluginId });
   };
 
   const install = async (file: File | null) => {

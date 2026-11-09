@@ -24,7 +24,47 @@ public class DownloadPlaybackClient
         Timeout = TimeSpan.FromSeconds(3),
     };
 
+    /// <summary>Same server, no time limit: <see cref="WatchAsync"/> stays open while the file plays.</summary>
+    private readonly HttpClient _live = new(new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromMilliseconds(300) })
+    {
+        BaseAddress = new Uri($"http://127.0.0.1:{Environment.GetEnvironmentVariable("POPCORN_PORT") ?? "5000"}/"),
+        Timeout = Timeout.InfiniteTimeSpan,
+    };
+
     public string StreamUrl(DownloadPlayback playback) => new Uri(_http.BaseAddress!, playback.StreamPath).ToString();
+
+    /// <summary>
+    /// Calls <paramref name="onChange"/> with the file's download state whenever the server says it changed (now, then
+    /// as parts arrive) until it is complete; null once it is no download (any more) or the server is gone.
+    /// </summary>
+    public async Task WatchAsync(string path, Action<DownloadPlayback?> onChange, CancellationToken ct)
+    {
+        try
+        {
+            using var response = await _live.GetAsync($"api/downloads/playback/live?path={Uri.EscapeDataString(path)}",
+                HttpCompletionOption.ResponseHeadersRead, ct);
+            if (response.IsSuccessStatusCode)
+            {
+                using var reader = new StreamReader(await response.Content.ReadAsStreamAsync(ct));
+                while (await reader.ReadLineAsync(ct) is { } line)
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    var playback = JsonSerializer.Deserialize<DownloadPlayback>(line, Json);
+                    onChange(playback);
+                    if (playback is null or { Complete: true }) return;
+                }
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception e) when (e is HttpRequestException or IOException or JsonException)
+        {
+            Log.Debug("Download info of {Path} ended: {Error}", path, e.Message);
+        }
+        if (!ct.IsCancellationRequested) onChange(null);
+    }
 
     public async Task<DownloadPlayback?> GetAsync(string path)
     {

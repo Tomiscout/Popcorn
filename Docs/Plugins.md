@@ -351,6 +351,11 @@ public interface IImageProvider
   `FileResult` carries the values in `SortValues` (key → number). Use the presets `FileSortField.Seeders`,
   `.Leechers`, `.Size` (bytes) and `.Added` (Unix seconds) or the same keys where they fit: the combined list merges
   columns of all plugins by key, so results of different plugins sort together. Results without a value sort last.
+* `Origin` / `OriginId` (optional): the provider a result really comes from (a tag shared by all plugins, lowercase
+  name or domain, e.g. `"1337x"`) and its id there (e.g. the site's torrent id or the info hash; null = `Id`). An
+  aggregator sets them per result, a plugin for one site sets its own tag. Results of different plugins with the same
+  pair are one item: the combined list shows it once when the user turns on Remove duplicates (the copy with the most
+  seeders, ties: the first provider in the user's order). Without `Origin` a result is never deduplicated.
 * `FileSources` (`IFileSourceProvider`): the sources in display order. `Id` must be unique within the plugin and
   stable (letters, digits, `-`, `_`, `.`), since the UI remembers collapsed groups by it. `Name` replaces the plugin
   name in the UI, `Icon` (path in `web/`, like plugin.json `icon`) the plugin icon. Each `Source` is a plain

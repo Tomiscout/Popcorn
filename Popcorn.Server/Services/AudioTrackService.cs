@@ -14,14 +14,20 @@ namespace Popcorn.Server.Services;
 /// </summary>
 public sealed class AudioTrackService(ILogger<AudioTrackService> logger)
 {
-    /// <summary>A conversion nobody asked about (<see cref="Prepare"/>) for this long is cancelled: the player left.</summary>
-    private static readonly TimeSpan Lease = TimeSpan.FromSeconds(20);
+    /// <summary>
+    /// A conversion nobody watches (<see cref="Watch"/>) for this long is cancelled: the player left. Covers switching
+    /// tracks back and forth and a player that reconnects.
+    /// </summary>
+    private static readonly TimeSpan Grace = TimeSpan.FromSeconds(20);
 
     private sealed class Conversion
     {
         /// <summary>Never disposed: the watchdog may still fire as the conversion ends; a CTS without a timer holds nothing.</summary>
         public readonly CancellationTokenSource Cancel = new();
-        public long LastAsked = Environment.TickCount64;
+        /// <summary>True when the converted file is there, false when the conversion failed or was cancelled.</summary>
+        public readonly TaskCompletionSource<bool> Done = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int Watchers;
+        public long LastWatched = Environment.TickCount64;
     }
 
     /// <summary>Running conversions by cache path. Also the lock between them and their finished files.</summary>
@@ -38,25 +44,51 @@ public sealed class AudioTrackService(ILogger<AudioTrackService> logger)
         Path.Combine(DirectoryUtils.StreamCache, $"{fileId}-{trackIndex}.m4a");
 
     /// <summary>
-    /// Whether the converted track is there; if not, starts its conversion or keeps the running one alive. The player
-    /// asks again every few seconds while it streams, so leaving it stops the conversion after <see cref="Lease"/>.
+    /// Whether the converted track is there; if not, starts its conversion (or joins the running one) and waits for it
+    /// while <paramref name="ct"/> lasts (the player's request), calling <paramref name="report"/> with each state.
+    /// A conversion nobody waits for any more is cancelled after <see cref="Grace"/>.
     /// </summary>
-    public AudioTrackState Prepare(MediaFile mediaFile, AudioTrackDto track)
+    public async Task Watch(MediaFile mediaFile, AudioTrackDto track, Func<AudioTrackState, Task> report, CancellationToken ct)
     {
         var path = CachePath(mediaFile.Id, track.Index);
+        Conversion conversion;
         lock (conversions)
         {
-            if (File.Exists(path)) return new AudioTrackState(Ready: true, Converting: false);
-            if (conversions.TryGetValue(path, out var running))
-                Interlocked.Exchange(ref running.LastAsked, Environment.TickCount64);
+            if (File.Exists(path))
+            {
+                conversion = null!;
+            }
             else
             {
-                var conversion = new Conversion();
-                conversions[path] = conversion;
-                _ = Task.Run(() => ConvertAsync(mediaFile, track, path, conversion));
+                if (!conversions.TryGetValue(path, out conversion!))
+                {
+                    conversion = new Conversion();
+                    conversions[path] = conversion;
+                    _ = Task.Run(() => ConvertAsync(mediaFile, track, path, conversion));
+                }
+                conversion.Watchers++;
             }
         }
-        return new AudioTrackState(Ready: false, Converting: true);
+        if (conversion is null)
+        {
+            await report(new AudioTrackState(Ready: true, Converting: false));
+            return;
+        }
+
+        try
+        {
+            await report(new AudioTrackState(Ready: false, Converting: true));
+            var ready = await conversion.Done.Task.WaitAsync(ct);
+            await report(new AudioTrackState(Ready: ready, Converting: false));
+        }
+        finally
+        {
+            lock (conversions)
+            {
+                conversion.Watchers--;
+                conversion.LastWatched = Environment.TickCount64;
+            }
+        }
     }
 
     private async Task ConvertAsync(MediaFile mediaFile, AudioTrackDto track, string path, Conversion conversion)
@@ -64,10 +96,13 @@ public sealed class AudioTrackService(ILogger<AudioTrackService> logger)
         var part = path + ".part";
         await using var watchdog = new Timer(_ =>
         {
-            if (Environment.TickCount64 - Interlocked.Read(ref conversion.LastAsked) > Lease.TotalMilliseconds)
-                conversion.Cancel.Cancel();
-        }, null, Lease, TimeSpan.FromSeconds(5));
+            bool abandoned;
+            lock (conversions)
+                abandoned = conversion.Watchers == 0 && Environment.TickCount64 - conversion.LastWatched > Grace.TotalMilliseconds;
+            if (abandoned) conversion.Cancel.Cancel();
+        }, null, Grace, TimeSpan.FromSeconds(5));
 
+        var ready = false;
         try
         {
             logger.LogInformation("Converting audio track {Track} of {Path}", track.Index, mediaFile.Path);
@@ -78,6 +113,7 @@ public sealed class AudioTrackService(ILogger<AudioTrackService> logger)
                 .CancellableThrough(conversion.Cancel.Token)
                 .ProcessAsynchronously();
             lock (conversions) File.Move(part, path, overwrite: true);
+            ready = true;
             logger.LogInformation("Converted audio track {Track} of {Path}", track.Index, mediaFile.Path);
         }
         catch (Exception ex)
@@ -91,6 +127,7 @@ public sealed class AudioTrackService(ILogger<AudioTrackService> logger)
         finally
         {
             lock (conversions) conversions.Remove(path);
+            conversion.Done.TrySetResult(ready);
         }
     }
 
@@ -132,5 +169,5 @@ public sealed class AudioTrackService(ILogger<AudioTrackService> logger)
 }
 
 /// <param name="Ready">The converted track is there (<c>api/video/{id}/audio/{track}</c>).</param>
-/// <param name="Converting">It is being converted: ask again. Neither = only the live stream (a file still downloading).</param>
+/// <param name="Converting">It is being converted: another line follows when it is done. Neither = only the live stream (a file still downloading, or the conversion failed).</param>
 public record AudioTrackState(bool Ready, bool Converting);

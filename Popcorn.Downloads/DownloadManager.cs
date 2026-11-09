@@ -60,6 +60,24 @@ public sealed class DownloadManager(
 
     private ClientEngine Engine => _engine ?? throw new InvalidOperationException("Downloads are not started");
 
+    /// <summary>
+    /// Something may have changed: raised after every tick (rates, progress) and after each add / pause / resume /
+    /// priority change / removal. Listeners (the server's pushes) compare what they send themselves.
+    /// </summary>
+    public event Action? Changed;
+
+    private void OnChanged()
+    {
+        try
+        {
+            Changed?.Invoke();
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(e, "Download change listener failed");
+        }
+    }
+
     #region Lifetime
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -147,6 +165,7 @@ public sealed class DownloadManager(
             {
                 await TickAsync(elapsed);
                 if (++ticks % 10 == 0) await SaveAsync();
+                OnChanged();
             }
             catch (Exception e)
             {
@@ -348,6 +367,7 @@ public sealed class DownloadManager(
         finally
         {
             _gate.Release();
+            OnChanged();
         }
     }
 
@@ -397,6 +417,7 @@ public sealed class DownloadManager(
         finally
         {
             _gate.Release();
+            OnChanged();
         }
     }
 
@@ -487,6 +508,7 @@ public sealed class DownloadManager(
         finally
         {
             _gate.Release();
+            OnChanged();
         }
     }
 
@@ -603,7 +625,7 @@ public sealed class DownloadManager(
 
     /// <summary>
     /// Title (null = the item is gone) and library file ids by path of a download's item, cached for a few seconds (the
-    /// list is polled every second).
+    /// list is rebuilt every second while someone watches it).
     /// </summary>
     private async Task<(bool Exists, string? Title, Dictionary<string, Guid> Files)> ItemInfoAsync(Guid? itemId)
     {

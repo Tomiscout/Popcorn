@@ -11,11 +11,11 @@ public class WebSocketBus(WebSocket webSocket, IServiceScopeFactory scopeFactory
     private readonly Dictionary<string, Delegate> _eventHandlers = new();
     private readonly Dictionary<string, Delegate> _binaryEventHandlers = new();
 
-    /// <summary>Polled every second (nav bar stats, Downloads page): logged as verbose only.</summary>
-    private static readonly HashSet<string> PolledEvents = [SocketRequests.DownloadStats, SocketRequests.DownloadList];
+    /// <summary>Pushed up to every second (nav bar stats, Downloads page, segment job progress): logged as verbose only.</summary>
+    private static readonly HashSet<string> FrequentEvents = [SocketRequests.DownloadStats, SocketRequests.DownloadList, SocketRequests.SegmentsState];
 
     private static Serilog.Events.LogEventLevel LevelOf(string? type) =>
-        type is not null && PolledEvents.Contains(type) ? Serilog.Events.LogEventLevel.Verbose : Serilog.Events.LogEventLevel.Information;
+        type is not null && FrequentEvents.Contains(type) ? Serilog.Events.LogEventLevel.Verbose : Serilog.Events.LogEventLevel.Information;
 
     private static readonly JsonSerializerOptions JsonSerializerOptions = new ()
         { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
@@ -59,6 +59,31 @@ public class WebSocketBus(WebSocket webSocket, IServiceScopeFactory scopeFactory
         });
     }
     
+    /// <summary>A payload as <see cref="SendEventAsync"/> serializes it.</summary>
+    public static string Serialize(object payload) => JsonSerializer.Serialize(payload, JsonSerializerOptions);
+
+    /// <summary>Sends an already serialized payload (<see cref="Serialize"/>; pushes serialize once for every socket). False when the socket is gone.</summary>
+    public async Task<bool> TrySendJsonAsync(string type, string payloadJson)
+    {
+        if (webSocket.State != WebSocketState.Open) return false;
+        await _sendLock.WaitAsync();
+        try
+        {
+            Log.Write(LevelOf(type), "Sending event: {type}", type);
+            var bytes = Encoding.UTF8.GetBytes($"{{\"type\":{JsonSerializer.Serialize(type)},\"payload\":{payloadJson}}}");
+            await webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+            return true;
+        }
+        catch (Exception e) when (e is WebSocketException or ObjectDisposedException)
+        {
+            return false;
+        }
+        finally
+        {
+            _sendLock.Release();
+        }
+    }
+
     public async Task SendEventAsync(string type, object payload)
     {
         await _sendLock.WaitAsync();

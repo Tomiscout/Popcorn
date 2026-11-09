@@ -1,4 +1,9 @@
 import { useAppStore } from '../state/app.store';
+import type { SocketPayloads } from './socket-payloads';
+import type { SocketRequests } from './socket-requests';
+
+/** Payload of an event: the generated server type (`socket-payloads.ts`), none for events without a handler payload. */
+export type PayloadOf<K extends SocketRequests> = K extends keyof SocketPayloads ? SocketPayloads[K] : never;
 
 type QueuedMessage = { kind: 'text'; data: string } | { kind: 'binary'; data: Blob };
 
@@ -88,7 +93,10 @@ export class WebSocketClient {
   //#endregion
 
   //#region Event sending
-  sendEvent<TPayload>(type: string, payload: TPayload = {} as any) {
+  sendEvent<K extends SocketRequests>(
+    type: K,
+    ...[payload = {} as PayloadOf<K>]: PayloadOf<K> extends void ? [] : [payload: PayloadOf<K>]
+  ) {
     console.debug('Sending event', type);
     const message = JSON.stringify({ type, payload });
 

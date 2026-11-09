@@ -11,20 +11,18 @@
     <ApplicationIcon>popcorn.ico</ApplicationIcon>
     <AssemblyTitle>Popcorn Player</AssemblyTitle>
     <Product>Popcorn</Product>
-    <PlayerNativeDir>$(MSBuildThisFileDirectory)..\Popcorn.Player.Windows.Native\</PlayerNativeDir>
-    <PlayerNativeDll>$(PlayerNativeDir)target\release\popcorn_player.dll</PlayerNativeDll>
+    <!-- Popcorn.Player.Windows.Native is a member of the root Cargo workspace: built from there into ..\target -->
+    <CargoWorkspaceDir>$(MSBuildThisFileDirectory)..\</CargoWorkspaceDir>
+    <PlayerNativeDll>$(CargoWorkspaceDir)target\release\popcorn_player.dll</PlayerNativeDll>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="PipeMethodCalls" Version="4.0.2" />
-    <PackageReference Include="PipeMethodCalls.NetJson" Version="3.0.0" />
     <PackageReference Include="Serilog" Version="4.3.0" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Popcorn.Player.Core\Popcorn.Player.Core.csproj" />
-    <ProjectReference Include="..\Popcorn.Shared\Popcorn.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,7 +43,7 @@
   <!-- Files made outside this project are added as content in targets (globbed when building, not when the project
        is loaded), so both the build output and `dotnet publish` (build_windows.ps1) get them. -->
   <Target Name="BuildPlayerNative" BeforeTargets="BeforeBuild" Condition="'$(OS)' == 'Windows_NT'">
-    <Exec Command="cargo build --release" WorkingDirectory="$(PlayerNativeDir)" />
+    <Exec Command="cargo build --release -p popcorn-player-windows-native" WorkingDirectory="$(CargoWorkspaceDir)" />
     <ItemGroup>
       <Content Include="$(PlayerNativeDll)" Link="popcorn_player.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>

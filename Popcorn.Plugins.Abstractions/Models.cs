@@ -93,6 +93,19 @@ public class FileResult
     /// key sorts last.
     /// </summary>
     public IReadOnlyDictionary<string, double> SortValues { get; init; } = new Dictionary<string, double>();
+    /// <summary>
+    /// The provider (site, tracker, index) the result really comes from, as a tag shared by every plugin that can return
+    /// its results: lowercase name or domain, e.g. "1337x", "yts". An aggregator sets it per result (its results come
+    /// from several providers); a plugin for one site sets its own tag. Results of different plugins with the same
+    /// <see cref="Origin"/> and <see cref="OriginId"/> are the same item: the combined list can show it once
+    /// (Remove duplicates). Null = unknown, never deduplicated.
+    /// </summary>
+    public string? Origin { get; init; }
+    /// <summary>
+    /// The result's id at <see cref="Origin"/> (e.g. the site's torrent id or the info hash), the same whichever plugin
+    /// returns it. Null = <see cref="Id"/>.
+    /// </summary>
+    public string? OriginId { get; init; }
     /// <summary>Free-form data for the plugin's own UI components; serialized to JSON (camelCase) as-is.</summary>
     public object? Data { get; init; }
 }

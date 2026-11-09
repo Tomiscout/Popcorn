@@ -1,30 +1,39 @@
+// Generated from Popcorn.Server (Contracts/SocketContractWriter.cs) on build. Do not edit.
+
+/** Socket event names (server: Popcorn.Server/Models/SocketRequests.cs). */
 export enum SocketRequests {
+  /** Push instead of polling: SubscriptionRequest topic (+ key) the server sends whenever it changes, the current state right away. */
+  Subscribe = 'Subscribe',
+  Unsubscribe = 'Unsubscribe',
   MediaList = 'MediaList',
   PlaybackProgress = 'PlaybackProgress',
+  /** Item page: ContinueWatching of the item (null when it has no file), sent with `MediaItem`. */
   MediaItemContinue = 'MediaItemContinue',
   MediaItem = 'MediaItem',
   RemoveMediaItem = 'RemoveMediaItem',
   RefreshMediaItem = 'RefreshMediaItem',
-  PlayerNextFile = 'PlayerNextFile',
-  PlayerRefreshFiles = 'PlayerRefreshFiles',
   OpenMediaItemFolder = 'OpenMediaItemFolder',
   MediaItemFileList = 'MediaItemFileList',
   MediaItemHistory = 'MediaItemHistory',
+  /** Item page History tab: deletes one entry, or the whole history without HistoryId; answered with the item resent. */
   MediaItemHistoryDelete = 'MediaItemHistoryDelete',
+  /** Item page: every file of the item in play order (MediaItemFlatFileList response), sent with `MediaItem`. */
   MediaItemFlatFileList = 'MediaItemFlatFileList',
   RenameMediaItem = 'RenameMediaItem',
   ImageFile = 'ImageFile',
   ThumbnailFile = 'ThumbnailFile',
   ImageFilesBatchSent = 'ImageFilesBatchSent',
-  NextFile = 'NextFile',
   FileOpen = 'FileOpen',
   FileOpenWith = 'FileOpenWith',
   FolderOpen = 'FolderOpen',
   FolderOpenPlayer = 'FolderOpenPlayer',
+  NextFile = 'NextFile',
+  PlayerNextFile = 'PlayerNextFile',
+  PlayerRefreshFiles = 'PlayerRefreshFiles',
   LibraryFolders = 'LibraryFolders',
+  LibraryFoldersData = 'LibraryFoldersData',
   RemoveLibraryFolder = 'RemoveLibraryFolder',
   AddLibraryFolderPicker = 'AddLibraryFolderPicker',
-  LibraryFoldersData = 'LibraryFoldersData',
   CreateMediaItem = 'CreateMediaItem',
   SetMediaItemImage = 'SetMediaItemImage',
   MediaImageSearch = 'MediaImageSearch',

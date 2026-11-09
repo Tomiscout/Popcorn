@@ -1,15 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import type { FileLink, FileLinkKind, FileQuery, FileResult, FileSortField, LinkTarget } from '@popcorn/plugin-sdk';
 import { notifications } from '@mantine/notifications';
-import { DownloadAddBatchRequest, DownloadAddRequest, DownloadKind, MediaSourceRef } from '../model/download.contract';
+import { DownloadKind, MediaSourceRef } from '../model/download.contract';
 import { useSettings } from '../state/settings.store';
-import {
-  OpenLinkRequest,
-  PluginFileSearchRequest,
-  PluginFileSearchResponse,
-  PluginResolveLinksRequest,
-  PluginResolveLinksResponse,
-} from '../model/plugin.contract';
+import { PluginFileSearchResponse, PluginResolveLinksResponse } from '../model/plugin.contract';
 import { SocketRequests } from '../socket/socket-requests';
 import { useSocketEvents } from '../socket/useSocketEvents.hook';
 import { useWebSocket } from '../state/websocket-context';
@@ -52,7 +46,7 @@ let requestCounter = 0;
 /** Sends `query` to one file source; its response carries the returned request id. */
 function sendFileSearch(client: WebSocketClient, source: FileSource, query: FileQuery): string {
   const requestId = `${Date.now()}-${++requestCounter}`;
-  client.sendEvent<PluginFileSearchRequest>(SocketRequests.PluginFileSearch, {
+  client.sendEvent(SocketRequests.PluginFileSearch, {
     pluginId: source.pluginId,
     sourceId: source.sourceId,
     requestId,
@@ -220,7 +214,7 @@ function requestResolve(client: WebSocketClient, source: LinkSource, links: File
       off();
       resolve(r);
     });
-    client.sendEvent<PluginResolveLinksRequest>(SocketRequests.PluginResolveLinks, {
+    client.sendEvent(SocketRequests.PluginResolveLinks, {
       pluginId: source.pluginId,
       sourceId: source.sourceId,
       requestId,
@@ -315,7 +309,7 @@ export function useDownloadFiles() {
           message: `${failed.length} of ${resolved.length} links could not be fetched: ${failed[0].error}`,
         });
       if (links.length === 0) return;
-      client.sendEvent<DownloadAddBatchRequest>(SocketRequests.DownloadAddBatch, {
+      client.sendEvent(SocketRequests.DownloadAddBatch, {
         links: links.map((l) => ({ kind: downloadKind(l.kind), url: l.url })),
         mediaItemId: media?.itemId ?? null,
         mediaTitle: media?.title ?? fallbackTitle,
@@ -360,7 +354,7 @@ export function useOpenLink() {
           notifications.show({ color: 'red', message: 'Popcorn can only download magnet and http(s) links' });
           return;
         }
-        client.sendEvent<DownloadAddRequest>(SocketRequests.DownloadAdd, {
+        client.sendEvent(SocketRequests.DownloadAdd, {
           kind: downloadKind(link.kind),
           url: link.url,
           addToLibrary: true,
@@ -372,7 +366,7 @@ export function useOpenLink() {
         });
         return;
       }
-      if (isDesktopApp) client.sendEvent<OpenLinkRequest>(SocketRequests.OpenLink, { url: link.url });
+      if (isDesktopApp) client.sendEvent(SocketRequests.OpenLink, { url: link.url });
       else if (link.kind === 'Magnet') window.location.href = link.url;
       else if (isTorrentData(link.url)) saveTorrentFile(link.url, media?.title ?? 'download');
       // after fetching a `resolve` link this is no longer the click, so a popup blocker may stop it

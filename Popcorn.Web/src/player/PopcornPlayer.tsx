@@ -1,6 +1,7 @@
 import React, { ReactPortal, useEffect, useRef, useState } from 'react';
 import type { DownloadPlayback } from '../model/download.contract';
 import { resolveServerHost } from '../utils/url-resolver';
+import { isAbortError, readJsonLines } from '../utils/json-lines';
 import Draggable from 'react-draggable';
 import './PopcornPlayer.css';
 import { disableDefaultListeners } from './Utlis/listener.utils';
@@ -87,29 +88,30 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
     else video.addEventListener('loadedmetadata', seek, { once: true });
   }, [fileId, videoMetadata, isFetchingMetadata, videoRef]);
 
-  // A file Popcorn is still downloading: show the downloaded parts on the seek bar until it is complete.
+  // A file Popcorn is still downloading: show the downloaded parts on the seek bar until it is complete. The server
+  // sends them whenever they change (and nothing for a file that isn't a download).
   useEffect(() => {
     const { setDownloadRanges } = usePlayerStore.getState();
     setDownloadRanges(null);
     if (!fileId) return;
-    let stopped = false;
-    const poll = async () => {
-      try {
-        const response = await fetch(`http://${resolveServerHost()}/api/downloads/playback/${fileId}`);
-        if (stopped) return;
-        if (!response.ok) return setDownloadRanges(null); // not a download: stop polling
-        const playback: DownloadPlayback = await response.json();
-        if (stopped) return;
-        setDownloadRanges(playback.complete ? [[0, 1]] : playback.ranges);
-        if (!playback.complete) timer = window.setTimeout(poll, 2000);
-      } catch {
-        if (!stopped) timer = window.setTimeout(poll, 5000);
-      }
-    };
-    let timer = window.setTimeout(poll, 0);
+    const abort = new AbortController();
+    let retry: number | undefined;
+    const watch = () =>
+      readJsonLines<DownloadPlayback>(
+        `http://${resolveServerHost()}/api/downloads/playback/${fileId}/live`,
+        { signal: abort.signal },
+        (playback) => setDownloadRanges(playback.complete ? [[0, 1]] : playback.ranges)
+      )
+        .then((found) => {
+          if (!found) setDownloadRanges(null);
+        })
+        .catch((error) => {
+          if (!isAbortError(error)) retry = window.setTimeout(watch, 5000); // server restarting
+        });
+    watch();
     return () => {
-      stopped = true;
-      window.clearTimeout(timer);
+      abort.abort();
+      window.clearTimeout(retry);
     };
   }, [fileId]);
 
@@ -243,7 +245,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
     };
 
     // Kicks off player playlist file load for opened file id
-    client?.sendEvent(SocketRequests.FolderOpenPlayer, fileId);
+    if (fileId) client?.sendEvent(SocketRequests.FolderOpenPlayer, fileId);
     client.onEvent<PlayerPlaylistResponse>(SocketRequests.FolderOpenPlayer, (response) => {
       setCurrentPlaylistNavigation(response.navigation);
       setCurrentPlaylist(response.files);
@@ -285,12 +287,13 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
 
     const folderOpenRootHandler = () => {
       const { mediaId } = usePlayerStore.getState();
-      client?.sendEvent(SocketRequests.FolderOpenPlayer, mediaId);
+      if (mediaId) client?.sendEvent(SocketRequests.FolderOpenPlayer, mediaId);
     };
 
     const thumbnailRequestHandler = (timeMs: number) => {
       const { fileId: currentFileId } = usePlayerStore.getState();
-      client?.sendEvent(SocketRequests.ThumbnailFile, { fileId: currentFileId, timeSeconds: timeMs / 1000 });
+      if (currentFileId)
+        client?.sendEvent(SocketRequests.ThumbnailFile, { fileId: currentFileId, timeSeconds: timeMs / 1000 });
     };
 
     // Subtitle syncer: waveform windows of the playing audio track (only the part around the position is decoded).
