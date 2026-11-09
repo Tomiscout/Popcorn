@@ -1,0 +1,423 @@
+.log-viewer {
+  --log-bg: #140a0b;
+  --log-bg-2: #1c0e10;
+  --log-border: #3a1d21;
+  --log-text: #e6dcdc;
+  --log-dim: #8a7577;
+  --log-font: ui-monospace, 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'SFMono-Regular', Menlo, Consolas,
+    monospace;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.log-dim {
+  color: var(--log-dim);
+}
+
+/* Live indicator */
+.log-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 17px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+.log-live.on {
+  color: #6ee7a8;
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.28);
+}
+
+.log-live.paused {
+  color: #f4b740;
+  background: rgba(244, 183, 64, 0.08);
+  border-color: rgba(244, 183, 64, 0.25);
+}
+
+.log-live.off {
+  color: var(--mantine-color-dimmed);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  cursor: default;
+}
+
+.log-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.log-live.on .log-live-dot {
+  animation: log-pulse 1.6s ease-out infinite;
+}
+
+@keyframes log-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(110, 231, 168, 0.65);
+  }
+  80%,
+  100% {
+    box-shadow: 0 0 0 7px rgba(110, 231, 168, 0);
+  }
+}
+
+/* Filters */
+.log-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.log-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.log-chip {
+  --chip-color: #888;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 6px 0 10px;
+  border-radius: 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--mantine-color-dimmed);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  transition:
+    background 120ms,
+    border-color 120ms,
+    color 120ms,
+    opacity 120ms;
+  user-select: none;
+  opacity: 0.6;
+}
+
+.log-chip:hover {
+  opacity: 0.9;
+}
+
+.log-chip.active {
+  opacity: 1;
+  color: var(--chip-color);
+  border-color: color-mix(in srgb, var(--chip-color) 40%, transparent);
+  background: color-mix(in srgb, var(--chip-color) 11%, transparent);
+}
+
+.log-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--chip-color);
+}
+
+.log-chip.active .log-chip-dot {
+  background: var(--chip-color);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--chip-color) 70%, transparent);
+}
+
+.log-chip-count {
+  min-width: 22px;
+  padding: 0 6px;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  font-family: var(--log-font);
+  color: var(--mantine-color-dimmed);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Panel */
+.log-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: max(440px, calc(100dvh - 340px));
+  border: 1px solid var(--log-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(120, 30, 34, 0.16), transparent 70%),
+    linear-gradient(180deg, var(--log-bg-2), var(--log-bg));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 30px rgba(0, 0, 0, 0.35);
+  color: var(--log-text);
+  font-family: var(--log-font);
+  font-size: 12.5px;
+  line-height: 20px;
+}
+
+.log-panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 14px;
+  font-size: 11.5px;
+  border-bottom: 1px solid var(--log-border);
+  background: rgba(0, 0, 0, 0.22);
+  color: #bfaeb0;
+}
+
+.log-head-day {
+  color: #e7a3a6;
+  font-weight: 600;
+}
+
+.log-scroll {
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #4a2328 transparent;
+  scrollbar-width: thin;
+}
+
+.log-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.log-scroll::-webkit-scrollbar-thumb {
+  background: #4a2328;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.log-virtual-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.log-panel:not(.wrap) .log-virtual-row {
+  width: max-content;
+  min-width: 100%;
+}
+
+.log-empty,
+.log-loading {
+  position: absolute;
+  inset: 32px 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--log-dim);
+  pointer-events: none;
+}
+
+.log-loading {
+  inset: auto 14px 12px auto;
+}
+
+/* Day separator */
+.log-day {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px 4px;
+  font-family: var(--mantine-font-family);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #e7a3a6;
+}
+
+.log-day::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--log-border), transparent);
+}
+
+/* Rows */
+.log-row {
+  --lvl-color: #888;
+  --app-color: #888;
+  border-left: 2px solid transparent;
+}
+
+.log-row:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.log-row.has-detail {
+  cursor: pointer;
+}
+
+.log-row.lvl-WRN {
+  border-left-color: color-mix(in srgb, var(--lvl-color) 70%, transparent);
+  background: rgba(244, 183, 64, 0.045);
+}
+
+.log-row.lvl-ERR {
+  border-left-color: var(--lvl-color);
+  background: rgba(255, 94, 91, 0.075);
+}
+
+.log-row.lvl-FTL {
+  border-left-color: var(--lvl-color);
+  background: rgba(255, 61, 129, 0.13);
+}
+
+.log-row.lvl-WRN:hover,
+.log-row.lvl-ERR:hover,
+.log-row.lvl-FTL:hover {
+  background-color: color-mix(in srgb, var(--lvl-color) 15%, transparent);
+}
+
+.log-row.lvl-VRB .log-msg,
+.log-row.lvl-DBG .log-msg {
+  color: #b3a5a7;
+}
+
+.log-row.lvl-ERR .log-msg,
+.log-row.lvl-FTL .log-msg {
+  color: #ffd9d8;
+}
+
+.log-line {
+  display: grid;
+  grid-template-columns: 96px 40px 84px minmax(0, 1fr);
+  column-gap: 10px;
+  padding: 1px 14px 1px 12px;
+}
+
+.log-panel:not(.wrap) .log-line {
+  grid-template-columns: 96px 40px 84px max-content;
+}
+
+.log-time {
+  color: #9b8587;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-ms {
+  color: #5f4c4e;
+}
+
+.log-level {
+  align-self: start;
+  margin-top: 2px;
+  height: 16px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  letter-spacing: 0.04em;
+  color: var(--lvl-color);
+  background: color-mix(in srgb, var(--lvl-color) 15%, transparent);
+}
+
+.log-row.lvl-FTL .log-level {
+  color: #1a0a0d;
+  background: var(--lvl-color);
+}
+
+.log-app {
+  color: var(--app-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.log-msg {
+  min-width: 0;
+  white-space: pre;
+}
+
+.log-panel.wrap .log-msg {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.log-msg mark,
+.log-detail mark {
+  color: #1a0b0c;
+  background: #f4b740;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.log-tag {
+  display: inline-block;
+  margin-right: 7px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--app-color);
+  border: 1px solid color-mix(in srgb, var(--app-color) 35%, transparent);
+  background: color-mix(in srgb, var(--app-color) 8%, transparent);
+}
+
+.log-source {
+  margin-left: 10px;
+  font-size: 11px;
+  color: #6d585a;
+}
+
+.log-more {
+  margin-left: 10px;
+  padding: 0 7px;
+  border-radius: 9px;
+  font-size: 11px;
+  color: var(--lvl-color);
+  background: color-mix(in srgb, var(--lvl-color) 12%, transparent);
+  white-space: nowrap;
+}
+
+.log-detail {
+  margin: 2px 14px 8px 162px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 2px solid color-mix(in srgb, var(--lvl-color) 50%, transparent);
+  background: rgba(0, 0, 0, 0.32);
+  color: #cdb8ba;
+  font-family: var(--log-font);
+  font-size: 11.5px;
+  line-height: 18px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+.log-panel:not(.wrap) .log-detail {
+  white-space: pre;
+}
+
+.log-jump {
+  position: absolute;
+  right: 22px;
+  bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 14px;
+  font-family: var(--mantine-font-family);
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: #b43636;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.log-jump:hover {
+  background: #c34343;
+}
