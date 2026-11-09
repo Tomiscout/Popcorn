@@ -18,7 +18,7 @@ Popcorn.Player.Linux/web-player/build/**/*.*
 /MPV/msys64
 /MPV/windows
 /MPV/libmpv.so*
-/target
+target/
 /Popcorn.Server/web
 /Popcorn.Player.Linux/web-player
 /Popcorn.Server/plugins
