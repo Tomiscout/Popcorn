@@ -109,7 +109,9 @@ function Publish-Dotnet {
 # binutils on PATH. POPCORN_UPDATE_REPO (owner/name) set here is built in as the release repository.
 function Build-Installer {
     Write-Output "Building $InstallerDir..."
-    Invoke-Native cargo build --profile installer -p popcorn-installer  # root Cargo workspace, its own profile (Cargo.toml)
+    # --package, not -p: PowerShell binds a bare -p to Invoke-Native's -PipelineVariable, cargo would build the whole
+    # workspace (Linux crates included).
+    Invoke-Native cargo build --profile installer --package popcorn-installer  # root Cargo workspace, its own profile (Cargo.toml)
 }
 
 
