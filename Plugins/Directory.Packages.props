@@ -1,0 +1,6 @@
+<Project>
+  <!-- Plugins are separate products: they pin their own package versions (no central package management). -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+</Project>

@@ -97,7 +97,7 @@ export interface FileResult<TData = unknown> {
   sortValues: Record<string, number>;
   /**
    * The provider the result really comes from, as a tag shared by every plugin that returns its results (lowercase
-   * name or domain, e.g. "1337x"). Same `origin` + `originId` from different plugins = the same item, shown once when
+   * name or domain, e.g. "example-tracker"). Same `origin` + `originId` from different plugins = the same item, shown once when
    * duplicates are removed. Null = unknown, never deduplicated.
    */
   origin?: string | null;

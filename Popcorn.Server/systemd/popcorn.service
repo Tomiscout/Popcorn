@@ -8,6 +8,8 @@ EnvironmentFile=@ENV_FILE@
 ExecStart=@INSTALL_DIR@/Popcorn.Server
 Restart=on-failure
 RestartSec=5
+# The server stops within ~10 s (HostOptions.ShutdownTimeout); don't wait systemd's default 90 s for a hung one.
+TimeoutStopSec=20
 
 [Install]
 WantedBy=default.target

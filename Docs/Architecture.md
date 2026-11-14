@@ -13,6 +13,11 @@ ASP.NET Core host. Serves the `Popcorn.Web` bundle from `web/`, WebSocket RPC at
 `api/video`. Runs headless / as systemd user service. Browser playback uses the web player in
 `Popcorn.Web/src/player`.
 
+Shutdown is meant to take well under a second: hosted services stop concurrently with a 10 s backstop
+(`HostOptions` in `PopcornServerHost`; `TimeoutStopSec=20` in `popcorn.service`), open `/ws` sockets are closed from
+the server on `ApplicationStopping` (1001, aborted after 2 s without an answer; otherwise Kestrel waits for them until
+the timeout), downloads do a fast stop (`Popcorn.Downloads/README.md`) and plugins get 5 s (§5).
+
 ### Linux desktop app (`Popcorn.Linux`)
 
 **Rust + CEF** (not .NET, not in `Popcorn.sln`). Single CEF Views window showing `{server}/index.html`.
@@ -96,7 +101,8 @@ Launched by the server via `WindowsPlayerService` from `<server dir>\Player\Popc
   `Push/SocketSubscriptions`), topics `DownloadList`, `DownloadStats`, `SegmentsState` (key = item id). The current
   value is sent on subscribe, then `Push/LivePushService` sends on `DownloadManager.Changed` /
   `SegmentFinderService.StateChanged` (only when the JSON changed). Web: `useSubscription(topic, key?, enabled)`
-  (`src/socket/useSubscription.hook.ts`).
+  (`src/socket/useSubscription.hook.ts`; several components may watch one topic, only the last to unmount
+  unsubscribes, as the server keeps one subscription per connection and topic).
 - HTTP endpoints with live state stream NDJSON instead (`Push/JsonLines.cs`, web `utils/json-lines.ts`
   `readJsonLines`; aborting the request = unsubscribing): `api/downloads/playback/live?path=` /
   `playback/{fileId}/live`, `api/video/{id}/audio/{track}/prepare`, `POST api/logs/live` (FileSystemWatcher on the
@@ -141,7 +147,9 @@ One-way, same code on Linux and Windows (AF_UNIX, Windows 10 1803+): `PlayerLink
 
 `Popcorn.Player.Core/Web/` (`IWebBridge` = `SocketWebBridge`): Fleck WebSocket on 127.0.0.1, address injected into
 the overlay page (`window.wsAddress`) by the native layer (Linux: CEF scheme handler, Windows: WebView2
-`AddScriptToExecuteOnDocumentCreated`).
+`AddScriptToExecuteOnDocumentCreated`). The overlay (`native-bridge.ts`) retries every 500 ms whenever the socket drops
+(seen after system sleep/resume), shows one persistent toast until it is back and queues commands meanwhile; each connect sends `initialized`, which C# answers with
+`PlayerCore.ResendState` on reconnects. Connects/closes are in the player log ("Overlay socket ...").
 
 ### 5. Plugins
 
@@ -151,8 +159,9 @@ generically: never integrate a specific site into the app. Host side:
 - **Loading**: `PluginManager` (`Popcorn.Server/PluginHost`) loads `plugins/<id>/plugin.json` + assembly (own
   `AssemblyLoadContext`; `Popcorn.Plugins.Abstractions` + `Microsoft.Extensions.*` always from the server) from
   `<data>/plugins` then `<server dir>/plugins` (collectible contexts; rescanned on every change; plugins without a
-  search role implement `IServicePlugin`). Every loaded plugin is disposed at server shutdown (`UnloadAll` on
-  `ApplicationStopping`), so plugins may own processes. `PluginsController` (`POST api/plugins`, zip) installs into
+  search role implement `IServicePlugin`). Every loaded plugin is disposed at server shutdown, all at once and for at most 5 s
+  (`PluginShutdownService` → `UnloadAllAsync`, each dispose logged with its duration; not on `ApplicationStopping`,
+  whose callbacks run before the host's shutdown timeout applies), so plugins may own processes. `PluginsController` (`POST api/plugins`, zip) installs into
   `<data>/plugins/<id>`; disabled ids + order in `<data>/plugins/plugins.json`. Plugin `web/` is served at
   `/plugins/<id>/` (`PluginWebFileProvider`, follows the loaded set).
 - **Sockets** (`PluginWebService`): `PluginList` (all folders in the user's order, incl. disabled/broken; `media`
@@ -203,6 +212,10 @@ generically: never integrate a specific site into the app. Host side:
 - **Variables**: plugins share string values by name through `IPluginVariables` (constructor;
   `PluginHost/PluginVariables.cs`: `PluginVariableStore` singleton = mediator, in memory, a value belongs to the
   plugin instance that set it last and is dropped when it unloads).
+- **Events**: plugins send each other named string events through `IPluginEvents` (apiVersion 2; constructor;
+  `PluginHost/PluginEvents.cs`: `PluginEventHub` singleton = mediator, every subscriber of a name gets the event on
+  the thread pool, `Publish` returns the subscriber count, nothing queued, subscriptions end when the instance
+  unloads). Servers load `apiVersion` `PluginApi.MinVersion`..`PluginApi.Version` (1..2).
 - **Status messages**: `IPluginStatus` (constructor; `PluginHost/PluginStatus.cs`, per instance, keyed, cleared on
   unload; `PluginInfo.status`, shown by `pages/settings/plugin-status.tsx` on the plugin row and in the settings
   dialog). Changes raise `PluginManager.StatusChanged`, on which every open socket gets `PluginList`
@@ -221,21 +234,17 @@ generically: never integrate a specific site into the app. Host side:
   react/react-dom/@mantine via an import map that `vite.config.ts` (`pluginSharedModules`) generates; the list is
   `plugin-sdk/shared.js` — changing it or the contract is an API change (`PluginApi.Version`).
 
-Plugins outside the repo (for now), in `<data>/plugins/src`: torrent file source plugins PirateBay/Yts/Linkomanija/
-1337x (+ web/icon) + Shared/Torrents.cs helpers; `flaresolverr` = `IServicePlugin` publishing `flaresolverr.url`
-(existing URL, or runs FlareSolverr itself: GitHub release in `<data>/flaresolverr/app` as child process, systemd user
-unit `popcorn-flaresolverr` or Docker compose project `popcorn-flaresolverr`; on Linux the bundled readline/NSS are
-deleted, they break the system's sh/Chrome, and `_internal/chrome/chrome` is replaced by a wrapper that starts the
-system Chromium, which Cloudflare accepts unlike the bundled dev-build Chrome; `browser` setting), read by 1337x
-(magnets as `Resolve` links read from the torrent page on use, one FlareSolverr session closed after 5 min idle).
-`./build.sh` builds them into `<data>/plugins/<id>/` (keeps settings.json); they reference
-Popcorn.Plugins.Abstractions via `$(PopcornRepo)` (default `~/code/Popcorn`).
+Plugins outside the repo reference Popcorn.Plugins.Abstractions and are installed into `<data>/plugins/<id>/` like the
+bundled ones.
 
 ### 6. Linux player .NET ↔ native
 
 C ABI in `Popcorn.Player.Native/src/lib.rs` (`pn_init`, `pn_mpv_core`, `pn_run`, `pn_quit`, `pn_set_fullscreen`,
 `pn_set_title`, `pn_destroy`; callbacks for log + window events incl. `Ready`). C# attaches its own mpv client
 handle (`mpv_create_client`) to the core the native layer owns.
+
+The player also talks to the desktop over the D-Bus session bus (Tmds.DBus.Protocol, `Popcorn.Platform/Linux`):
+MPRIS server `LinuxMediaControls` and the sleep inhibition `LinuxSleepInhibitor` (Docs/Features.md, OS session).
 
 ### 7. Windows player .NET ↔ native
 

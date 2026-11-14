@@ -2,6 +2,7 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import { Loader } from '@mantine/core';
 import ErrorOverlay from './Components/ErrorOverlay/ErrorOverlay';
 import PlaybackNotificationControl from './Components/PlaybackNotificationControl/PlaybackNotificationControl';
+import PlayerToasts from './Components/PlayerToasts/PlayerToasts';
 import { CaptureClickArea } from './Components/CaptureClickArea/CaptureClickArea';
 import { ControlBar } from './Components/ControlBar/ControlBar';
 import { TopBar } from './Components/TopBar/TopBar';
@@ -104,6 +105,7 @@ export const PlayerOverlay = forwardRef<HTMLDivElement, PlayerOverlayProps>(
         <CaptureClickArea isFloating={isFloating} onTouchTap={toggleControlsByTap} />
         <TopBar showControls={showControls} />
         <ErrorOverlay />
+        <PlayerToasts />
         <NextFileDialog />
         <FinOverlay />
         {isLoading && (

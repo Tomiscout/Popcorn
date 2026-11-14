@@ -198,7 +198,7 @@ export function downloadableLink(file: FileResult): FileLink | null {
 
 const downloadKind = (kind: FileLinkKind): DownloadKind => (kind === 'Direct' ? 'Direct' : 'Torrent');
 
-/** Server limit 30 s (FlareSolverr solving a challenge) plus some slack. */
+/** Server limit 30 s (a plugin fetching the link page) plus some slack. */
 const RESOLVE_TIMEOUT_MS = 40_000;
 
 function requestResolve(client: WebSocketClient, source: LinkSource, links: FileLink[]) {

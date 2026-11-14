@@ -1,0 +1,38 @@
+<Project>
+  <!-- Central package management: every NuGet version of the repository's projects is set here once, the projects
+       reference packages without a version. Projects that ship together share these, so their copies of a package in
+       one bundle folder are the same (checked when bundling). -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Dapper" Version="2.1.66" />
+    <PackageVersion Include="Dapper.FluentMap" Version="2.0.0" />
+    <PackageVersion Include="FFMpegCore" Version="5.2.0" />
+    <PackageVersion Include="Fleck" Version="1.2.0" />
+    <PackageVersion Include="FluentMigrator.Runner.SQLite" Version="7.1.0" />
+    <PackageVersion Include="Microsoft.Extensions.FileProviders.Abstractions" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.4314.35" />
+    <PackageVersion Include="MonoTorrent" Version="3.0.2" />
+    <PackageVersion Include="Olbrasoft.SystemTray.Linux" Version="1.1.15" />
+    <PackageVersion Include="Serilog" Version="4.3.0" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageVersion Include="SoundFingerprinting" Version="11.1.0" />
+    <PackageVersion Include="System.Data.SQLite.Core" Version="1.0.118" />
+    <PackageVersion Include="Tmds.DBus.SourceGenerator" Version="0.0.21" />
+  </ItemGroup>
+  <!-- Tests -->
+  <ItemGroup>
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="FluentAssertions" Version="[7.2.0,8.0.0)" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageVersion Include="NUnit" Version="4.2.2" />
+    <PackageVersion Include="NUnit.Analyzers" Version="4.3.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+</Project>

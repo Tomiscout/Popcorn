@@ -7,15 +7,22 @@
 //! The same executable is re-launched by CEF for its helper processes (renderer, GPU, ...),
 //! so `main` must hand over to CEF before doing anything else.
 
+#[cfg(target_os = "linux")]
 mod browser;
+#[cfg(target_os = "linux")]
 mod log;
+#[cfg(target_os = "linux")]
 mod server;
 
+#[cfg(target_os = "linux")]
 use std::path::PathBuf;
+#[cfg(target_os = "linux")]
 use std::time::Instant;
 
+#[cfg(target_os = "linux")]
 use cef::{CefString, ImplCommandLine, api_hash, args::Args, execute_process, sys};
 
+#[cfg(target_os = "linux")]
 fn main() {
     let started = Instant::now();
 
@@ -44,6 +51,7 @@ fn main() {
     std::process::exit(code);
 }
 
+#[cfg(target_os = "linux")]
 /// Same folder as .NET's `LocalApplicationData/Popcorn` used by the server (`~/.local/share/Popcorn`).
 fn data_dir() -> PathBuf {
     std::env::var_os("XDG_DATA_HOME")
@@ -52,4 +60,11 @@ fn data_dir() -> PathBuf {
         .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/share")))
         .unwrap_or_else(std::env::temp_dir)
         .join("Popcorn")
+}
+
+// Workspace member on every OS (`cargo build --workspace`), the shell itself is Linux only.
+#[cfg(not(target_os = "linux"))]
+fn main() {
+    eprintln!("popcorn-linux only runs on Linux");
+    std::process::exit(1);
 }

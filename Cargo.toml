@@ -1,27 +1,28 @@
 # One Cargo workspace for every Rust crate: one Cargo.lock, one target/ (CEF's build is shared by Popcorn.Linux
-# and Popcorn.Player.Native). Build one crate with `cargo build --release -p <name>`; output in target/release/
-# (the installer has its own profile, below).
-# Popcorn.Player.Windows.Native only builds on Windows, Popcorn.Linux / Popcorn.Player.Native only on Linux, so
-# a plain `cargo build` at the root fails on both: always pick the crate.
+# and Popcorn.Player.Native). Every member builds on every OS: the platform crates' dependencies are
+# `[target.'cfg(...)'.dependencies]` and their code is empty elsewhere, so `cargo build --workspace` / `cargo clippy
+# --workspace` work on Linux and Windows. Products are built by `cargo xtask` (xtask/, alias in .cargo/config.toml).
 [workspace]
 resolver = "3"
 members = [
+    "Popcorn.Cli",
     "Popcorn.Installer",
     "Popcorn.Linux",
     "Popcorn.Player.Native",
     "Popcorn.Player.Windows.Native",
+    "xtask",
 ]
 
 # set_version.mjs writes this version
 [workspace.package]
-version = "1.1.0"
+version = "1.2.0"
 edition = "2024"
 publish = false
 
 [workspace.dependencies]
 # Keep exact: the CEF binary distribution (libcef.so + resources) is tied to this version, and Popcorn.Linux and
-# Popcorn.Player.Native share the one bundled next to them. Bump together with the CEF cache directory used by the
-# makefile.
+# Popcorn.Player.Native share the one bundled next to them (`cargo xtask bundle` finds its runtime files through
+# cargo metadata).
 cef = { version = "=156.3.0", default-features = false }
 libc = "0.2"
 

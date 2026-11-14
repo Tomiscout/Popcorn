@@ -62,6 +62,19 @@ export interface DownloadStats {
   downloadRate: number;
   uploadRate: number;
   active: number;
+  port: PortStatus;
+}
+
+/** Unknown = not enough time with peers yet; Unreachable = torrents had peers for minutes, none connected to us. */
+export type PortReachability = 'Unknown' | 'Reachable' | 'Unreachable';
+/** Automatic port forwarding on the router (UPnP / NAT-PMP). NoRouter = no router answered. */
+export type RouterMapping = 'Pending' | 'Mapped' | 'Failed' | 'NoRouter';
+
+export interface PortStatus {
+  /** Listen port setting, 0 = random. */
+  port: number;
+  reachability: PortReachability;
+  mapping: RouterMapping;
 }
 
 export interface DownloadAddRequest {

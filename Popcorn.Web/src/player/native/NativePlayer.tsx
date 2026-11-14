@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { IconMovie } from '@tabler/icons-react';
+import { dismissToast, showToast } from '../Components/PlayerToasts/toasts.store';
 import { PlayerOverlay } from '../PlayerOverlay';
 import { PlayerFeatures, PlayerFeaturesProvider } from '../player-features';
 import { disableDefaultListeners } from '../Utlis/listener.utils';
@@ -13,6 +14,8 @@ import { applyNextFilePlan } from '../next-file';
 import { connectNativeBridge, NativeBridge, NativeEvent } from './native-bridge';
 import '../PopcornPlayer.css';
 import './native.css';
+
+const BRIDGE_TOAST = 'native-bridge';
 
 // ---- Payloads of Popcorn.Player.Core (C#, System.Text.Json defaults unless the contract sets names) ----
 
@@ -240,6 +243,13 @@ export const NativePlayer = () => {
       next_file_plan: (plan: NextFilePlan) => applyNextFilePlan(plan),
       // Sent with the state replay after the overlay reconnects (C# PlayerCore.ResendState).
       play_state: (playing: boolean) => store.getState().setIsPlaying(playing),
+      // OS media controls (MPRIS, media keys; C# MediaSessionService): run as if the overlay's own buttons were used.
+      media_control: (action: 'play' | 'pause' | 'play_pause' | 'next') => {
+        const { isPlaying } = store.getState();
+        if (action === 'next') postMessage('play_next_title');
+        else if (action === 'play_pause') postMessage('play_status_changed', !isPlaying);
+        else if ((action === 'play') !== isPlaying) postMessage('play_status_changed', action === 'play');
+      },
       fullscreen: (fullscreen: boolean) => {
         nativeFullscreen = fullscreen;
         store.getState().setIsFullscreen(fullscreen);
@@ -255,6 +265,17 @@ export const NativePlayer = () => {
           if (handler) handler(data);
           else console.log('Unhandled native event', name, data);
         },
+        // One persistent toast for the whole outage: retries don't add toasts, the reconnect removes it.
+        onConnectionChange: (connected) =>
+          connected
+            ? dismissToast(BRIDGE_TOAST)
+            : showToast({
+                id: BRIDGE_TOAST,
+                level: 'warning',
+                title: 'Lost connection to the player',
+                message: 'Controls do nothing until it is back. Reconnecting…',
+                persistent: true,
+              }),
         onThumbnail: (blobUrl) => {
           const { fileId, addThumbnailFile } = store.getState();
           if (lastThumbnailMs === null) {

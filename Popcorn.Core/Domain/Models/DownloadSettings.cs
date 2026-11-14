@@ -24,7 +24,7 @@ public class DownloadSettings
     /// <summary>Incoming peer connections (TCP + uTP + DHT). 0 = random port chosen by the OS.</summary>
     public int ListenPort { get; set; } = 51413;
 
-    public int MaxConnections { get; set; } = 150;
+    public int MaxConnections { get; set; } = 5000;
 
     public string ResolveDownloadFolder() =>
         string.IsNullOrWhiteSpace(DownloadFolder)

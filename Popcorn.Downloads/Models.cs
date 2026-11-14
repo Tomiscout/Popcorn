@@ -141,7 +141,33 @@ public record DownloadDto
     public IReadOnlyList<DownloadFileDto> Files { get; init; } = [];
 }
 
-public record DownloadStatsDto(long DownloadRate, long UploadRate, int Active);
+public record DownloadStatsDto(long DownloadRate, long UploadRate, int Active, PortStatusDto Port);
+
+/// <summary>Whether peers can connect to the torrent listen port (<see cref="DownloadManager.GetPortStatus"/>).</summary>
+/// <param name="Port">The listen port setting, 0 = random.</param>
+public record PortStatusDto(int Port, PortReachability Reachability, RouterMapping Mapping);
+
+public enum PortReachability
+{
+    /// <summary>Not enough time with peers yet to tell.</summary>
+    Unknown,
+    /// <summary>A peer connected to us.</summary>
+    Reachable,
+    /// <summary>Torrents had peers for a while, none of them ever connected to us.</summary>
+    Unreachable,
+}
+
+/// <summary>Automatic port forwarding on the router (UPnP / NAT-PMP).</summary>
+public enum RouterMapping
+{
+    /// <summary>Still asking the router.</summary>
+    Pending,
+    Mapped,
+    /// <summary>A router answered and refused the mapping.</summary>
+    Failed,
+    /// <summary>No router answered: UPnP / NAT-PMP is off or not supported.</summary>
+    NoRouter,
+}
 
 /// <summary>What the players need to play a file that is still being downloaded.</summary>
 /// <param name="StreamPath">Server-relative URL of the waiting stream (<c>api/downloads/{id}/files/{index}</c>).</param>

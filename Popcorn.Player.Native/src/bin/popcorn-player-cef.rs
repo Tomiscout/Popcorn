@@ -3,8 +3,10 @@
 //! The browser process lives inside Popcorn.Player.Linux (.NET + libpopcorn_player.so); CEF starts
 //! this executable for everything else via `browser_subprocess_path`.
 
+#[cfg(target_os = "linux")]
 use cef::{api_hash, args::Args, execute_process, sys};
 
+#[cfg(target_os = "linux")]
 fn main() {
     let _ = api_hash(sys::CEF_API_VERSION_LAST, 0);
     let args = Args::new();
@@ -12,3 +14,6 @@ fn main() {
     // execute_process returns -1 for the browser process, which this binary never is.
     std::process::exit(code.max(0));
 }
+
+#[cfg(not(target_os = "linux"))]
+fn main() {}

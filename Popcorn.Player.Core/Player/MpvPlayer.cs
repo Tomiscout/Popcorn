@@ -24,6 +24,7 @@ public class MpvPlayer : IPlayer
     public double Duration { get; private set; } = -1;
     public double? Position => _player.GetDouble("time-pos");
     public bool IsPaused => _player.GetString("pause") == "yes";
+    public bool IsPlaying { get; private set; }
 
     public MpvPlayer(IMpvClient player, Lazy<WebEventHandler> webSocket, ILogger<MpvPlayer> logger, FFmpegService ffmpegService, Lazy<AudioSubtitlesService> audioSubtitlesService)
     {
@@ -40,14 +41,38 @@ public class MpvPlayer : IPlayer
         };
         _player.FlagPropertyChanged += (_, e) =>
         {
+            if (e.Name == "pause")
+            {
+                _paused = e.Value;
+                UpdatePlaying();
+                return;
+            }
             if (e.Name != "eof-reached" || e.Value == _eofReached) return;
             _eofReached = e.Value;
+            UpdatePlaying();
             (e.Value ? MediaEnded : MediaResumed)?.Invoke(this, EventArgs.Empty);
         };
         _player.FileLoaded += (_, _) => PlayerFileLoaded();
+        _player.PlaybackRestarted += (_, _) => Seeked?.Invoke(this, EventArgs.Empty);
     }
 
     private bool _eofReached;
+    private bool _paused;
+    /// <summary>Between mpv's file-loaded and the next <see cref="Stop"/>.</summary>
+    private bool _fileLoaded;
+    private readonly object _playingLock = new();
+
+    private void UpdatePlaying()
+    {
+        bool playing;
+        lock (_playingLock)
+        {
+            playing = _fileLoaded && !_paused && !_eofReached;
+            if (playing == IsPlaying) return;
+            IsPlaying = playing;
+        }
+        PlayingChanged?.Invoke(this, playing);
+    }
 
     /// <summary>Settings shared by every platform. The video output itself is chosen by whoever created the core.</summary>
     public void Initialize()
@@ -65,6 +90,7 @@ public class MpvPlayer : IPlayer
         _player.SetProperty("keep-open", "yes");
         _player.ObserveDouble("time-pos");
         _player.ObserveFlag("eof-reached");
+        _player.ObserveFlag("pause");
         // _player.SetProperty("osd-level", "3");
         // _player.Command("script-binding", "stats/display-stats-toggle");
     }
@@ -97,6 +123,8 @@ public class MpvPlayer : IPlayer
     {
         LoadFileDuration();
         LoadMediaTracks();
+        _fileLoaded = true;
+        UpdatePlaying();
 
         _currentMediaAnalysis = null; //Cleanup as its no longer needed.
         MediaPlaying?.Invoke(this, EventArgs.Empty); //TODO this feels kinda nasty, should review the event system
@@ -158,6 +186,8 @@ public class MpvPlayer : IPlayer
         _mediaTracks = null;
         Duration = -1;
         _eofReached = false;
+        _fileLoaded = false;
+        UpdatePlaying();
         _player.Command("stop");
     }
 
@@ -181,6 +211,8 @@ public class MpvPlayer : IPlayer
     public event EventHandler<long>? TimeChanged;
     public event EventHandler<long>? LengthChanged;
     public event EventHandler? MediaPlaying;
+    public event EventHandler<bool>? PlayingChanged;
+    public event EventHandler? Seeked;
 
     /// <summary>mpv returns node properties as JSON when read as a string.</summary>
     private void LoadMediaTracks()

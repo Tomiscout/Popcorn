@@ -22,15 +22,15 @@ internal sealed class ServerTrayHostedService : IHostedService
         await _trayManager.ShowTray(cancellationToken);
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
         try
         {
-            return _trayManager.HideTray(cancellationToken);
+            await _trayManager.HideTray(cancellationToken);
         }
         catch (OperationCanceledException)
         {
-            return Task.CompletedTask;
+            // The host gave up on stopping; the icon goes away with the process.
         }
     }
 }

@@ -40,4 +40,10 @@ public interface IPlayer : IDisposable
     /// <summary>Playback position in seconds, null without a file.</summary>
     double? Position { get; }
     bool IsPaused { get; }
+    /// <summary>A file is loaded, not paused and not at its end.</summary>
+    bool IsPlaying { get; }
+    /// <summary><see cref="IsPlaying"/> changed. Raised on any thread.</summary>
+    event EventHandler<bool> PlayingChanged;
+    /// <summary>Playback continues from a new position (seek, file start).</summary>
+    event EventHandler Seeked;
 }

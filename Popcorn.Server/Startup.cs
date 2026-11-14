@@ -51,7 +51,6 @@ public class Startup
 
         var pluginManager = app.ApplicationServices.GetRequiredService<PluginManager>();
         pluginManager.LoadAll();
-        app.ApplicationServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping.Register(pluginManager.UnloadAll);
         app.UseStaticFiles(new StaticFileOptions
         {
             RequestPath = "/plugins",
@@ -131,7 +130,7 @@ public class Startup
             var subscriptions = context.RequestServices.GetRequiredService<SocketSubscriptions>();
             try
             {
-                await bus.ListenAsync();
+                await bus.ListenAsync(context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping);
             }
             finally
             {

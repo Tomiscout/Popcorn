@@ -11,8 +11,8 @@ namespace Popcorn.Player.Core.WebSocket;
 public class SocketWebBridge : IWebBridge
 {
     private WebSocketServer? _server;
-    private IWebSocketConnection _currentSocket;
-    private List<string> _pendingMessages = new();
+    private IWebSocketConnection? _currentSocket;
+    private readonly List<string> _pendingMessages = new();
     private readonly Action<WebEvent> _onMessage;
 
     public SocketWebBridge(Action<WebEvent> onMessage)
@@ -28,10 +28,18 @@ public class SocketWebBridge : IWebBridge
         _server = new WebSocketServer(wsAddress);
         _server.Start(socket =>
         {
-            _currentSocket = socket;
-
-            socket.OnOpen = () => Console.WriteLine("Open!");
-            socket.OnClose = () => Console.WriteLine("Close!");
+            socket.OnOpen = () =>
+            {
+                Log.Information("Overlay socket connected ({Client})", socket.ConnectionInfo.ClientPort);
+                lock (_pendingMessages)
+                {
+                    _currentSocket = socket;
+                    foreach (var message in _pendingMessages) socket.Send(message);
+                    _pendingMessages.Clear();
+                }
+            };
+            socket.OnClose = () => Log.Warning("Overlay socket closed ({Client})", socket.ConnectionInfo.ClientPort);
+            socket.OnError = e => Log.Warning("Overlay socket error ({Client}): {Error}", socket.ConnectionInfo.ClientPort, e.Message);
             socket.OnMessage = message =>
             {
                 try
@@ -52,12 +60,16 @@ public class SocketWebBridge : IWebBridge
 
     public void SendMessage(string message)
     {
-        if (_currentSocket == null || !_currentSocket.IsAvailable)
+        lock (_pendingMessages)
         {
-            _pendingMessages.Add(message);
-            return;
+            if (_currentSocket == null || !_currentSocket.IsAvailable)
+            {
+                // Overlay not (re)connected yet: sent on its next OnOpen
+                _pendingMessages.Add(message);
+                return;
+            }
         }
-        _currentSocket?.Send(message);
+        _currentSocket.Send(message);
     }
 
     public void SendBytesMessage(byte[] message)

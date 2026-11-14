@@ -5,6 +5,7 @@ using Popcorn.Persistence;
 using Popcorn.Player.Core;
 using Popcorn.Player.Core.Core;
 using Popcorn.Player.Core.Player;
+using Popcorn.Player.Core.Services;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Player.Windows.Native;
 using Popcorn.Shared.Ffmpeg;
@@ -109,6 +110,9 @@ public class Program
             Log.Information("Starting playback ({reason})", reason);
             StartPlayer(args);
             Services.GetRequiredService<ServerLink>().Start();
+            var session = Services.GetRequiredService<MediaSessionService>();
+            session.QuitRequested += PlayerNative.Quit;
+            session.Start();
         }
         webEventHandler.OverlayConnected += () => Start("overlay connected");
         PlayerNative.Ready += () => Log.Information("Overlay WebView2 created");
@@ -125,6 +129,7 @@ public class Program
 
         TryDispose("server link", () => Services.GetService<ServerLink>()?.Dispose());
         TryDispose("player core", () => Services.GetService<PlayerCore>()?.Dispose());
+        TryDispose("media session", () => Services.GetService<MediaSessionService>()?.Dispose());
         TryDispose("player", player.Dispose);
         PlayerNative.Destroy();
         return exitCode;

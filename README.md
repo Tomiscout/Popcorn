@@ -74,7 +74,7 @@ Extra requirements for the desktop app and player: Rust toolchain, cmake, and th
 
 ```sh
 make mpv              # build patched libmpv with the DMA-BUF render API (zero-copy video)
-make all              # web UI + server + desktop app + player → Bundle/Linux/
+make all              # web UI + server + desktop app + player → Bundle/Linux/ (= cargo xtask bundle)
 make install-linux    # installs build to your system. copy to ~/.local/bin/Popcorn, systemd user service, desktop entry
 ```
 
@@ -85,7 +85,7 @@ The first build downloads CEF (~1.5 GB) into `~/.cache/popcorn/cef`.
 Needs the .NET 10 SDK, Node/npm, git and Rust (MSVC) on `PATH`.
 
 ```powershell
-.\build_windows.ps1     # libmpv (first run) + web UI + server + app + player → Bundle\Windows\
+cargo xtask bundle      # libmpv (first run) + web UI + server + app + player → Bundle\Windows\
 .\install_windows.ps1   # install to %LOCALAPPDATA%\Programs\Popcorn
 ```
 

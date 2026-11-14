@@ -20,11 +20,15 @@ public sealed class MediaTimeline
     private readonly long[] _offsets;
     private readonly double[] _fractions;
 
-    private MediaTimeline(long[] offsets, double[] fractions)
+    private MediaTimeline(long[] offsets, double[] fractions, double duration)
     {
         _offsets = offsets;
         _fractions = fractions;
+        DurationSeconds = duration;
     }
+
+    /// <summary>Playback length in seconds.</summary>
+    public double DurationSeconds { get; }
 
     /// <summary>
     /// Reads the index of a file that may still be downloading. <c>Final</c> is false while the parts holding it are
@@ -97,7 +101,7 @@ public sealed class MediaTimeline
         }
         offsets.Add(Math.Max(length, offsets[^1] + 1));
         fractions.Add(1);
-        return new MediaTimeline(offsets.ToArray(), fractions.ToArray());
+        return new MediaTimeline(offsets.ToArray(), fractions.ToArray(), duration);
     }
 
     #region Matroska

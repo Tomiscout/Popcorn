@@ -6,6 +6,7 @@ using Popcorn.Persistence;
 using Popcorn.Player.Core;
 using Popcorn.Player.Core.Core;
 using Popcorn.Player.Core.Player;
+using Popcorn.Player.Core.Services;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Player.Linux.Native;
 using Popcorn.Shared.Ffmpeg;
@@ -97,6 +98,9 @@ public class Program
             Log.Information("Player ready");
             StartPlayer(args);
             Services.GetRequiredService<ServerLink>().Start();
+            var session = Services.GetRequiredService<MediaSessionService>();
+            session.QuitRequested += PlayerNative.Quit;
+            session.Start();
         };
 
         Log.Information("Showing player window");
@@ -105,6 +109,7 @@ public class Program
 
         Services.GetService<ServerLink>()?.Dispose();
         Services.GetService<PlayerCore>()?.Dispose();
+        Services.GetService<MediaSessionService>()?.Dispose();
         player.Dispose();
         PlayerNative.Destroy();
         return exitCode;

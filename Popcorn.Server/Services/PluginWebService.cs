@@ -298,7 +298,7 @@ public class PluginWebService(WebSocketBus bus, PluginManager pluginManager, IFi
 
     /// <summary>Opens a file link on the server machine (desktop app: the UI cannot hand magnet: links to the OS).</summary>
     /// <summary>
-    /// Fetches <see cref="FileLink.Resolve"/> links (e.g. a magnet from its torrent page, through FlareSolverr) when they
+    /// Fetches <see cref="FileLink.Resolve"/> links (e.g. a magnet read from a torrent page) when they
     /// are used. Off the socket loop like actions: it may take a while and searches must not wait for it.
     /// </summary>
     [WebSocketEvent(SocketRequests.PluginResolveLinks)]

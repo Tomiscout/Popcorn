@@ -24,7 +24,7 @@ public class PluginManifest
     public List<PluginSettingField> Settings { get; set; } = [];
 }
 
-public sealed class LoadedPlugin(PluginManifest manifest, string directory, object instance, PluginLoadContext context, PluginVariables variables, PluginStatus status)
+public sealed class LoadedPlugin(PluginManifest manifest, string directory, object instance, PluginLoadContext context, PluginVariables variables, PluginEvents events, PluginStatus status)
 {
     public PluginManifest Manifest { get; } = manifest;
     public string Directory { get; } = directory;
@@ -77,6 +77,7 @@ public sealed class LoadedPlugin(PluginManifest manifest, string directory, obje
             logger.LogWarning(ex, "Plugin {id} threw on dispose", Manifest.Id);
         }
         variables.Release();
+        events.Release();
         status.Release();
         (WebFiles as IDisposable)?.Dispose();
         context.Unload(); // collected once in-flight calls drop their references
@@ -99,7 +100,7 @@ public sealed record PluginEntry(
 /// zip into the data folder and uninstalled at runtime; each one lives in its own collectible load context.
 /// A plugin that fails to load is kept in the list with its error.
 /// </summary>
-public sealed class PluginManager(IServiceProvider services, PluginVariableStore variableStore, ILogger<PluginManager> logger)
+public sealed class PluginManager(IServiceProvider services, PluginVariableStore variableStore, PluginEventHub eventHub, ILogger<PluginManager> logger)
 {
     public static readonly string UserRoot = Path.Combine(DirectoryUtils.DataFolder, "plugins");
     public static readonly string BundledRoot = Path.Combine(AppContext.BaseDirectory, "plugins");
@@ -222,14 +223,30 @@ public sealed class PluginManager(IServiceProvider services, PluginVariableStore
         }
     }
 
-    /// <summary>Server shutdown: disposes every loaded plugin (they may own processes, e.g. a helper server).</summary>
-    public void UnloadAll()
+    /// <summary>
+    /// Server shutdown: disposes every loaded plugin (they may own processes, e.g. a helper server), all at once and
+    /// outside of the lock. Each plugin's dispose is logged with its duration; the caller bounds the whole wait
+    /// (<see cref="PluginShutdownService"/>), so a plugin that hangs in Dispose cannot hold up the server's exit.
+    /// <paramref name="pending"/> lists the ids of the plugins still disposing.
+    /// </summary>
+    public Task UnloadAllAsync(out Func<IReadOnlyList<string>> pending)
     {
+        List<LoadedPlugin> loaded;
         lock (_gate)
         {
-            foreach (var entry in _entries) entry.Loaded?.Unload(logger);
+            loaded = _entries.Select(e => e.Loaded).OfType<LoadedPlugin>().ToList();
             _entries = _entries.Select(e => e.Loaded is null ? e : e with { Loaded = null }).ToList();
         }
+
+        var running = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(loaded.Select(p => KeyValuePair.Create(p.Manifest.Id, (byte)0)));
+        pending = () => running.Keys.ToList();
+        return Task.WhenAll(loaded.Select(plugin => Task.Run(() =>
+        {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            plugin.Unload(logger);
+            running.TryRemove(plugin.Manifest.Id, out _);
+            logger.LogDebug("Plugin {id} unloaded in {ms} ms", plugin.Manifest.Id, watch.ElapsedMilliseconds);
+        })));
     }
 
     /// <summary>Deletes a user-installed plugin (a bundled one with the same id takes its place).</summary>
@@ -357,8 +374,9 @@ public sealed class PluginManager(IServiceProvider services, PluginVariableStore
 
         if (!IsValidId(manifest.Id))
             throw new InvalidDataException("plugin.json: id must be non-empty and contain only letters, digits, '-', '_', '.' (not first)");
-        if (manifest.ApiVersion != PluginApi.Version)
-            throw new InvalidDataException($"plugin.json: apiVersion {manifest.ApiVersion} is not supported (server: {PluginApi.Version})");
+        if (manifest.ApiVersion is < PluginApi.MinVersion or > PluginApi.Version)
+            throw new InvalidDataException(
+                $"plugin.json: apiVersion {manifest.ApiVersion} is not supported (server: {PluginApi.MinVersion}-{PluginApi.Version})");
         if (string.IsNullOrWhiteSpace(manifest.Name)) manifest.Name = manifest.Id;
         manifest.Settings ??= [];
         PluginSettingField.Normalize(manifest.Settings);
@@ -385,6 +403,7 @@ public sealed class PluginManager(IServiceProvider services, PluginVariableStore
 
         var context = new PluginLoadContext(assemblyPath);
         var variables = variableStore.For(manifest.Id);
+        var events = eventHub.For(manifest.Id);
         var status = new PluginStatus(manifest.Id, OnStatusChanged, logger);
         try
         {
@@ -401,12 +420,13 @@ public sealed class PluginManager(IServiceProvider services, PluginVariableStore
             if (typeof(IFileSourcePlugin).IsAssignableFrom(types[0]) && typeof(IFileSourceProvider).IsAssignableFrom(types[0]))
                 throw new InvalidDataException($"{types[0].Name} implements both IFileSourcePlugin and IFileSourceProvider, pick one");
 
-            var instance = ActivatorUtilities.CreateInstance(new PluginServices(services, settings, variables, status), types[0]);
-            return new LoadedPlugin(manifest, dir, instance, context, variables, status);
+            var instance = ActivatorUtilities.CreateInstance(new PluginServices(services, settings, variables, events, status), types[0]);
+            return new LoadedPlugin(manifest, dir, instance, context, variables, events, status);
         }
         catch
         {
             variables.Release(); // whatever the constructor set before it threw
+            events.Release();
             status.Release();
             context.Unload();
             throw;
@@ -454,18 +474,20 @@ public sealed class PluginManager(IServiceProvider services, PluginVariableStore
         }
     }
 
-    private sealed class PluginServices(IServiceProvider inner, IPluginSettings settings, IPluginVariables variables, IPluginStatus status)
+    private sealed class PluginServices(IServiceProvider inner, IPluginSettings settings, IPluginVariables variables, IPluginEvents events, IPluginStatus status)
         : IServiceProvider, IServiceProviderIsService
     {
         public object? GetService(Type serviceType) =>
             serviceType == typeof(IPluginSettings) ? settings
             : serviceType == typeof(IPluginVariables) ? variables
+            : serviceType == typeof(IPluginEvents) ? events
             : serviceType == typeof(IPluginStatus) ? status
             : serviceType == typeof(IServiceProviderIsService) ? this
             : inner.GetService(serviceType);
 
         public bool IsService(Type serviceType) =>
-            serviceType == typeof(IPluginSettings) || serviceType == typeof(IPluginVariables) || serviceType == typeof(IPluginStatus)
+            serviceType == typeof(IPluginSettings) || serviceType == typeof(IPluginVariables) || serviceType == typeof(IPluginEvents)
+            || serviceType == typeof(IPluginStatus)
             || inner.GetService<IServiceProviderIsService>()?.IsService(serviceType) == true;
     }
 

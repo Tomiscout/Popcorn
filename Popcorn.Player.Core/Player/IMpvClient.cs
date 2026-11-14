@@ -21,5 +21,7 @@ public interface IMpvClient : IDisposable
     event EventHandler<(string Name, double Value)>? DoublePropertyChanged;
     event EventHandler<(string Name, bool Value)>? FlagPropertyChanged;
     event EventHandler? FileLoaded;
+    /// <summary>MPV_EVENT_PLAYBACK_RESTART: playback starts again after a seek or a file start.</summary>
+    event EventHandler? PlaybackRestarted;
     event EventHandler<string>? LogMessage;
 }

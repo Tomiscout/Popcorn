@@ -10,7 +10,6 @@
 !/Bundle/AppManifest.xml
 /Installer/**/*.*
 Popcorn.Player.Linux/old/**/*.*
-Popcorn.Player.Linux/web-player/build/**/*.*
 /build
 /node_modules
 /MPV/build
@@ -19,8 +18,6 @@ Popcorn.Player.Linux/web-player/build/**/*.*
 /MPV/windows
 /MPV/libmpv.so*
 target/
-/Popcorn.Server/web
-/Popcorn.Player.Linux/web-player
 /Popcorn.Server/plugins
 /Plugins/*/bin/
 /Plugins/*/obj/

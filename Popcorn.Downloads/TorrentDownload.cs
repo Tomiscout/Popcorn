@@ -1,3 +1,4 @@
+using Popcorn.Domain;
 using Microsoft.Extensions.Logging;
 using MonoTorrent;
 using MonoTorrent.Client;
@@ -15,14 +16,27 @@ public sealed class TorrentDownload : Download
     private readonly object _engineLock = new();
     /// <summary>Queued engine starts / stops (<see cref="ApplyRunState"/>).</summary>
     private Task _engineWork = Task.CompletedTask;
+    /// <summary>Server shutdown: queued starts / stops are dropped (<see cref="ShutdownAsync"/>).</summary>
+    private volatile bool _shutdown;
     private long _throttle;
+    /// <summary>Wait for the tracker's answer to a pause's stop announce at most this long.</summary>
+    private static readonly TimeSpan PauseAnnounceTimeout = TimeSpan.FromSeconds(2);
 
     private TorrentDownload(DownloadRecord record, TorrentManager manager, SequentialPieceRequester requester, ILogger logger) : base(record)
     {
         _manager = manager;
         _requester = requester;
         _logger = logger;
+        manager.PeerConnected += (_, e) =>
+        {
+            if (e.Direction == Direction.Incoming) HadIncomingConnection = true;
+        };
     }
+
+    /// <summary>A peer connected to us (the listen port is reachable), since start or <see cref="ResetIncomingConnection"/>.</summary>
+    public bool HadIncomingConnection { get; private set; }
+
+    public void ResetIncomingConnection() => HadIncomingConnection = false;
 
     /// <summary>Info hash of a magnet link or .torrent file, to find duplicates before adding.</summary>
     public static async Task<InfoHashes> ReadInfoHashesAsync(string source) =>
@@ -36,15 +50,44 @@ public sealed class TorrentDownload : Download
         {
             // SavePath is already a folder of its own.
             CreateContainingDirectory = false,
+            // MonoTorrent's defaults (60 peers, 8 upload slots) hold a torrent far below what its swarm gives.
+            MaximumConnections = 5000,
+            UploadSlots = 200,
         }.ToSettings();
 
         var manager = record.Source.StartsWith("magnet:", StringComparison.OrdinalIgnoreCase)
             ? await engine.AddAsync(MagnetLink.Parse(record.Source), record.SavePath, settings)
             : await engine.AddAsync(await Torrent.LoadAsync(record.Source), record.SavePath, settings);
 
-        var requester = new SequentialPieceRequester();
+        await SplitTrackerTiersAsync(manager, logger);
+        var requester = new SequentialPieceRequester(f => MediaLoader.VideoFormats.Any(ext => f.Path.EndsWith(ext, StringComparison.OrdinalIgnoreCase)));
         await manager.ChangePickerAsync(requester);
         return new TorrentDownload(record, manager, requester, logger);
+    }
+
+    /// <summary>
+    /// One tier per tracker, so all of them are announced to at once. MonoTorrent tries the trackers of a tier one
+    /// after the other (dead UDP ones each cost a timeout) and stops at the first that answers, even with 0 peers;
+    /// magnets put all their trackers in one tier, so a torrent could wait for metadata forever. Private torrents
+    /// keep their tiers (MonoTorrent does not let them change).
+    /// </summary>
+    private static async Task SplitTrackerTiersAsync(TorrentManager manager, ILogger logger)
+    {
+        var trackers = manager.TrackerManager;
+        if (trackers.Private) return;
+        try
+        {
+            foreach (var tier in trackers.Tiers.ToList())
+            foreach (var tracker in tier.Trackers.Skip(1).ToList())
+            {
+                await trackers.RemoveTrackerAsync(tracker);
+                await trackers.AddTrackerAsync(tracker);
+            }
+        }
+        catch (Exception e)
+        {
+            logger.LogWarning(e, "Could not split the tracker tiers of {Name}", manager.Name);
+        }
     }
 
     public InfoHashes InfoHashes => _manager.InfoHashes;
@@ -106,6 +149,13 @@ public sealed class TorrentDownload : Download
     public override int? StreamingFile =>
         _manager.HasMetadata && _requester.ReaderFile is { } file && _manager.Files.IndexOf(file) is var i and >= 0 ? i : null;
 
+    /// <summary>Where the player reading <see cref="StreamingFile"/> is, in bytes of that file.</summary>
+    public long StreamingPosition => _requester.ReaderPosition;
+
+    /// <summary>Streams this file right after <see cref="StreamingFile"/> (next episode); null = none.</summary>
+    public void SetNextFile(int? index) =>
+        _requester.SetNextFile(index is { } i && _manager.HasMetadata && i >= 0 && i < _manager.Files.Count ? _manager.Files[i] : null);
+
     public override async Task SetThrottleAsync(long bytesPerSecond)
     {
         // Small changes are not worth a settings update every second.
@@ -157,12 +207,13 @@ public sealed class TorrentDownload : Download
     private async Task ApplyRunStateAfter(Task previous)
     {
         await previous;
+        if (_shutdown) return;
         try
         {
             if (Record.Paused || Record.Finished)
             {
                 if (_manager.State is not (TorrentState.Stopped or TorrentState.Stopping))
-                    await _manager.StopAsync(TimeSpan.FromSeconds(5));
+                    await _manager.StopAsync(PauseAnnounceTimeout);
                 return;
             }
             if (_manager.State == TorrentState.Error) await _manager.StopAsync();
@@ -181,11 +232,35 @@ public sealed class TorrentDownload : Download
         get { lock (_engineLock) return _engineWork; }
     }
 
+    /// <summary>
+    /// Server shutdown: stops at once, dropping queued starts / stops and not waiting for the trackers' answer to the
+    /// stop announce. MonoTorrent still writes what it has cached, closes the files and writes the fast resume data, so
+    /// nothing is hashed again on the next start; pieces that were only partly downloaded are dropped.
+    /// </summary>
+    public async Task ShutdownAsync()
+    {
+        _shutdown = true;
+        if (_manager.State is TorrentState.Stopped or TorrentState.Error) return;
+        if (_manager.State is TorrentState.Stopping)
+        {
+            await Settled; // a pause is stopping it already
+            return;
+        }
+        try
+        {
+            await _manager.StopAsync(TimeSpan.Zero);
+        }
+        catch (TorrentException)
+        {
+            await Settled; // a queued pause started stopping it in between
+        }
+    }
+
     public override async Task RemoveAsync()
     {
         await Settled;
         if (_manager.State is not (TorrentState.Stopped or TorrentState.Stopping))
-            await _manager.StopAsync(TimeSpan.FromSeconds(5));
+            await _manager.StopAsync(PauseAnnounceTimeout);
         await _manager.Engine!.RemoveAsync(_manager, RemoveMode.CacheDataOnly);
     }
 

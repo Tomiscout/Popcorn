@@ -94,9 +94,9 @@ public interface IImageProvider
 }
 
 /// <summary>
-/// A plugin without a search role that serves other plugins or the user: it publishes <see cref="IPluginVariables"/>,
+/// A plugin without a search role that serves other plugins or the user: it publishes <see cref="IPluginVariables"/>, answers <see cref="IPluginEvents"/>,
 /// reports <see cref="IPluginStatus"/>, has <see cref="IPluginActions"/> (e.g. runs a helper program such as a
-/// Cloudflare solver and publishes its URL). Implement it when the class implements none of the other plugin kinds.
+/// local proxy and publishes its URL). Implement it when the class implements none of the other plugin kinds.
 /// Its instance lives while the plugin is loaded and is disposed (<see cref="IDisposable"/>) when it is unloaded or
 /// the server stops.
 /// </summary>
@@ -193,6 +193,28 @@ public interface IPluginVariables
 }
 
 /// <summary>
+/// Events plugins send each other through the app (which, as with <see cref="IPluginVariables"/>, is the mediator:
+/// plugins never see each other). Use it when a value is not enough: ask another plugin to do something and learn
+/// when it is done, e.g. <c>helper.ping</c> starts a helper program on demand and its plugin answers
+/// <c>helper.pong</c> once it is ready. Ask for it in the plugin class constructor.
+/// </summary>
+/// <remarks>
+/// Every subscriber of a name gets every event of that name, the sender's own subscriptions included. Handlers run on
+/// the thread pool, one task per handler, never on the sender's thread; an exception in one is logged and does not
+/// reach the sender or the other handlers. Subscriptions belong to the loaded instance and end when it is unloaded.
+/// Names are case-sensitive and global (prefix them with a topic); payloads are strings (JSON for anything
+/// structured). Nothing is queued: an event nobody subscribes to is dropped, which <see cref="Publish"/> reports.
+/// </remarks>
+public interface IPluginEvents
+{
+    /// <summary>Sends <paramref name="name"/> to its subscribers; returns how many there are (0 = nobody listens).</summary>
+    int Publish(string name, string? payload = null);
+
+    /// <summary>Calls <paramref name="handler"/> with the payload of every <paramref name="name"/> event until disposed.</summary>
+    IDisposable Subscribe(string name, Action<string?> handler);
+}
+
+/// <summary>
 /// Status messages of the plugin, shown in Settings → Plugins (on the plugin's row and in its settings dialog), e.g.
 /// "Set the API key" when something is not set up, or "Site unreachable" after failed searches. Ask for it in the
 /// plugin class constructor; it can be changed at any time, open pages update right away.
@@ -220,8 +242,15 @@ public enum PluginStatusLevel
     Error,
 }
 
-/// <summary>Version of this contract. A plugin's plugin.json must declare the same <c>apiVersion</c> or it is not loaded.</summary>
+/// <summary>
+/// Version of this contract. A plugin's plugin.json declares the <c>apiVersion</c> it was written against; it is loaded
+/// when that is between <see cref="MinVersion"/> and <see cref="Version"/> (each version only adds to the previous one).
+/// </summary>
+/// <remarks>Versions: 1 = first one; 2 = <see cref="IPluginEvents"/>.</remarks>
 public static class PluginApi
 {
-    public const int Version = 1;
+    public const int Version = 2;
+
+    /// <summary>Oldest <c>apiVersion</c> this server still loads.</summary>
+    public const int MinVersion = 1;
 }

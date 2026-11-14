@@ -29,6 +29,9 @@
 //!   pn_window_handle() -> HWND                  owner for dialogs
 //!   pn_destroy()                                after pn_run: terminates mpv (waits for clients), destroys the window
 
+// Empty on other OSes, so the whole workspace builds everywhere (`cargo build --workspace`).
+#![cfg(windows)]
+
 mod log;
 mod mpv;
 mod overlay;

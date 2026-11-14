@@ -126,7 +126,55 @@ public class WebSocketBus(WebSocket webSocket, IServiceScopeFactory scopeFactory
         }
     }
 
-    public async Task ListenAsync()
+    /// <summary>
+    /// Handles messages until the client closes the socket. When the server stops (<paramref name="stopping"/>) the
+    /// socket is closed from this side; a client that does not answer the close is cut off, so the server's shutdown
+    /// never waits for open browser tabs.
+    /// </summary>
+    public async Task ListenAsync(CancellationToken stopping = default)
+    {
+        await using var onStop = stopping.Register(() => _ = CloseForShutdownAsync());
+        try
+        {
+            await ReceiveLoopAsync();
+        }
+        catch (WebSocketException) when (stopping.IsCancellationRequested)
+        {
+            return; // aborted by CloseForShutdownAsync
+        }
+
+        if (webSocket.State is WebSocketState.Open or WebSocketState.CloseReceived)
+            await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+    }
+
+    private async Task CloseForShutdownAsync()
+    {
+        try
+        {
+            if (await _sendLock.WaitAsync(TimeSpan.FromSeconds(1)))
+            {
+                try
+                {
+                    if (webSocket.State == WebSocketState.Open)
+                    {
+                        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                        await webSocket.CloseOutputAsync(WebSocketCloseStatus.EndpointUnavailable, "Server stopping", timeout.Token);
+                    }
+                }
+                finally
+                {
+                    _sendLock.Release();
+                }
+            }
+            await Task.Delay(TimeSpan.FromSeconds(2));
+        }
+        catch (Exception e) when (e is WebSocketException or ObjectDisposedException or OperationCanceledException)
+        {
+        }
+        if (webSocket.State is not (WebSocketState.Closed or WebSocketState.Aborted)) webSocket.Abort();
+    }
+
+    private async Task ReceiveLoopAsync()
     {
         var buffer = new byte[1024 * 16];
         WebSocketReceiveResult result;
@@ -187,8 +235,6 @@ public class WebSocketBus(WebSocket webSocket, IServiceScopeFactory scopeFactory
                 }
             }
         } while (true);
-
-        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
     }
 
     private async Task HandleEventPayload(string? eventType, JsonElement payload)

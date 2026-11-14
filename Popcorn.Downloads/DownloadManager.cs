@@ -46,7 +46,6 @@ public sealed class DownloadManager(
     private DownloadSettings _settings = new();
     /// <summary>Torrents and direct downloads are both downloading: they share the download limit.</summary>
     private bool _shareLimit;
-    private Task? _loop;
 
     private static HttpClient CreateHttpClient()
     {
@@ -92,6 +91,7 @@ public sealed class DownloadManager(
         try
         {
             _settings = (await settingsRepository.GetSettingsAsync()).Downloads ?? new DownloadSettings();
+            await DhtBootstrap.PrepareAsync(DownloadPaths.EngineCache, logger);
             _engine = new ClientEngine(BuildEngineSettings());
             _directLimiter.BytesPerSecond = SplitDownloadLimit().Direct;
             foreach (var record in _store.Load())
@@ -109,7 +109,7 @@ public sealed class DownloadManager(
             }
             logger.LogInformation("Downloads ready: {Count} restored", _downloads.Count);
             _ready.SetResult();
-            _loop = Task.Run(() => LoopAsync(_stopping.Token));
+            _ = Task.Run(() => LoopAsync(_stopping.Token));
         }
         catch (Exception e)
         {
@@ -118,29 +118,54 @@ public sealed class DownloadManager(
         }
     }
 
-    private bool _stopped;
+    /// <summary>The whole stop may take this long; then the server quits anyway (see <see cref="StopAsync"/>).</summary>
+    private static readonly TimeSpan StopBudget = TimeSpan.FromSeconds(8);
+    private int _stopRequested;
 
+    /// <summary>
+    /// Fast stop: direct downloads are cancelled and torrents stopped without waiting for the trackers (chunks and
+    /// pieces in progress are dropped, MonoTorrent still writes its cache and the fast resume data). The engine's own
+    /// teardown (port mappings, DHT) has no time limit in MonoTorrent, so the whole stop gets <see cref="StopBudget"/>;
+    /// the download list is saved either way.
+    /// </summary>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        // The host calls this again when its start failed after this service started.
+        if (Interlocked.Exchange(ref _stopRequested, 1) == 1) return;
         await _stopping.CancelAsync();
         if (!_ready.Task.IsCompletedSuccessfully) return;
-        if (_loop is not null) await _loop.ContinueWith(_ => { });
 
-        await _gate.WaitAsync(cancellationToken);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            // The host calls this again when its start failed after this service started.
-            if (_stopped) return;
-            _stopped = true;
-            foreach (var direct in _downloads.OfType<DirectDownload>())
+            await StopDownloadsAsync().WaitAsync(StopBudget, cancellationToken);
+            logger.LogInformation("Downloads stopped in {Ms} ms", watch.ElapsedMilliseconds);
+        }
+        catch (Exception e) when (e is TimeoutException or OperationCanceledException)
+        {
+            logger.LogWarning("Downloads did not stop within {Ms} ms, quitting anyway", watch.ElapsedMilliseconds);
+            await SaveAsync();
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Stopping downloads failed");
+            await SaveAsync();
+        }
+    }
+
+    private async Task StopDownloadsAsync()
+    {
+        await _gate.WaitAsync(); // a tick in progress finishes first; later ones see _stopping and do nothing
+        try
+        {
+            var direct = _downloads.OfType<DirectDownload>().Select(async d =>
             {
-                var paused = direct.Record.Paused;
-                await direct.RemoveAsync(); // stops without marking it paused
-                direct.Record.Paused = paused;
-            }
-            await Task.WhenAll(_downloads.OfType<TorrentDownload>().Select(t => t.Settled));
-            // Writes fast resume data, so nothing is hashed again on the next start.
-            await Engine.StopAllAsync(TimeSpan.FromSeconds(5));
+                var paused = d.Record.Paused;
+                await d.RemoveAsync(); // stops without marking it paused
+                d.Record.Paused = paused;
+            });
+            var torrents = _downloads.OfType<TorrentDownload>().Select(t => t.ShutdownAsync());
+            await Task.WhenAll(direct.Concat(torrents));
             foreach (var download in _downloads) await download.TickAsync(TimeSpan.Zero);
             await SaveAsync();
             Engine.Dispose();
@@ -180,9 +205,11 @@ public sealed class DownloadManager(
         await _gate.WaitAsync();
         try
         {
+            if (_stopping.IsCancellationRequested) return; // the engine is being stopped
             foreach (var download in _downloads)
             {
                 await download.TickAsync(elapsed);
+                if (download is TorrentDownload streamed) await UpdateNextEpisodeAsync(streamed);
 
                 if (download is TorrentDownload torrent && SeedLimitReached(torrent))
                 {
@@ -196,6 +223,7 @@ public sealed class DownloadManager(
             }
 
             await ApplyPrioritiesAsync();
+            TrackReachability(elapsed);
 
             var shareLimit = _downloads.OfType<DirectDownload>().Any(d => d.IsActive)
                 && _downloads.OfType<TorrentDownload>().Any(t => t.State is DownloadState.Metadata or DownloadState.Hashing or DownloadState.Downloading);
@@ -264,6 +292,10 @@ public sealed class DownloadManager(
             UsePartialFiles = false,
             AllowPortForwarding = true,
             MaximumConnections = Math.Max(10, _settings.MaxConnections),
+            // MonoTorrent's defaults: 8 connection attempts at a time, 20 open files. Most peers of a swarm are not
+            // reachable over TCP and each attempt waits for its timeout, so more at once finds the reachable ones sooner.
+            MaximumHalfOpenConnections = 50,
+            MaximumOpenFiles = 500,
             MaximumDownloadRate = down,
             MaximumUploadRate = KiB(_settings.MaxUploadKiBps),
             ListenEndPoints = new Dictionary<string, IPEndPoint>
@@ -298,6 +330,7 @@ public sealed class DownloadManager(
         await _gate.WaitAsync();
         try
         {
+            if (settings.ListenPort != _settings.ListenPort) ResetReachability();
             _settings = settings;
             await ApplySpeedLimitsAsync();
         }
@@ -563,7 +596,7 @@ public sealed class DownloadManager(
         try
         {
             var direct = _downloads.OfType<DirectDownload>().Sum(d => d.DownloadRate);
-            return new DownloadStatsDto(Engine.TotalDownloadRate + direct, Engine.TotalUploadRate, _downloads.Count(d => d.IsActive));
+            return new DownloadStatsDto(Engine.TotalDownloadRate + direct, Engine.TotalUploadRate, _downloads.Count(d => d.IsActive), GetPortStatus());
         }
         finally
         {
@@ -672,6 +705,75 @@ public sealed class DownloadManager(
         if (!complete && await GetTimelineAsync(download, file.Index) is { } timeline)
             ranges = timeline.ToTimeRanges(ranges, file.Length);
         return new DownloadPlaybackDto(download.Id, file.Index, complete, $"api/downloads/{download.Id}/files/{file.Index}", file.Length, ranges);
+    }
+
+    /// <summary>Torrents need peers this long without any connecting to us before the port counts as unreachable.</summary>
+    private static readonly TimeSpan ReachabilityEvidence = TimeSpan.FromMinutes(5);
+    private bool _incomingSeen;
+    private TimeSpan _timeWithPeers;
+
+    /// <summary>
+    /// Whether the listen port is reachable, without any outside service or root: peers that know us from trackers /
+    /// DHT try to connect, so with no incoming connection after <see cref="ReachabilityEvidence"/> of torrents with
+    /// peers, a firewall or the router (no port forward) blocks them. Runs in the tick, under the gate.
+    /// </summary>
+    private void TrackReachability(TimeSpan elapsed)
+    {
+        var torrents = _downloads.OfType<TorrentDownload>().ToList();
+        if (torrents.Any(t => t.HadIncomingConnection)) _incomingSeen = true;
+        if (torrents.Any(t => t.State is DownloadState.Downloading or DownloadState.Seeding && t.Peers > 0))
+            _timeWithPeers += elapsed;
+    }
+
+    private void ResetReachability()
+    {
+        _incomingSeen = false;
+        _timeWithPeers = TimeSpan.Zero;
+        foreach (var torrent in _downloads.OfType<TorrentDownload>()) torrent.ResetIncomingConnection();
+    }
+
+    /// <summary>Under the gate.</summary>
+    private PortStatusDto GetPortStatus()
+    {
+        var reachability = _incomingSeen ? PortReachability.Reachable
+            : _timeWithPeers >= ReachabilityEvidence ? PortReachability.Unreachable
+            : PortReachability.Unknown;
+        var mappings = Engine.PortMappings;
+        var mapping = mappings.Created.Count > 0 ? RouterMapping.Mapped
+            : mappings.Failed.Count > 0 ? RouterMapping.Failed
+            : mappings.Pending.Count > 0 && _timeWithPeers < ReachabilityEvidence ? RouterMapping.Pending
+            : RouterMapping.NoRouter;
+        return new PortStatusDto(_settings.ListenPort, reachability, mapping);
+    }
+
+    /// <summary>A player this close to the end of a file starts the next one streaming.</summary>
+    private static readonly TimeSpan NextEpisodeLead = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Near the end of the file a player watches, the next video file of the download (path order) is streamed after
+    /// it (<see cref="TorrentDownload.SetNextFile"/>). Time left comes from the container index; without one, from the
+    /// share of bytes left (last 10 %).
+    /// </summary>
+    private async Task UpdateNextEpisodeAsync(TorrentDownload download)
+    {
+        if (download.StreamingFile is not { } index)
+        {
+            download.SetNextFile(null);
+            return;
+        }
+        var files = download.Files;
+        if (index >= files.Count) return;
+        var current = files[index];
+        var position = download.StreamingPosition;
+        var nearEnd = await GetTimelineAsync(download, index) is { DurationSeconds: > 0 } timeline
+            ? (1 - timeline.FractionAt(position)) * timeline.DurationSeconds <= NextEpisodeLead.TotalSeconds
+            : current.Length > 0 && position >= current.Length * 0.9;
+        var next = nearEnd
+            ? files.Where(f => f.IsVideo && f.Wanted && f.Progress < 1 && string.CompareOrdinal(f.RelativePath, current.RelativePath) > 0)
+                .OrderBy(f => f.RelativePath, StringComparer.Ordinal)
+                .FirstOrDefault()
+            : null;
+        download.SetNextFile(next?.Index);
     }
 
     /// <summary>The playback time map of a file, cached once its container index is downloaded and read.</summary>

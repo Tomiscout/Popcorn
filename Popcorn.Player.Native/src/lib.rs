@@ -24,6 +24,9 @@
 //!   pn_quit(), pn_set_fullscreen(on), pn_set_title(title)   any thread
 //!   pn_destroy()                                 after pn_run: terminates mpv (waits for clients)
 
+// Empty on other OSes, so the whole workspace builds everywhere (`cargo build --workspace`).
+#![cfg(target_os = "linux")]
+
 mod cef_app;
 mod dmabuf;
 mod ffi;

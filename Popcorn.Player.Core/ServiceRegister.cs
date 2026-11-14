@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Popcorn.Application.Services;
+using Popcorn.Domain.Interfaces;
 using Popcorn.Persistence;
 using Popcorn.Persistence.Repositories;
 using Popcorn.Player.Core.Core;
@@ -32,13 +33,18 @@ public static class ServiceRegister
         services.AddSingleton<SegmentSkipService>();
         services.AddSingleton<MediaItemService>();
         services.AddSingleton<AppWindowLauncher>();
+        services.AddSingleton<MediaSessionService>();
 
         if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             services.AddSingleton<INativeProcessRunner, WindowsProcessRunner>();
+            services.AddSingleton<ISleepInhibitor, WindowsSleepInhibitor>();
+            services.AddSingleton<ISystemMediaControls, NoSystemMediaControls>();
         } else
         {
             services.AddSingleton<INativeProcessRunner, LinuxProcessRunner>();
+            services.AddSingleton<ISleepInhibitor, LinuxSleepInhibitor>();
+            services.AddSingleton<ISystemMediaControls, LinuxMediaControls>();
         }
 
         // Since the app was all static classes at start, sadly we have to deal with circular dependencies

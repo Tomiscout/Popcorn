@@ -42,6 +42,14 @@ public class PopcornServerHost : IAsyncDisposable
 
         hostBuilder.UseSerilog(logger);
 
+        // Stop the hosted services (web server, downloads, plugins, tray) side by side, and give up on them after 10 s
+        // instead of the default 30 s: each one bounds its own work, this is the backstop.
+        hostBuilder.ConfigureServices(services => services.Configure<HostOptions>(o =>
+        {
+            o.ServicesStopConcurrently = true;
+            o.ShutdownTimeout = TimeSpan.FromSeconds(10);
+        }));
+
         hostBuilder.ConfigureWebHostDefaults(webBuilder =>
         {
             var port = Environment.GetEnvironmentVariable("POPCORN_PORT") ?? "5000";
@@ -89,7 +97,9 @@ public class PopcornServerHost : IAsyncDisposable
                 Console.WriteLine($"Listening on: {ListeningUrl}");
             }
 
+            // Stops the host itself once shutdown is requested.
             await _host!.WaitForShutdownAsync(cancellationToken);
+            _stopped = true;
         }
         finally
         {
@@ -97,10 +107,13 @@ public class PopcornServerHost : IAsyncDisposable
         }
     }
 
+    private bool _stopped;
+
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
-        if (_host != null)
+        if (_host != null && !_stopped)
         {
+            _stopped = true;
             _logger?.LogInformation("Stopping Popcorn.Server host...");
             await _host.StopAsync(cancellationToken);
             _logger?.LogInformation("Popcorn.Server host stopped.");

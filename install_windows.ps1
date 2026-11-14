@@ -1,4 +1,4 @@
-# Installs the Windows bundle (build_windows.ps1 -> Bundle/Windows) for the current user; the counterpart of
+# Installs the Windows bundle (`cargo xtask bundle` -> Bundle/Windows) for the current user; the counterpart of
 # `make install-linux`. No Windows service: Popcorn.Server is a plain background process (tray icon, single instance)
 # started at login through the HKCU Run key, like the systemd user service on Linux.
 #   - stops running Popcorn processes
@@ -19,7 +19,7 @@ $ServerExe = Join-Path $InstallDir "Popcorn.Server.exe"
 $AppExe = Join-Path $InstallDir "Popcorn.Windows.exe"
 
 if (!(Test-Path (Join-Path $BundleDir "Popcorn.Server.exe"))) {
-    throw "$BundleDir\Popcorn.Server.exe missing, run build_windows.ps1 first"
+    throw "$BundleDir\Popcorn.Server.exe missing, run 'cargo xtask bundle' first"
 }
 if (!(& dotnet --list-runtimes 2>$null | Select-String -Quiet '^Microsoft\.AspNetCore\.App 10\.')) {
     throw "ASP.NET Core 10 runtime missing (needed by Popcorn.Server): https://dotnet.microsoft.com/download/dotnet/10.0"

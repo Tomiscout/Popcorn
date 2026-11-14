@@ -51,13 +51,13 @@ asks (version + notes modal), yes starts the installer window with `--from-app`.
 `POPCORN_UPDATE_REPO` at runtime, else the one built in (`POPCORN_UPDATE_REPO` at compile time, default
 `Tomiscout/Popcorn`). Private repository: `POPCORN_GITHUB_TOKEN` (or `GITHUB_TOKEN`), never built in.
 
-Release layout, made by `release_windows.ps1` and `release_linux.sh` (each uploads only its own files, so the
+Release layout, made by `cargo xtask release` on each platform (each uploads only its own files, so the
 platforms can be built on different machines and published into the same release):
 
 - tag `v<version>`
 - `Popcorn-<version>-windows-x64.zip` / `Popcorn-<version>-linux-x64.zip`: the `Bundle/Windows` / `Bundle/Linux`
-  contents with `release.json` at the root (`{ version, platform, commit, date }`, written by `build_windows.ps1` /
-  the makefile's `bundle-linux`)
+  contents with `release.json` at the root (`{ version, platform, commit, date }`, written by `cargo xtask
+  bundle`)
 - `Popcorn.Installer.exe` / `Popcorn.Installer.Linux`: the bundle's installer on its own, what new users download
 
 The download is checked against the SHA-256 digest GitHub computes on upload (the asset's `digest`, shown on the
@@ -111,16 +111,16 @@ Popcorn.Installer.exe [--confirm | --from-app] [--update-check] [--uninstall [--
                     [--no-relocate]
 ```
 
-Testing without GitHub: `release_windows.ps1 -SkipBuild` (or a full build) →
+Testing without GitHub: `cargo xtask release --skip-build` (or without it: a full build) →
 `Popcorn.Installer.exe --package Bundle\Release\<version>\Popcorn-<version>-windows-x64.zip`; Linux:
-`./release_linux.sh --skip-build` → `Bundle/Linux/Popcorn.Installer.Linux --package Bundle/Release/<version>/Popcorn-<version>-linux-x64.zip`. `--confirm` starts
+the same → `Bundle/Linux/Popcorn.Installer.Linux --package Bundle/Release/<version>/Popcorn-<version>-linux-x64.zip`. `--confirm` starts
 right away. The installer writes real HKCU entries (Settings → Apps, Run, Start menu): uninstall a test install
 with `--uninstall` afterwards. `--install-dir` points it at another copy of the bundle (setting `LOCALAPPDATA` to a scratch folder keeps
 the logs and downloads out of the real data folder too).
 
 ## Building
 
-`build_windows.ps1` builds it when `cargo` is on PATH and copies it into the bundle as `Popcorn.Installer.exe`.
+`cargo xtask bundle` builds it and copies it into the bundle as `Popcorn.Installer.exe`.
 It needs the MSVC toolchain (Visual Studio Build Tools, "Desktop development with C++"), or `windows-gnu` with
 MSYS2 binutils (`dlltool`) on PATH. TLS is the OS's (SChannel through `native-tls`), so no C compiler is needed
 for it.
@@ -159,7 +159,7 @@ Same window, checks and update steps; what differs (`src/platform/linux.rs`):
   `popcorn.service`'s cgroup, which `systemctl stop` kills as a whole: it first runs itself again through
   `systemd-run --user --scope` (`leave_server_service`).
 - **Package**: the zip's Unix modes are applied (permission bits only), so it has to be made by a tool that stores
-  them: `release_linux.sh` uses Python's `zipfile`.
+  them: `cargo xtask release` writes them into the zip entries.
 - **FFmpeg**: BtbN's static GPL build (`ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz`; the shared one's binaries look
   for their libraries in `../lib`), `bin/ffmpeg` + `bin/ffprobe` next to `Popcorn.Server`, unpacked in Rust
   (`tar` + `lzma-rust2`, no C library), same `ffmpeg-files.txt` tracking.
@@ -167,6 +167,6 @@ Same window, checks and update steps; what differs (`src/platform/linux.rs`):
 - **Dialogs** outside the window (`--help`, errors before it opens): the terminal, else zenity / kdialog.
 - Single instance: an flock on `$XDG_RUNTIME_DIR/popcorn-installer.lock`. Log times are local time.
 
-Built by `make all` (`make build-popcorn-installer`), copied into the bundle as `Popcorn.Installer.Linux` (mode 755). TLS is
+Built by `make all` / `cargo xtask bundle` (alone: `cargo xtask build installer`), copied into the bundle as `Popcorn.Installer.Linux` (mode 755). TLS is
 OpenSSL (`native-tls`), so the build needs its headers (Arch: `openssl`, Debian: `libssl-dev`). The binaries of the
 bundle link against the build machine's glibc: build releases on the oldest distro they should run on.

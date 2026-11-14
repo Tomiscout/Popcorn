@@ -17,10 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FFMpegCore" Version="5.2.0" />
-    <PackageReference Include="Serilog" Version="4.3.0" />
-    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="FFMpegCore" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Sinks.Debug" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,15 +28,14 @@
   </ItemGroup>
 
 
-  <!-- Added as content in a target (globbed when building, not when the project is loaded), so both the build output
-       and `dotnet publish` (make) get it. -->
+  <!-- The overlay (Popcorn.Web/dist-player, `npm run build:player` there) as web-player/: added as content in a target
+       (globbed when building, not when the project is loaded), so both the build output and `dotnet publish` get it. -->
   <Target Name="IncludeWebPlayer" BeforeTargets="BeforeBuild">
     <!-- Replace, not merge: file names are content-hashed, old bundles would pile up. -->
     <RemoveDir Directories="$(OutDir)web-player" />
     <ItemGroup>
-      <Content Remove="web-player\**" />
-      <WebPlayerFile Include="web-player\**\*.*" />
-      <Content Include="@(WebPlayerFile)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+      <WebPlayerFile Include="..\Popcorn.Web\dist-player\**\*.*" />
+      <Content Include="@(WebPlayerFile)" Link="web-player\%(WebPlayerFile.RecursiveDir)%(WebPlayerFile.Filename)%(WebPlayerFile.Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     </ItemGroup>
   </Target>
 </Project>

@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SoundFingerprinting" Version="11.1.0" />
+    <PackageReference Include="SoundFingerprinting" />
   </ItemGroup>
 
   <ItemGroup>

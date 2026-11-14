@@ -1,0 +1,21 @@
+[package]
+name = "popcorn-cli"
+description = "Terminal client of a running Popcorn.Server: sends WebSocket events, prints the replies as JSON lines"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "popcorn-cli"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive", "env"] }
+# preserve_order: print {"type", "payload"} in that order
+serde_json = { version = "1", features = ["preserve_order"] }
+# Full-screen UI (no-args mode in a terminal); crossterm comes re-exported from it
+ratatui = "0.30"
+# repl: line editing, history, completion, printing pushes above the prompt
+rustyline = { version = "19", default-features = false, features = ["with-file-history"] }
+# Plain ws:// to the server only (no TLS), blocking: no async runtime needed
+tungstenite = { version = "0.27", default-features = false, features = ["handshake"] }

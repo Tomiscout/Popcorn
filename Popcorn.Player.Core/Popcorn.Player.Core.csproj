@@ -10,10 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="FFMpegCore" Version="5.2.0" />
-    <PackageReference Include="Fleck" Version="1.2.0" />
+    <PackageReference Include="FFMpegCore" />
+    <PackageReference Include="Fleck" />
     
-    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog" />
   </ItemGroup>
 
   <ItemGroup>

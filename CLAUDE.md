@@ -16,6 +16,7 @@ This file is the map. Details live next to the code they describe; keep them the
 | [Popcorn.Installer/README.md](Popcorn.Installer/README.md) | Installer/updater (Windows + Linux) |
 | [Popcorn.FilenameParser/README.md](Popcorn.FilenameParser/README.md) | Release name parser (Sonarr/Radarr derived, GPL-3.0) |
 | [Popcorn.Web/README.md](Popcorn.Web/README.md) | Web UI builds and layout |
+| [Popcorn.Cli/README.md](Popcorn.Cli/README.md) | `popcorn-cli`: terminal client of a running server (TUI, repl, one-shot `send`/`listen` for scripts) |
 
 When a change alters behaviour described in one of these, update that file in the same change.
 
@@ -52,12 +53,14 @@ Popcorn.Player.Windows  Windows player host: Program.cs + Native/PlayerNative.cs
 Popcorn.Player.Windows.Native  Rust cdylib popcorn_player.dll: lib.rs (C ABI), window.rs, overlay.rs (WebView2), mpv.rs (libmpv-2.dll loaded at run time)
 Popcorn.Linux           Rust + CEF desktop shell: main.rs, browser.rs, server.rs, log.rs
 Popcorn.Windows         Windows desktop app (WinForms + WebView2)
+Popcorn.Cli             Rust terminal client of the server's /ws RPC (popcorn-cli: ratatui TUI, repl, send/listen); event list embedded from the generated TS contract
 Popcorn.Installer       Rust + egui installer/updater, one crate for Windows and Linux (src/platform/{windows,linux}.rs)
 Popcorn.Core.Tests      NUnit tests of Popcorn.Core (incl. PlayerLink)
 Popcorn.FilenameParser.Tests  Sonarr/Radarr parser fixtures (~2.6k cases)
 Popcorn.Web             React UI, also the native players' overlay (player.html, `npm run build:player`)
 MPV/src                 git submodule: Tomiscout/mpv fork with the DMA-BUF render API
-Cargo.toml              Root Cargo workspace of the four Rust crates (one Cargo.lock, one target/)
+Cargo.toml              Root Cargo workspace of the Rust crates (one Cargo.lock, one target/)
+xtask                   The build (`cargo xtask`): build/bundle/release/check for the host platform
 ```
 
 Dependency direction: `Server → Core + Platform + Downloads + SegmentFinder + Plugins.Abstractions`;
@@ -83,33 +86,34 @@ folders keep the old layering (Application → Persistence → Domain → Shared
 ## Build & run
 
 Prereqs: .NET SDK 10 (`global.json`), Node/npm, Rust toolchain + cmake, libmpv, ffmpeg, libwayland + libEGL + libgbm +
-libdrm + libxkbcommon (Linux player). `make` / `build_windows.ps1` run `npm ci` in `Popcorn.Web/` first.
+libdrm + libxkbcommon (Linux player). The build is `cargo xtask` (`xtask/`, same on Linux and Windows, incremental;
+`npm ci` only when a lockfile changed); the makefile gives it short names and adds the Linux install.
 
 ```sh
-make all                       # clean + build everything + bundle into Bundle/Linux/ (incl. CEF runtime)
+make all                       # = cargo xtask bundle: build everything + bundle into Bundle/<platform>/ (incl. CEF runtime)
+make rebuild                   # clean + all (make clean = cargo xtask clean)
+make check                     # = cargo xtask check: all .NET projects + tests, web tsc + lint, clippy + cargo test
 make install-linux             # stop running instances, copy bundle to ~/.local/bin/Popcorn, systemd user service, desktop entry
-make mpv                       # build MPV/libmpv.so.2 with the DMA-BUF render API (submodule, pinned fork commit)
+make mpv                       # MPV/libmpv.so.2 with the DMA-BUF render API (rebuilt when MPV/src or options change)
 make update-mpv                # move submodule to latest fork master and rebuild libmpv
-make build-popcorn-web         # Popcorn.Web only (post-build replaces Popcorn.Server/web)
-make build-player-web          # player overlay only -> Popcorn.Player.Linux/web-player
-make build-plugins             # Plugins/* -> Popcorn.Server/plugins/<id>/
-make build-popcorn-linux       # desktop shell (cargo -p popcorn-linux, CEF_PATH default ~/.cache/popcorn/cef)
-make build-popcorn-player-native  # player native layer (cargo -p popcorn-player-native)
-make build-popcorn-installer   # installer (cargo --profile installer -p popcorn-installer -> target/installer/)
-./release_linux.sh             # make all + release zip; --skip-build, --version, --publish (gh)
+cargo xtask build web          # Popcorn.Web only (dist/, linked into the server's output as web/)
+cargo xtask build player-web   # player overlay only (dist-player/, linked into both players as web-player/)
+cargo xtask build server|desktop|player|installer|cli   # one app (make build-popcorn-<...> too)
+cargo xtask release            # bundle + release zip; --skip-build, --version, --publish (gh)
+make build-plugins             # Plugins/* (separate products, not in `all`) -> Popcorn.Server/plugins/<id>/
 
 dotnet run --project Popcorn.Server       # dev server, port POPCORN_PORT (default 5000), all interfaces
 cd Popcorn.Web && npm run dev             # Vite dev server on :5173 against running Popcorn.Server
-make build-popcorn-linux bundle-linux && Bundle/Linux/Popcorn.Linux   # desktop shell (needs the CEF runtime of the bundle)
+make all && Bundle/Linux/Popcorn.Linux    # desktop shell (needs the CEF runtime of the bundle)
 Bundle/Linux/Popcorn.Player.Linux <file|fileId>   # player, also only from the bundle
-dotnet test Popcorn.Core.Tests
-dotnet test Popcorn.FilenameParser.Tests
+target/release/popcorn-cli send MediaList -p   # drive a running server from the terminal (`events`, `describe X`, `listen T`)
+cargo xtask test                          # dotnet test (Core, FilenameParser) + cargo test
 cd Popcorn.Web && npm run lint            # eslint; prettier config in .prettierrc
 ```
 
-Windows: `build_windows.ps1` (→ `Bundle/Windows/`), `release_windows.ps1`, `install_windows.ps1`. Versions:
-`node set_version.mjs <semver>`. Rust: one workspace, always build a single crate with `-p`. All in
-[Docs/Building.md](Docs/Building.md).
+Windows: `cargo xtask bundle` (→ `Bundle/Windows/`, builds libmpv first), `cargo xtask release`,
+`install_windows.ps1`. Versions: `node set_version.mjs <semver>`. NuGet versions: `Directory.Packages.props`. Rust:
+one workspace, every crate builds on every OS (`cargo build --workspace`). All in [Docs/Building.md](Docs/Building.md).
 
 ## Conventions
 
@@ -157,7 +161,8 @@ Windows: `build_windows.ps1` (→ `Bundle/Windows/`), `release_windows.ps1`, `in
   `http://app.local` page ~2 s before parsing it; `overlay.rs` turns it off. Measure overlay start-up with
   `POPCORN_PLAYER_DEVTOOLS_PORT` + `performance.getEntriesByType('navigation')` (`domInteractive`).
 - `Popcorn.Player.Windows` needs `cargo` on Windows (its build compiles Popcorn.Player.Windows.Native); on Linux it
-  only compiles the C# part. The Rust workspace can't be built as a whole on either OS: use `-p`.
+  only compiles the C# part. Its Rust crate's DLL is `popcorn_player_windows.dll`, renamed to `popcorn_player.dll`
+  by the csproj (the Linux crate's library is also `popcorn_player`, and every crate builds on every OS).
 - **Linux player: CEF inside a .NET process.** Chromium's start-up resets SIGCHLD/SIGSEGV/SIGTERM/... to SIG_DFL;
   `cef_app.rs` (`signals`) snapshots and restores .NET's handlers. Child processes started before that would never be
   reaped (`Process.WaitForExit` hangs), so the C# side starts loading (FFProbe) and the server link only on
@@ -171,7 +176,7 @@ Windows: `build_windows.ps1` (→ `Bundle/Windows/`), `release_windows.ps1`, `in
 - **Player DMA-BUF video needs a patched libmpv**: `MPV_RENDER_API_TYPE_DMABUF` (`include/mpv/render_dmabuf.h`,
   `video/out/vulkan/libmpv_dmabuf.c`, client API 2.7) lives in the mpv fork (`MPV/src`, written as an upstream-style
   render backend next to OpenGL/D3D11). `make mpv` builds it: meson + libplacebo >= 7.387 as `subprojects/libplacebo`
-  (system one is older; commit pinned in the makefile), `-Dwayland=disabled`. Stock libmpv returns
+  (system one is older; commit pinned in `xtask/src/mpv.rs`), `-Dwayland=disabled`. Stock libmpv returns
   MPV_ERROR_NOT_IMPLEMENTED and the player uses OpenGL.
 - NVIDIA GBM cannot allocate XRGB2101010; the video buffer negotiation (mpv formats ∩ compositor feedback, mpv's
   10-bit-first order) ends up on ARGB2101010 there. The video plane stays opaque (mpv writes alpha 1, opaque region

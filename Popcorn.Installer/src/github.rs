@@ -1,5 +1,5 @@
 //! GitHub releases: the newest release and its platform package.
-//! Release layout (release_windows.ps1, release_linux.sh): tag `v<version>`, assets `Popcorn-<version>-<platform>.zip`
+//! Release layout (`cargo xtask release`): tag `v<version>`, assets `Popcorn-<version>-<platform>.zip`
 //! (checked against the SHA-256 digest GitHub computes on upload) + the standalone installers.
 
 use std::fs::File;

@@ -13,12 +13,12 @@
     <Product>Popcorn</Product>
     <!-- Popcorn.Player.Windows.Native is a member of the root Cargo workspace: built from there into ..\target -->
     <CargoWorkspaceDir>$(MSBuildThisFileDirectory)..\</CargoWorkspaceDir>
-    <PlayerNativeDll>$(CargoWorkspaceDir)target\release\popcorn_player.dll</PlayerNativeDll>
+    <PlayerNativeDll>$(CargoWorkspaceDir)target\release\popcorn_player_windows.dll</PlayerNativeDll>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Serilog" Version="4.3.0" />
-    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.Debug" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- libmpv from MPV/build_windows.sh (build_windows.ps1), so bin/ runs too and not only the bundle -->
+    <!-- libmpv from MPV/build_windows.sh (`cargo xtask mpv`, also run by `bundle`), so bin/ runs too and not only the bundle -->
     <Content Include="..\MPV\windows\libmpv-2.dll" Condition="Exists('..\MPV\windows\libmpv-2.dll')" Link="libmpv-2.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -41,7 +41,7 @@
   <!-- Native layer (Popcorn.Player.Windows.Native, Rust): built with the player, so cargo has to be on PATH.
        Windows only: elsewhere this project is just compiled as a check (EnableWindowsTargeting). -->
   <!-- Files made outside this project are added as content in targets (globbed when building, not when the project
-       is loaded), so both the build output and `dotnet publish` (build_windows.ps1) get them. -->
+       is loaded), so both the build output and `dotnet publish` (`cargo xtask`) get them. -->
   <Target Name="BuildPlayerNative" BeforeTargets="BeforeBuild" Condition="'$(OS)' == 'Windows_NT'">
     <Exec Command="cargo build --release -p popcorn-player-windows-native" WorkingDirectory="$(CargoWorkspaceDir)" />
     <ItemGroup>

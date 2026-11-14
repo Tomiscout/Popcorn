@@ -40,6 +40,10 @@ detection: [Popcorn.SegmentFinder](../Popcorn.SegmentFinder/README.md).
   - Host-specific UI is switched via `player-features.ts` (`floating`, `fileDrop`, `addSubtitle`, `subtitleDelay`)
     instead of forking components. A new overlay command is handled in both hosts and, for native, in
     `WebEventHandler.OnMessage` (unknown names throw there).
+- **Toasts**: the player has its own (no Mantine notifications in the overlay bundle):
+  `player/Components/PlayerToasts/toasts.store.ts` → `showToast({ level: 'error' | 'warning' | 'info', message, title?,
+  id?, persistent? })`, `dismissToast(id)`. Red/orange/gray, top centre, X button, gone after 4 s unless `persistent`;
+  showing an existing `id` replaces it. Hosts call it; overlay components only render the store (`PlayerToasts`).
 - **Overlay development**: `npm run dev:player` serves the overlay from Vite; open
   `player.html?ws=ws://127.0.0.1:<port>` against a running Linux player (port = Fleck server, usually 8181). When the
   overlay (re)connects, C# replays the current file's state (`PlayerCore.ResendState`).
@@ -82,6 +86,21 @@ detection: [Popcorn.SegmentFinder](../Popcorn.SegmentFinder/README.md).
   goes on at 10 s ahead or when that part reaches the end of the file; `PlayerOverlay` keeps `isBuffering` up to
   date and shows the "Buffering" spinner, the hosts hold the video on its changes (native: `play_status_changed`, so
   `isPlaying` stays the user's wish).
+- **OS session (native players)**: `MediaSessionService` (`Popcorn.Player.Core/Services`, started on the hosts'
+  start-up next to `ServerLink`) follows `IPlayer.PlayingChanged` (mpv `pause` + file loaded + not at the end):
+  - Keeps the computer awake while a video plays, not while paused (`ISleepInhibitor`). The libmpv render API never
+    inhibits by itself. Linux `LinuxSleepInhibitor`: XDG portal `Inhibit` (Suspend | Idle; KDE turns it into a
+    PowerDevil inhibition, applied after a few seconds' delay, listed by `PolicyAgent.ListInhibitions`), else
+    `org.freedesktop.ScreenSaver.Inhibit`; the player registers as `popcorn` with the portal host registry first,
+    otherwise the inhibition has no app name (started by the systemd server, it has no app id). Windows
+    `WindowsSleepInhibitor`: power request (system + display required, `powercfg /requests`), untested.
+  - OS media controls (`ISystemMediaControls`). Linux `LinuxMediaControls`: MPRIS on the session bus as
+    `org.mpris.MediaPlayer2.popcorn.instance<pid>` (media keys, Plasma's media widget, `playerctl`). Metadata = title
+    (`SxxEyy · episode title` for episodes), item as album, length, poster as `artUrl`; `Seeked` on mpv's
+    playback-restart. Play/pause/next go to the overlay as `media_control` (handled like its own buttons:
+    buffering, missing-episode dialog, notification), seek/position/previous go straight to the player, `Quit`
+    closes the window. No `Raise` (Wayland), volume/rate read-only. Windows: none yet (`NoSystemMediaControls`; SMTC
+    would need `ISystemMediaTransportControlsInterop` in the Rust layer).
 
 ## Intro/outro skipping
 

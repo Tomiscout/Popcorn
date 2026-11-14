@@ -272,11 +272,13 @@ public class LinuxTrayManager : ITrayManager
             if (!process.HasExited)
             {
                 process.Kill(entireProcessTree: true);
-                await process.WaitForExitAsync();
+                // Bounded: the tray's Exit must always reach StopApplication.
+                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(3));
             }
         }
-        catch (InvalidOperationException)
+        catch (Exception e) when (e is InvalidOperationException or TimeoutException)
         {
+            _logger.LogWarning("Could not stop {ExecutableName}: {Message}", AppExecutableName, e.Message);
         }
         finally
         {

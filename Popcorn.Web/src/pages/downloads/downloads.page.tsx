@@ -47,6 +47,7 @@ import { DownloadEntry, groupDownloads } from './download-groups';
 import { useColumnWidths } from './downloads.hooks';
 import { useSubscription } from '../../socket/useSubscription.hook';
 import { ResizableTh } from './resizable-columns';
+import { PortWarning } from './port-warning';
 
 const STATE_COLORS: Record<DownloadState, string> = {
   Metadata: 'gray',
@@ -778,6 +779,7 @@ const DownloadsPage: React.FC = () => {
         </Tabs.List>
         {(['Torrent', 'Direct'] as const).map((kind) => (
           <Tabs.Panel key={kind} value={kind} pt="md">
+            {kind === 'Torrent' && <PortWarning />}
             {downloads && <DownloadTable downloads={byKind(kind)} kind={kind} actions={actions} />}
           </Tabs.Panel>
         ))}

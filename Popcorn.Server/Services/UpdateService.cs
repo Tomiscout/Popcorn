@@ -6,8 +6,7 @@ using Popcorn.Shared.Utils;
 namespace Popcorn.Server.Services;
 
 /// <summary>
-/// Updates through Popcorn.Installer next to the server (Windows: in the bundle when build_windows.ps1 had cargo;
-/// Linux: always in the make bundle). The check runs it without a window (<c>--update-check</c>: JSON on stdout), the update
+/// Updates through Popcorn.Installer next to the server (in every bundle `cargo xtask bundle` makes). The check runs it without a window (<c>--update-check</c>: JSON on stdout), the update
 /// with its window and <c>--from-app</c> (= <c>--confirm</c>, and nothing to open at the end): it downloads, stops this server, swaps the files and starts it again.
 /// </summary>
 public class UpdateService(ILogger<UpdateService> logger)

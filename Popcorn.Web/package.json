@@ -1,14 +1,14 @@
 {
   "name": "popcorn.web",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "start": "vite",
     "dev": "vite",
     "dev:player": "vite --mode player --open /player.html",
-    "build": "tsc -b && vite build && node post-build.js",
-    "build:player": "tsc -b && vite build --mode player && node post-build-player.js",
+    "build": "tsc -b && vite build",
+    "build:player": "vite build --mode player && node post-build-player.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },

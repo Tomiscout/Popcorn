@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Sets the product version everywhere it is declared, so every build (make, build_windows.ps1) carries it:
-//   VERSION                              .NET assemblies (Directory.Build.props reads it), build_windows.ps1 /
-//                                        release_windows.ps1 default (release.json, tag v<version>)
+// Sets the product version everywhere it is declared, so every build (cargo xtask, make) carries it:
+//   VERSION                              .NET assemblies (Directory.Build.props reads it), `cargo xtask`'s default
+//                                        (release.json, tag v<version>)
 //   Cargo.toml + Cargo.lock              Rust crates (one workspace version; Popcorn.Installer's --version / User-Agent /
 //                                        exe file version)
 //   Popcorn.Web/package.json + lock
@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const crates = ['Popcorn.Installer', 'Popcorn.Linux', 'Popcorn.Player.Native', 'Popcorn.Player.Windows.Native'];
+const crates = ['Popcorn.Cli', 'Popcorn.Installer', 'Popcorn.Linux', 'Popcorn.Player.Native', 'Popcorn.Player.Windows.Native'];
 const npmProjects = ['Popcorn.Web'];
 
 const arg = process.argv[2];
@@ -23,7 +23,7 @@ if (!arg || process.argv.length > 3) {
     process.exit(2);
 }
 const version = arg.replace(/^v/, '');
-// Same rule as build_windows.ps1 / release_windows.ps1.
+// Same rule as xtask/src/util.rs (is_version).
 if (!/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version)) {
     console.error(`Version '${arg}' is not major.minor.patch[-prerelease]`);
     process.exit(2);

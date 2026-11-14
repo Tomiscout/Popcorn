@@ -8,7 +8,7 @@
 //! and `systemctl stop popcorn.service` kills the whole cgroup. `leave_server_service` moves it into its own scope.
 //!
 //! The unit, env file and desktop entry are written from the templates in the bundle's `setup/` folder (copied
-//! there by the makefile), else from the copies built into this program.
+//! there by `cargo xtask bundle`), else from the copies built into this program.
 
 use std::ffi::OsString;
 use std::io::IsTerminal;
@@ -26,7 +26,7 @@ use crate::paths;
 pub const SERVER_EXE: &str = "Popcorn.Server";
 const APP_EXE: &str = "Popcorn.Linux";
 const SERVICE: &str = "popcorn.service";
-/// Bundle folder with the templates (makefile `bundle-linux`).
+/// Bundle folder with the templates (`cargo xtask bundle`).
 const SETUP_DIR: &str = "setup";
 const UNIT_TEMPLATE: &str = include_str!("../../../Popcorn.Server/systemd/popcorn.service");
 const ENV_TEMPLATE: &str = include_str!("../../../Popcorn.Server/systemd/popcorn.env");

@@ -6,11 +6,14 @@ edition.workspace = true
 publish.workspace = true
 
 [lib]
-# popcorn_player.dll, P/Invoked from Popcorn.Player.Windows (see src/lib.rs for the C ABI).
-name = "popcorn_player"
+# popcorn_player_windows.dll, bundled as popcorn_player.dll (Popcorn.Player.Windows.csproj) and P/Invoked from
+# Popcorn.Player.Windows (see src/lib.rs for the C ABI). Its own name in target/: the Linux crate's library is
+# popcorn_player, and every member builds on every OS.
+name = "popcorn_player_windows"
 crate-type = ["cdylib"]
 
-[dependencies]
+# Windows only; elsewhere the crate is an empty stub (src/lib.rs).
+[target.'cfg(windows)'.dependencies]
 webview2-com = "0.39"
 # Same major version as webview2-com's.
 windows = { version = "0.62", features = [

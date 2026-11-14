@@ -1,6 +1,6 @@
-//! Release packages: a zip of the bundle folder (release_windows.ps1, release_linux.sh) with `release.json` at its
+//! Release packages: a zip of the bundle folder (`cargo xtask release`) with `release.json` at its
 //! root. A zip with the bundle inside one top folder works too (made by hand). On Linux the zip's Unix modes are
-//! applied (executables), so it has to be made by a tool that stores them (release_linux.sh: Python's zipfile).
+//! applied (executables), so it has to be made by a tool that stores them (`cargo xtask release` stores them).
 
 use std::fs::File;
 use std::io::{Read, Write};
@@ -14,7 +14,7 @@ use crate::platform;
 
 pub const MANIFEST: &str = "release.json";
 
-/// `release.json`, written into the bundle by build_windows.ps1 / the makefile; the installed one says which version is
+/// `release.json`, written into the bundle by `cargo xtask bundle`; the installed one says which version is
 /// installed.
 #[derive(Clone, Debug, Deserialize)]
 pub struct Manifest {

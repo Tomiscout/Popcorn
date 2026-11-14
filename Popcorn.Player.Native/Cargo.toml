@@ -16,7 +16,8 @@ crate-type = ["cdylib"]
 name = "popcorn-player-cef"
 path = "src/bin/popcorn-player-cef.rs"
 
-[dependencies]
+# Linux only; elsewhere the crate is an empty stub (src/lib.rs), so CEF is not even downloaded there.
+[target.'cfg(target_os = "linux")'.dependencies]
 cef.workspace = true
 libc.workspace = true
 smithay-client-toolkit = { version = "0.20", default-features = false, features = ["calloop", "xkbcommon"] }

@@ -17,6 +17,7 @@ public sealed partial class LibMpvClient : IMpvClient
     private const int EventShutdown = 1;
     private const int EventLogMessage = 2;
     private const int EventFileLoaded = 8;
+    private const int EventPlaybackRestart = 21;
     private const int EventPropertyChange = 22;
 
     private readonly ILogger<LibMpvClient> _logger;
@@ -29,6 +30,7 @@ public sealed partial class LibMpvClient : IMpvClient
     public event EventHandler<(string Name, double Value)>? DoublePropertyChanged;
     public event EventHandler<(string Name, bool Value)>? FlagPropertyChanged;
     public event EventHandler? FileLoaded;
+    public event EventHandler? PlaybackRestarted;
     public event EventHandler<string>? LogMessage;
 
     static LibMpvClient()
@@ -140,6 +142,9 @@ public sealed partial class LibMpvClient : IMpvClient
                         return;
                     case EventFileLoaded:
                         FileLoaded?.Invoke(this, EventArgs.Empty);
+                        break;
+                    case EventPlaybackRestart:
+                        PlaybackRestarted?.Invoke(this, EventArgs.Empty);
                         break;
                     case EventPropertyChange when data != 0:
                         // mpv_event_property { const char *name; mpv_format format; void *data; }

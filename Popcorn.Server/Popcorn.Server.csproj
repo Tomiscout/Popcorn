@@ -23,13 +23,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="FFMpegCore" Version="5.2.0" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
-        <PackageReference Include="Serilog" Version="4.3.0" />
-        <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+        <PackageReference Include="FFMpegCore" />
+        <PackageReference Include="Serilog" />
+        <PackageReference Include="Serilog.AspNetCore" />
+        <PackageReference Include="Serilog.Sinks.Console" />
+        <PackageReference Include="Serilog.Sinks.File" />
     </ItemGroup>
 
     <ItemGroup>
@@ -41,8 +39,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="web\" />
-        <!-- Bundled plugins (gitignored build output of Plugins/*, like web/): copied as-is, never compiled/published as content -->
+        <!-- Bundled plugins (gitignored runtime folder): copied as-is, never compiled/published as content -->
         <Content Remove="plugins\**" />
         <None Remove="plugins\**" />
         <Compile Remove="plugins\**" />
@@ -52,15 +49,17 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
-    <!-- Build artifacts of Popcorn.Web and Plugins/*, added as content in a target (globbed when building, not when the
-         project is loaded), so both the build output and `dotnet publish` (make / build_windows.ps1) get them. -->
+    <!-- The web UI (Popcorn.Web/dist, `npm run build` there) as web/, and whatever is in plugins/: added as content in a
+         target (globbed when building, not when the project is loaded), so both the build output and `dotnet publish`
+         get them. -->
     <Target Name="IncludeWebAndPlugins" BeforeTargets="BeforeBuild">
-        <RemoveDir Directories="$(OutDir)plugins" />
+        <!-- Replace, not merge: file names are content-hashed, old bundles would pile up. -->
+        <RemoveDir Directories="$(OutDir)web;$(OutDir)plugins" />
         <ItemGroup>
-            <Content Remove="web\**" />
-            <WebFile Include="web\**\*.*" />
+            <WebFile Include="..\Popcorn.Web\dist\**\*.*" />
             <PluginFile Include="plugins\**\*.*" />
-            <Content Include="@(WebFile);@(PluginFile)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+            <Content Include="@(WebFile)" Link="web\%(WebFile.RecursiveDir)%(WebFile.Filename)%(WebFile.Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+            <Content Include="@(PluginFile)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
         </ItemGroup>
     </Target>
     <!-- The web UI's socket contract (Popcorn.Web/src/socket/socket-requests.ts + socket-payloads.ts) from the

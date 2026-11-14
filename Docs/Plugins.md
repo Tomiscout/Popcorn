@@ -73,7 +73,7 @@ Popcorn.Web: Search page ─► PluginSearchCard / PluginDetails / PluginDetails
 | `id` | Unique. Letters, digits, `-`, `_`, `.`. Used in URLs (`/plugins/<id>/`, `/media-details/<id>/...`). |
 | `name` | Shown in the UI (result group headings, settings). Defaults to `id`. |
 | `version` | Informational. |
-| `apiVersion` | Must equal the server's `PluginApi.Version`, otherwise the plugin is not loaded. |
+| `apiVersion` | The contract version the plugin is written against: loaded when it is between the server's `PluginApi.MinVersion` and `PluginApi.Version` (1 = first one, 2 = adds [events](#events)). |
 | `assembly` | Main assembly, relative to the plugin folder. |
 | `ui` | Optional. UI module path, relative to `web/`. If the file is missing the plugin still loads and uses the built-in UI. |
 | `icon` | Optional. Image (png/svg/...) relative to `web/`, shown next to the name (square works best). Without one the first letter of the name is shown. |
@@ -208,6 +208,27 @@ public sealed class MySite(IPluginVariables variables) : IFileSourcePlugin
   another plugin set replaces its value (logged).
 * Values are strings so that no types cross plugin load contexts; use JSON for anything structured.
 
+### Events
+
+When a value is not enough (ask another plugin to do something, learn when it is done), send an event. Ask for
+`IPluginEvents` in the constructor (plugin.json `apiVersion` 2):
+
+```csharp
+// service: starts its program when asked, answers once it is ready
+_ping = events.Subscribe("helper.ping", _ => _ = StartThenAnswerAsync()); // ...events.Publish("helper.pong", url)
+
+// user: subscribe to the answer first, then ask; 0 = no plugin listens, do not wait
+using var pong = events.Subscribe("helper.pong", url => ready.TrySetResult(url));
+if (events.Publish("helper.ping") == 0) throw new InvalidOperationException("Install the helper plugin");
+```
+
+* Every subscriber of a name gets every event of that name, the sender's own subscriptions included. `Publish`
+  returns how many subscribers there were; nothing is queued, so an event nobody listens to is gone.
+* Handlers run on the thread pool, one task per handler, never on the sender's thread: do not block in them for long.
+  An exception in a handler is logged; the sender does not see it.
+* Subscriptions end when the subscription is disposed or the plugin instance is unloaded. Payloads are strings (JSON
+  for anything structured); names are case-sensitive and global, prefix them with a topic.
+
 ### Status messages
 
 Tell the user what is wrong (mainly "not set up yet") without waiting for a search to fail. Ask for `IPluginStatus` in
@@ -334,12 +355,13 @@ public interface IImageProvider
 * The assembly must contain **exactly one** public, non-abstract class implementing `IMediaSourcePlugin`,
   `IFileSourcePlugin`, `IFileSourceProvider`, `IImageProvider` or `IServicePlugin` (a class can implement several, but
   not both file kinds). `IServicePlugin` = no search role: a plugin that only serves others or the user through
-  [shared variables](#shared-variables), [status messages](#status-messages) and [actions](#actions), e.g. one that
+  [shared variables](#shared-variables), [events](#events), [status messages](#status-messages) and [actions](#actions), e.g. one that
   runs a helper program and publishes its address. Implement `IDisposable` to stop what it started: plugins are
-  disposed when unloaded and when the server stops.
+  disposed when unloaded and when the server stops. At server stop all plugins are disposed at the same time and the
+  server quits after 5 s even if a `Dispose` has not returned, so keep it short and don't wait on other plugins.
 * It is created **once** (singleton) with `ActivatorUtilities`, so its constructor can take host services. The ones
   safe to depend on are `ILogger<T>` / `ILoggerFactory`, `IPluginSettings` ([Settings](#settings)) and
-  `IPluginVariables` ([Shared variables](#shared-variables)) and `IPluginStatus` ([Status messages](#status-messages)). The class may also implement `IPluginActions`
+  `IPluginVariables` ([Shared variables](#shared-variables)), `IPluginEvents` ([Events](#events), apiVersion 2) and `IPluginStatus` ([Status messages](#status-messages)). The class may also implement `IPluginActions`
   ([Actions](#actions)): buttons in its settings dialog. Calls can run
   concurrently.
 * `SearchAsync`: return `[]` for no results. Throw on failure. The exception message is shown on the search page.
@@ -352,7 +374,7 @@ public interface IImageProvider
   `.Leechers`, `.Size` (bytes) and `.Added` (Unix seconds) or the same keys where they fit: the combined list merges
   columns of all plugins by key, so results of different plugins sort together. Results without a value sort last.
 * `Origin` / `OriginId` (optional): the provider a result really comes from (a tag shared by all plugins, lowercase
-  name or domain, e.g. `"1337x"`) and its id there (e.g. the site's torrent id or the info hash; null = `Id`). An
+  name or domain, e.g. `"example-tracker"`) and its id there (e.g. the site's torrent id or the info hash; null = `Id`). An
   aggregator sets them per result, a plugin for one site sets its own tag. Results of different plugins with the same
   pair are one item: the combined list shows it once when the user turns on Remove duplicates (the copy with the most
   seeders, ties: the first provider in the user's order). Without `Origin` a result is never deduplicated.
@@ -369,8 +391,8 @@ public interface IImageProvider
   {
       public IReadOnlyList<FileSource> FileSources { get; } =
       [
-          new("piratebay", "The Pirate Bay", new PirateBaySource(logs)) { Icon = "piratebay.svg" },
-          new("yts", "YTS", new YtsSource(logs)) { Icon = "yts.png" },
+          new("site-a", "Site A", new SiteASource(logs)) { Icon = "site-a.svg" },
+          new("site-b", "Site B", new SiteBSource(logs)) { Icon = "site-b.png" },
       ];
   }
   ```
@@ -578,9 +600,10 @@ Copy `dist/*` into the plugin's `web/` folder.
 
 * **In this repo:** add `Plugins/<Name>/` (C# project + `plugin.json` + optional `ui/`) and copy the
   `AssemblePlugin` target from `Popcorn.Plugin.Tmdb.csproj`. It assembles build output + `plugin.json` + `ui/dist`
-  into `Popcorn.Server/plugins/<id>/` (gitignored), and the server build copies that next to the server. `make
-  build-plugins` (part of `make all`) and `build_windows.ps1` build every `Plugins/*` folder: `ui/` first
-  (`npm ci && npm run build`), then `dotnet build`. For the dev loop:
+  into `Popcorn.Server/plugins/<id>/` (gitignored), and the server build copies that next to the server. Plugins
+  are not part of the app build: `make build-plugins` builds every `Plugins/*` folder (`ui/` first, `npm ci && npm
+  run build`, then `dotnet build`); run it before `make all` to bundle them. They pin their own NuGet versions
+  (`Plugins/Directory.Packages.props` turns the repository's central package management off). For the dev loop:
   `(cd Plugins/X/ui && npm run build) && dotnet build Plugins/X && dotnet run --project Popcorn.Server`.
 * **Separate plugins (out of tree, e.g. scrapers):** compile against the `Popcorn.Plugins.Abstractions.dll` that
   ships next to the server (`~/.local/bin/Popcorn/`), using `<Reference Include="Popcorn.Plugins.Abstractions"><HintPath>…</HintPath><Private>false</Private></Reference>`.
@@ -607,6 +630,7 @@ Copy `dist/*` into the plugin's `web/` folder.
 
 ## Versioning
 
-`PluginApi.Version` (C#) is bumped on breaking changes to the contract, the models, the UI props or the shared module
-set. Plugins declaring another `apiVersion` are refused at load time. Adding optional model fields or new optional UI
-exports is not a breaking change.
+`PluginApi.Version` (C#) is bumped when the contract, the models, the UI props or the shared module set change.
+Plugins declaring an `apiVersion` outside `PluginApi.MinVersion`..`PluginApi.Version` are refused at load time; a
+change that only adds (version 2: `IPluginEvents`) keeps `MinVersion`, a breaking one raises it too. Adding optional
+model fields or new optional UI exports needs no new version.

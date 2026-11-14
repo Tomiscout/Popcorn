@@ -2,11 +2,14 @@
 
 The UI: React 19 + TypeScript + Vite (SWC) + Mantine 8 + TanStack Query + zustand. Two builds from one source:
 
-- `npm run build` → `dist/` → copied to `Popcorn.Server/web` (served by the server, shown by the browser and both
-  desktop apps).
-- `npm run build:player` (`vite build --mode player`, entry `player.html`) → `dist-player/` → the native players'
-  overlay (`index.html`, relative asset URLs; copied to `Popcorn.Player.Linux/web-player`, the Windows player's build
-  copies it itself).
+- `npm run build` (type check + `vite build`) → `dist/`, which Popcorn.Server's build links in as `web/` (served by the
+  server, shown by the browser and both desktop apps).
+- `npm run build:player` (`vite build --mode player`, entry `player.html`, no type check of its own) → `dist-player/`
+  → the native players' overlay (`index.html`, relative asset URLs), which both players' builds link in as
+  `web-player/`.
+
+`cargo xtask build web` / `build player-web` run these with `npm ci` first when `package-lock.json` changed; `cargo
+xtask build server` builds the server first, so the UI compiles against the socket contract it writes.
 
 ```sh
 npm run dev          # Vite on :5173 against a running Popcorn.Server
