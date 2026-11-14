@@ -78,10 +78,18 @@ public class DownloadRecord
     public MediaSourceRef? MediaSource { get; set; }
     public Guid? MediaItemId { get; set; }
     /// <summary>
-    /// Downloaded for this existing library item: saved in a folder inside the item's folder and its videos are added
-    /// to the item (<see cref="MediaItemId"/> is set once they are). The item is not owned by the download.
+    /// Downloaded for this existing library item: its videos are added to the item as a source of their own (a virtual
+    /// folder, <see cref="SourceId"/>; <see cref="MediaItemId"/> is set once they are). The item is not owned by the
+    /// download.
     /// </summary>
     public Guid? AttachToItemId { get; set; }
+    /// <summary>
+    /// The item's <see cref="ItemSource"/> the files go to: preset for a batch (one source and folder for all its
+    /// downloads), else made when the files are added to the library.
+    /// </summary>
+    public Guid? SourceId { get; set; }
+    /// <summary>File source result the download was picked from (kept in the source's origins).</summary>
+    public FileOrigin? FileOrigin { get; set; }
 
     // Torrent
     /// <summary>File index → priority, only files that are not <see cref="FilePriority.Normal"/>.</summary>
@@ -183,4 +191,59 @@ public record AddDownloadOptions
     public MediaSourceRef? MediaSource { get; init; }
     /// <summary>Existing library item to add the files to (<see cref="DownloadRecord.AttachToItemId"/>).</summary>
     public Guid? MediaItemId { get; init; }
+    /// <summary>Source of <see cref="MediaItemId"/> to add the files to; the download is saved inside its folder (batches).</summary>
+    public Guid? SourceId { get; init; }
+    public FileOrigin? FileOrigin { get; init; }
 }
+
+/// <summary>
+/// Bottom panel of the Downloads page for one download (subscription <c>DownloadDetails</c> + download id): general
+/// info, file parts, peers and pieces. Built only while someone watches it.
+/// </summary>
+public record DownloadDetailsDto
+{
+    public required Guid Id { get; init; }
+    public required DownloadKind Kind { get; init; }
+    public required string Name { get; init; }
+    public required string SavePath { get; init; }
+    /// <summary>Magnet link or URL; null for a .torrent file.</summary>
+    public string? Source { get; init; }
+    public string? InfoHash { get; init; }
+    public DateTime AddedAt { get; init; }
+    public DateTime? CompletedAt { get; init; }
+    /// <summary>Bytes of all files, skipped ones too; -1 = unknown yet.</summary>
+    public long TotalSize { get; init; }
+    /// <summary>Bytes of the wanted files.</summary>
+    public long Size { get; init; }
+    public long Downloaded { get; init; }
+    public long Uploaded { get; init; }
+    public double Ratio { get; init; }
+    public double SeedingSeconds { get; init; }
+    public string? Comment { get; init; }
+    public string? CreatedBy { get; init; }
+    public DateTime? CreatedAt { get; init; }
+    public bool Private { get; init; }
+    public int HashFails { get; init; }
+    /// <summary>Copies of the torrent the connected peers have together (incl. us), null = no peers.</summary>
+    public double? Availability { get; init; }
+    public IReadOnlyList<TrackerDto> Trackers { get; init; } = [];
+    public IReadOnlyList<PeerDto> Peers { get; init; } = [];
+    /// <summary>Downloaded parts of each file (by file index) as [start, end] fractions of the file.</summary>
+    public IReadOnlyList<IReadOnlyList<double[]>> FileRanges { get; init; } = [];
+    public PieceMapDto? Pieces { get; init; }
+}
+
+/// <param name="Status">MonoTorrent's tracker state (Ok, Offline, InvalidResponse, Connecting, Unknown).</param>
+/// <param name="Seeds">From the last scrape, null = not scraped.</param>
+public record TrackerDto(int Tier, string Url, string Status, string? Message, int? Seeds, int? Leechers, int? Completed,
+    double? LastAnnounceSeconds, double? IntervalSeconds);
+
+/// <param name="Flags">qBittorrent-style: D/d downloading / we want to, U/u uploading / they want to, E encrypted, I incoming, F fast peer, X extensions.</param>
+public record PeerDto(string Address, string Client, bool Incoming, bool Seeder, double Progress, long DownloadRate,
+    long UploadRate, long Downloaded, long Uploaded, string Encryption, string Flags);
+
+/// <summary>Pieces of a torrent (chunks of a direct download).</summary>
+/// <param name="Have">Bitfield, base64, most significant bit first (the BitTorrent bitfield).</param>
+/// <param name="Active">Pieces being downloaded right now, same encoding; null = unknown.</param>
+/// <param name="Availability">Peers having each piece, one byte per piece (capped at 255), base64; null = no peers.</param>
+public record PieceMapDto(int Count, long PieceLength, string Have, string? Active, string? Availability);

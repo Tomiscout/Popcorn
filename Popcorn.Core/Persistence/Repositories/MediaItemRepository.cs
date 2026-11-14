@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using Dapper;
+using Popcorn.Domain;
 using Popcorn.Domain.Enum;
 using Popcorn.Domain.Interfaces;
 using Popcorn.Domain.Models;
@@ -92,6 +93,7 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
         await LoadSegments(connection, item);
         item.Files = await mediaFileRepository.GetFilesForItemId(item.Id, true, connection);
         await LoadItemHistory(connection, item);
+        await LoadSourcesAndTree(connection, item);
         return item;
     }
 
@@ -115,6 +117,7 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
 
         await LoadItemHistory(connection, item);
         item.Files = await mediaFileRepository.GetFilesForItemId(item.Id, true, connection);
+        await LoadSourcesAndTree(connection, item);
         return item;
     }
 
@@ -143,6 +146,124 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
     private async Task<MediaItem?> GetMediaItemInternal(IDbConnection connection, Guid id)
     {
         return (await connection.QueryAsync<MediaItem>("SELECT * FROM MediaItem WHERE Id = @Id", new { Id = id.SqliteId() })).FirstOrDefault();
+    }
+
+    /// <summary>Sources of the item and its file tree (<see cref="MediaTree.Build"/>, needs the files).</summary>
+    private async Task LoadSourcesAndTree(IDbConnection connection, MediaItem item)
+    {
+        item.Sources = await QuerySources(connection, item.Id);
+        MediaTree.Build(item);
+    }
+
+    private static async Task<List<ItemSource>> QuerySources(IDbConnection connection, Guid itemId) =>
+        (await connection.QueryAsync<ItemSource>("SELECT * FROM ItemSource WHERE item_id = @Id", new { Id = itemId.SqliteId() })).ToList();
+
+    public async Task<List<ItemSource>> GetSources(Guid itemId)
+    {
+        using var connection = dbContext.CreateConnection();
+        return await QuerySources(connection, itemId);
+    }
+
+    public async Task<ItemSource?> GetSource(Guid sourceId)
+    {
+        using var connection = dbContext.CreateConnection();
+        return (await connection.QueryAsync<ItemSource>("SELECT * FROM ItemSource WHERE id = @Id", new { Id = sourceId.SqliteId() })).FirstOrDefault();
+    }
+
+    public async Task InsertSource(ItemSource source)
+    {
+        using var connection = dbContext.CreateConnection();
+        await connection.ExecuteAsync(@"
+            INSERT INTO ItemSource (id, item_id, kind, title, root_path, added_at, origins, merged_from_item_id, merged_from_title)
+            VALUES (@Id, @ItemId, @Kind, @Title, @RootPath, @AddedAt, @Origins, @MergedFromItemId, @MergedFromTitle)",
+            SourceParameters(source));
+    }
+
+    public async Task UpdateSource(ItemSource source)
+    {
+        using var connection = dbContext.CreateConnection();
+        await connection.ExecuteAsync(@"
+            UPDATE ItemSource SET kind = @Kind, title = @Title, root_path = @RootPath, origins = @Origins
+            WHERE id = @Id", SourceParameters(source));
+    }
+
+    private static object SourceParameters(ItemSource source) => new
+    {
+        Id = source.Id.SqliteId(),
+        ItemId = source.ItemId.SqliteId(),
+        Kind = (int)source.Kind,
+        source.Title,
+        source.RootPath,
+        source.AddedAt,
+        Origins = source.OriginsJson,
+        MergedFromItemId = source.MergedFromItemId.SqliteId(),
+        source.MergedFromTitle,
+    };
+
+    public async Task DeleteSource(Guid sourceId)
+    {
+        using var connection = dbContext.CreateConnection();
+        await connection.ExecuteAsync("DELETE FROM ItemSource WHERE id = @Id", new { Id = sourceId.SqliteId() });
+    }
+
+    public async Task<int> MoveFilesToSource(Guid itemId, Guid sourceId, string folder)
+    {
+        using var connection = dbContext.CreateConnection();
+        var root = Path.TrimEndingDirectorySeparator(folder);
+        // LIKE treats _ and % as wildcards: compare the prefix with substr instead.
+        return await connection.ExecuteAsync(@"
+            UPDATE MediaFile SET source_id = @Source
+            WHERE item_id = @Item AND (file_path = @Root OR substr(file_path, 1, length(@Prefix)) = @Prefix)",
+            new { Source = sourceId.SqliteId(), Item = itemId.SqliteId(), Root = root, Prefix = root + Path.DirectorySeparatorChar });
+    }
+
+    public async Task RemoveSource(Guid itemId, Guid sourceId, IReadOnlyCollection<Guid> fileIds, string? folderDirectory)
+    {
+        using var connection = dbContext.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        foreach (var fileId in fileIds) // history + segment locations cascade
+            await connection.ExecuteAsync("DELETE FROM MediaFile WHERE id = @Id AND item_id = @Item",
+                new { Id = fileId.SqliteId(), Item = itemId.SqliteId() }, transaction);
+        await connection.ExecuteAsync("DELETE FROM ItemSource WHERE id = @Id AND item_id = @Item",
+            new { Id = sourceId.SqliteId(), Item = itemId.SqliteId() }, transaction);
+        if (folderDirectory is not null)
+            await connection.ExecuteAsync("UPDATE MediaItem SET folder_directory = @Folder WHERE id = @Item",
+                new { Folder = folderDirectory, Item = itemId.SqliteId() }, transaction);
+        transaction.Commit();
+    }
+
+    public async Task MergeItems(Guid targetId, Guid otherId, string otherTitle)
+    {
+        using var connection = dbContext.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        var parameters = new { Target = targetId.SqliteId(), Other = otherId.SqliteId(), Title = otherTitle };
+        await connection.ExecuteAsync(@"
+            UPDATE ItemSource
+            SET item_id = @Target,
+                merged_from_item_id = COALESCE(merged_from_item_id, @Other),
+                merged_from_title = COALESCE(merged_from_title, @Title)
+            WHERE item_id = @Other", parameters, transaction);
+        await connection.ExecuteAsync("UPDATE MediaFile SET item_id = @Target WHERE item_id = @Other", parameters, transaction);
+        await connection.ExecuteAsync("UPDATE ItemHistory SET item_id = @Target WHERE item_id = @Other", parameters, transaction);
+        await connection.ExecuteAsync("UPDATE SegmentInfo SET item_id = @Target WHERE item_id = @Other", parameters, transaction);
+        await connection.ExecuteAsync("DELETE FROM MediaItem WHERE id = @Other", parameters, transaction);
+        transaction.Commit();
+    }
+
+    public async Task SetMissingDetails(Guid id, string? description, MediaSourceRef? source)
+    {
+        using var connection = dbContext.CreateConnection();
+        var clean = MediaSourceRef.Clean(source);
+        await connection.ExecuteAsync(@"
+            UPDATE MediaItem SET
+                description = COALESCE(description, @Description),
+                media_plugin_id = CASE WHEN media_plugin_id IS NULL AND imdb_id IS NULL THEN @PluginId ELSE media_plugin_id END,
+                media_id = CASE WHEN media_plugin_id IS NULL AND imdb_id IS NULL THEN @MediaId ELSE media_id END,
+                imdb_id = CASE WHEN media_plugin_id IS NULL AND imdb_id IS NULL THEN @ImdbId ELSE imdb_id END
+            WHERE id = @Id",
+            new { Id = id.SqliteId(), Description = description, clean?.PluginId, clean?.MediaId, clean?.ImdbId });
     }
 
     private async Task LoadSegments(IDbConnection connection, MediaItem item)

@@ -23,7 +23,7 @@ public static class ServiceRegister
         services.AddSingleton<AudioSubtitlesService>();
         services.AddSingleton<ThumbnailService>();
         services.AddSingleton<SubtitleSyncService>();
-        services.AddSingleton<DownloadPlaybackClient>();
+        services.AddSingleton<ServerClient>();
         services.AddSingleton<WebEventHandler>();
         services.AddSingleton<IPlayer, MpvPlayer>();
         services.AddSingleton<ImageRepository>();

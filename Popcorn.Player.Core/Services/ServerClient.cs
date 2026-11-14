@@ -9,10 +9,11 @@ namespace Popcorn.Player.Core.Services;
 public record DownloadPlayback(Guid DownloadId, int FileIndex, bool Complete, string StreamPath, long Length, double[][] Ranges);
 
 /// <summary>
-/// Asks the server whether a file is one of its downloads (built-in torrent client / direct downloader). The player
-/// works without a server, so every failure just means "no".
+/// The player's HTTP calls to a local server: whether a file is one of its downloads (built-in torrent client / direct
+/// downloader), and history changes for its pages. The player works without a server, so every failure just means
+/// "no" / nothing happens.
 /// </summary>
-public class DownloadPlaybackClient
+public class ServerClient
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -78,6 +79,19 @@ public class DownloadPlaybackClient
         {
             Log.Debug("No download info for {Path}: {Error}", path, e.Message);
             return null;
+        }
+    }
+
+    /// <summary>The player wrote the item's history to the database: the server pings its open pages to refetch.</summary>
+    public async Task NotifyHistoryChangedAsync(Guid itemId)
+    {
+        try
+        {
+            using var response = await _http.PostAsync($"api/history/{itemId}/changed", null);
+        }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException)
+        {
+            Log.Debug("History change of {ItemId} not reported: {Error}", itemId, e.Message);
         }
     }
 }

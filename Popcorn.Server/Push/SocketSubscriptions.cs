@@ -26,6 +26,14 @@ public sealed class SocketSubscriptions
 
     public void RemoveConnection(WebSocketBus bus) => _connections.TryRemove(bus, out _);
 
+    /// <summary>Keys of the per-item topics of <paramref name="eventType"/> anyone watches.</summary>
+    public List<string> Keys(string eventType)
+    {
+        var prefix = eventType + ":";
+        return _connections.Values.SelectMany(t => t.Keys).Where(t => t.StartsWith(prefix, StringComparison.Ordinal))
+            .Select(t => t[prefix.Length..]).Distinct().ToList();
+    }
+
     public List<WebSocketBus> Subscribers(string topic) =>
         _connections.Where(c => c.Value.ContainsKey(topic)).Select(c => c.Key).ToList();
 }

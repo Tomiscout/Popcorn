@@ -1,9 +1,7 @@
 import {
   ActionIcon,
-  Autocomplete,
   Badge,
   Button,
-  Checkbox,
   FileButton,
   Group,
   Modal,
@@ -35,8 +33,14 @@ import {
 } from '@tabler/icons-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Download, DownloadKind, DownloadPriority, DownloadState, FilePriority } from '../../model/download.contract';
-import { MediaItem, MediaListResponse } from '../../model/media.contract';
+import { Download, DownloadKind, DownloadPriority, DownloadState } from '../../model/download.contract';
+import {
+  ItemTarget,
+  ItemTargetPicker,
+  isTargetReady,
+  libraryFields,
+  linkName,
+} from '../../components/item-picker/item-picker';
 import { SocketRequests } from '../../socket/socket-requests';
 import { useSocketEvents } from '../../socket/useSocketEvents.hook';
 import { usePlayerStore } from '../../state/player.store';
@@ -48,6 +52,7 @@ import { useColumnWidths } from './downloads.hooks';
 import { useSubscription } from '../../socket/useSubscription.hook';
 import { ResizableTh } from './resizable-columns';
 import { PortWarning } from './port-warning';
+import { DownloadDetailsPanel } from './download-details';
 
 const STATE_COLORS: Record<DownloadState, string> = {
   Metadata: 'gray',
@@ -68,60 +73,34 @@ const STATE_LABELS: Partial<Record<DownloadState, string>> = {
   Hashing: 'Checking files',
 };
 
-/** The name the library shows for an item. */
-const displayTitle = (item: MediaItem) => item.shortTitle || item.title;
-
-/** Library items the "Add to library" field suggests; loaded while the dialog is open. */
-function useLibraryItems(enabled: boolean) {
-  const { client, isClientReady } = useWebSocket();
-  const [items, setItems] = useState<MediaItem[]>([]);
-  useSocketEvents(
-    useMemo(
-      () => ({
-        [SocketRequests.MediaList]: (r: MediaListResponse) => setItems([...r.recentItems, ...r.newItems]),
-      }),
-      []
-    )
-  );
-  useEffect(() => {
-    if (enabled && isClientReady) client.sendEvent(SocketRequests.MediaList);
-  }, [enabled, isClientReady, client]);
-  return items;
-}
-
 /**
- * Dialog: link / .torrent file input + "Add to library" option of one tab. The library field
- * autocompletes existing items (the download is added to the picked one), other text = title of a new item.
+ * Dialog: link / .torrent files + where they go in the library: a new item, an existing one (ranked for the link's
+ * name, the best match preselected; the download becomes a folder of its own there) or nowhere.
  */
 function AddDownloadDialog({ kind, opened, onClose }: { kind: DownloadKind; opened: boolean; onClose: () => void }) {
   const { client } = useWebSocket();
   const [url, setUrl] = useState('');
-  const [title, setTitle] = useState('');
-  const [addToLibrary, setAddToLibrary] = useState(true);
-  const items = useLibraryItems(opened);
+  const [files, setFiles] = useState<File[]>([]);
+  const [target, setTarget] = useState<ItemTarget>({ kind: 'new', title: '' });
   const torrent = kind === 'Torrent';
-
-  const titles = useMemo(() => [...new Set(items.map(displayTitle))].sort((a, b) => a.localeCompare(b)), [items]);
-  const target = title.trim() ? items.find((i) => displayTitle(i) === title.trim()) : undefined;
-  const library = {
-    addToLibrary,
-    mediaTitle: addToLibrary && !target ? title.trim() || null : null,
-    mediaItemId: addToLibrary ? (target?.id ?? null) : null,
-  };
+  const name = files.length > 0 ? files[0].name.replace(/\.torrent$/i, '') : linkName(url);
+  const library = libraryFields(target);
+  const ready = (url.trim() !== '' || files.length > 0) && isTargetReady(target);
 
   const close = () => {
     setUrl('');
-    setTitle('');
+    setFiles([]);
+    setTarget({ kind: 'new', title: '' });
     onClose();
   };
 
-  const add = () => {
-    if (!url.trim()) return;
-    client.sendEvent(SocketRequests.DownloadAdd, { kind, url: url.trim(), ...library });
-    close();
-  };
-
-  const upload = async (files: File[]) => {
+  const add = async () => {
+    if (!ready) return;
+    if (files.length === 0) {
+      client.sendEvent(SocketRequests.DownloadAdd, { kind, url: url.trim(), ...library });
+      close();
+      return;
+    }
     for (const file of files) {
       const bytes = new Uint8Array(await file.arrayBuffer());
       client.sendBinaryEvent(
@@ -138,40 +117,30 @@ function AddDownloadDialog({ kind, opened, onClose }: { kind: DownloadKind; open
   return (
     <Modal opened={opened} onClose={close} title={torrent ? 'Add torrent' : 'Add direct download'} size="lg">
       <Stack gap="md">
-        <TextInput
-          data-autofocus
-          label={torrent ? 'Magnet link or .torrent URL' : 'File URL'}
-          placeholder={torrent ? 'magnet:?xt=urn:btih:…' : 'https://…'}
-          leftSection={torrent ? <IconMagnet size={16} /> : <IconLink size={16} />}
-          value={url}
-          onChange={(e) => setUrl(e.currentTarget.value)}
-          onKeyDown={(e) => e.key === 'Enter' && add()}
-        />
-        <Checkbox
-          label="Add to library"
-          checked={addToLibrary}
-          onChange={(e) => setAddToLibrary(e.currentTarget.checked)}
-        />
-        {addToLibrary && (
-          <Autocomplete
-            label="Library item"
-            description={
-              target
-                ? 'Files are added to this existing item'
-                : title.trim()
-                  ? 'A new item with this title'
-                  : 'Pick an existing item or type a new title (default: from the file name)'
-            }
-            placeholder="Title in the library"
-            data={titles}
-            limit={20}
-            value={title}
-            onChange={setTitle}
+        {files.length === 0 ? (
+          <TextInput
+            data-autofocus
+            label={torrent ? 'Magnet link or .torrent URL' : 'File URL'}
+            placeholder={torrent ? 'magnet:?xt=urn:btih:…' : 'https://…'}
+            leftSection={torrent ? <IconMagnet size={16} /> : <IconLink size={16} />}
+            value={url}
+            onChange={(e) => setUrl(e.currentTarget.value)}
+            onKeyDown={(e) => e.key === 'Enter' && add()}
           />
+        ) : (
+          <Group justify="space-between" wrap="nowrap">
+            <Text size="sm" style={WRAP}>
+              {files.map((f) => f.name).join(', ')}
+            </Text>
+            <Button variant="subtle" size="xs" onClick={() => setFiles([])}>
+              Clear
+            </Button>
+          </Group>
         )}
+        <ItemTargetPicker name={name} opened={opened} value={target} onChange={setTarget} />
         <Group justify="flex-end">
           {torrent && (
-            <FileButton onChange={upload} accept=".torrent,application/x-bittorrent" multiple>
+            <FileButton onChange={setFiles} accept=".torrent,application/x-bittorrent" multiple>
               {(props) => (
                 <Button variant="light" leftSection={<IconUpload size={16} />} {...props}>
                   .torrent files
@@ -179,7 +148,7 @@ function AddDownloadDialog({ kind, opened, onClose }: { kind: DownloadKind; open
               )}
             </FileButton>
           )}
-          <Button leftSection={<IconDownload size={16} />} onClick={add} disabled={!url.trim()}>
+          <Button leftSection={<IconDownload size={16} />} onClick={add} disabled={!ready}>
             Download
           </Button>
         </Group>
@@ -194,7 +163,6 @@ const WRAP: React.CSSProperties = { overflowWrap: 'anywhere' };
 const isStopped = (state: DownloadState) => state === 'Paused' || state === 'Completed' || state === 'Error';
 
 const PRIORITIES: DownloadPriority[] = ['Low', 'Normal', 'High'];
-const FILE_PRIORITIES: FilePriority[] = ['Low', 'Normal', 'High'];
 
 /** What the rows do to downloads; pausing / resuming shows at once, before the server confirms. */
 type DownloadActions = {
@@ -320,151 +288,116 @@ const PlayButton = React.forwardRef<HTMLButtonElement, { onClick: () => void }>(
   </Button>
 ));
 
+/** Clicks on the row's own controls don't select it. */
+const isControl = (target: EventTarget) =>
+  !!(target as HTMLElement).closest?.('button, a, input, [role="combobox"], [role="listbox"], .mantine-Select-root');
+
+const SELECTED_BG = 'var(--mantine-color-blue-light)';
+
 function DownloadRow({
   download,
   actions,
+  selected,
+  onSelect,
   inGroup = false,
 }: {
   download: Download;
   actions: DownloadActions;
+  selected: boolean;
+  onSelect: (id: string) => void;
   inGroup?: boolean;
 }) {
   const { client } = useWebSocket();
-  const [expanded, setExpanded] = useState(false);
   const d = download;
   const torrent = d.kind === 'Torrent';
-
-  const setFilePriority = (index: number, priority: FilePriority) =>
-    client.sendEvent(SocketRequests.DownloadSetFilePriority, { id: d.id, index, priority });
-
   const firstVideo = d.files.find((f) => f.isVideo && f.wanted && f.mediaFileId);
-  const multiFile = d.files.length > 1;
 
   return (
-    <>
-      <Table.Tr bg={inGroup ? 'var(--mantine-color-dark-6)' : undefined}>
-        <Table.Td>
-          {multiFile && (
-            <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => setExpanded((e) => !e)}>
-              {expanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
-            </ActionIcon>
-          )}
-        </Table.Td>
-        <Table.Td pl={inGroup ? 'lg' : undefined}>
-          <Tooltip label={d.name} multiline maw={600} openDelay={300} style={WRAP}>
-            <Text size="sm" style={WRAP}>
-              {d.displayName}
-            </Text>
-          </Tooltip>
-          {d.error && (
-            <Text size="xs" c="red" style={WRAP}>
-              {d.error}
-            </Text>
-          )}
-          {d.mediaItemId && !inGroup && (
-            <Text size="xs" component={Link} to={`/watch/${d.mediaItemId}`} c="dimmed" td="underline">
-              In library{d.mediaItemTitle ? `: ${d.mediaItemTitle}` : ''}
-            </Text>
-          )}
-        </Table.Td>
-        <Table.Td>
-          <Group gap={0} wrap="nowrap">
-            <PauseButton downloads={[d]} actions={actions} />
-            <Tooltip label="Open folder">
-              <ActionIcon
-                variant="subtle"
-                color="gray"
-                onClick={() => client.sendEvent(SocketRequests.DownloadOpenFolder, { id: d.id })}
-              >
-                <IconFolderOpen size={18} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label="Remove">
-              <ActionIcon variant="subtle" color="red" onClick={() => actions.remove([d], d.displayName)}>
-                <IconTrash size={18} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
-        </Table.Td>
-        <Table.Td>
-          <StateBadge state={d.state} streaming={d.streaming} />
-        </Table.Td>
-        <Table.Td>
-          <Text size="xs">{d.state === 'Downloading' ? formatDuration(d.eta) : ''}</Text>
-        </Table.Td>
-        <Table.Td>
-          <Progress value={d.progress * 100} color={progressColor(d.progress, d.state)} size="sm" />
-          <Text size="xs" c="dimmed">
-            {(d.progress * 100).toFixed(1)}% of {formatBytes(d.size)}
+    <Table.Tr
+      bg={selected ? SELECTED_BG : inGroup ? 'var(--mantine-color-dark-6)' : undefined}
+      style={{ cursor: 'pointer' }}
+      onClick={(e) => !isControl(e.target) && onSelect(d.id)}
+      aria-selected={selected}
+    >
+      <Table.Td />
+      <Table.Td pl={inGroup ? 'lg' : undefined}>
+        <Tooltip label={d.name} multiline maw={600} openDelay={300} style={WRAP}>
+          <Text size="sm" style={WRAP}>
+            {d.displayName}
           </Text>
-          {firstVideo && (
-            <Tooltip label="Play (waits for the parts that are not downloaded yet)">
-              <PlayButton onClick={() => actions.play(d, firstVideo.mediaFileId!)} />
-            </Tooltip>
-          )}
-        </Table.Td>
-        <Table.Td>
-          <Text size="xs">↓ {formatRate(d.downloadRate)}</Text>
-          {torrent && <Text size="xs">↑ {formatRate(d.uploadRate)}</Text>}
-        </Table.Td>
-        {torrent && (
-          <Table.Td>
-            <Text size="xs">
-              {d.seeds} seeds / {d.peers} peers
-            </Text>
-            <Text size="xs" c="dimmed">
-              Ratio {d.ratio.toFixed(2)}
-            </Text>
-          </Table.Td>
+        </Tooltip>
+        {d.files.length > 1 && (
+          <Text size="xs" c="dimmed">
+            {d.files.filter((f) => f.wanted).length < d.files.length
+              ? `${d.files.filter((f) => f.wanted).length} of ${d.files.length} files`
+              : `${d.files.length} files`}
+          </Text>
         )}
+        {d.error && (
+          <Text size="xs" c="red" style={WRAP}>
+            {d.error}
+          </Text>
+        )}
+        {d.mediaItemId && !inGroup && (
+          <Text size="xs" component={Link} to={`/watch/${d.mediaItemId}`} c="dimmed" td="underline">
+            In library{d.mediaItemTitle ? `: ${d.mediaItemTitle}` : ''}
+          </Text>
+        )}
+      </Table.Td>
+      <Table.Td>
+        <Group gap={0} wrap="nowrap">
+          <PauseButton downloads={[d]} actions={actions} />
+          <Tooltip label="Open folder">
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              onClick={() => client.sendEvent(SocketRequests.DownloadOpenFolder, { id: d.id })}
+            >
+              <IconFolderOpen size={18} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label="Remove">
+            <ActionIcon variant="subtle" color="red" onClick={() => actions.remove([d], d.displayName)}>
+              <IconTrash size={18} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
+      </Table.Td>
+      <Table.Td>
+        <StateBadge state={d.state} streaming={d.streaming} />
+      </Table.Td>
+      <Table.Td>
+        <Text size="xs">{d.state === 'Downloading' ? formatDuration(d.eta) : ''}</Text>
+      </Table.Td>
+      <Table.Td>
+        <Progress value={d.progress * 100} color={progressColor(d.progress, d.state)} size="sm" />
+        <Text size="xs" c="dimmed">
+          {(d.progress * 100).toFixed(1)}% of {formatBytes(d.size)}
+        </Text>
+        {firstVideo && (
+          <Tooltip label="Play (waits for the parts that are not downloaded yet)">
+            <PlayButton onClick={() => actions.play(d, firstVideo.mediaFileId!)} />
+          </Tooltip>
+        )}
+      </Table.Td>
+      <Table.Td>
+        <Text size="xs">↓ {formatRate(d.downloadRate)}</Text>
+        {torrent && <Text size="xs">↑ {formatRate(d.uploadRate)}</Text>}
+      </Table.Td>
+      {torrent && (
         <Table.Td>
-          <PrioritySelect value={d.priority} onChange={(p) => actions.setPriority([d], p)} />
+          <Text size="xs">
+            {d.seeds} seeds / {d.peers} peers
+          </Text>
+          <Text size="xs" c="dimmed">
+            Ratio {d.ratio.toFixed(2)}
+          </Text>
         </Table.Td>
-      </Table.Tr>
-      {expanded &&
-        d.files.map((f) => (
-          <Table.Tr key={f.index} bg="var(--mantine-color-dark-7)">
-            <Table.Td />
-            <Table.Td colSpan={4} pl={inGroup ? 'lg' : undefined}>
-              <Group gap="xs" wrap="nowrap">
-                <Checkbox
-                  size="xs"
-                  checked={f.wanted}
-                  aria-label="Download this file"
-                  onChange={(e) => setFilePriority(f.index, e.currentTarget.checked ? 'Normal' : 'Skip')}
-                />
-                <Text size="xs" style={{ ...WRAP, flex: 1 }}>
-                  {f.path}
-                </Text>
-                {f.streaming && (
-                  <Badge variant="filled" color="grape" size="xs">
-                    Streaming
-                  </Badge>
-                )}
-              </Group>
-            </Table.Td>
-            <Table.Td>
-              <Text size="xs" c="dimmed">
-                {(f.progress * 100).toFixed(1)}% of {formatBytes(f.length)}
-              </Text>
-              {f.isVideo && f.mediaFileId && f.wanted && <PlayButton onClick={() => actions.play(d, f.mediaFileId!)} />}
-            </Table.Td>
-            <Table.Td colSpan={torrent ? 2 : 1} />
-            <Table.Td>
-              {torrent && f.wanted && (
-                <Select
-                  size="xs"
-                  data={FILE_PRIORITIES}
-                  value={f.priority}
-                  allowDeselect={false}
-                  onChange={(v) => v && setFilePriority(f.index, v as FilePriority)}
-                  aria-label="File priority"
-                />
-              )}
-            </Table.Td>
-          </Table.Tr>
-        ))}
-    </>
+      )}
+      <Table.Td>
+        <PrioritySelect value={d.priority} onChange={(p) => actions.setPriority([d], p)} />
+      </Table.Td>
+    </Table.Tr>
   );
 }
 
@@ -483,12 +416,17 @@ function GroupRows({
   entry,
   kind,
   actions,
+  selectedId,
+  onSelect,
 }: {
   entry: Extract<DownloadEntry, { kind: 'group' }>;
   kind: DownloadKind;
   actions: DownloadActions;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  // Open while one of its downloads is selected (e.g. picked before the group formed).
+  const [expanded, setExpanded] = useState(() => entry.downloads.some((d) => d.id === selectedId));
   const list = entry.downloads;
   const torrent = kind === 'Torrent';
   const known = list.filter((d) => d.size >= 0);
@@ -506,7 +444,7 @@ function GroupRows({
 
   return (
     <>
-      <Table.Tr>
+      <Table.Tr style={{ cursor: 'pointer' }} onClick={(e) => !isControl(e.target) && setExpanded((x) => !x)}>
         <Table.Td>
           <ActionIcon variant="subtle" color="gray" size="sm" onClick={() => setExpanded((e) => !e)}>
             {expanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
@@ -588,7 +526,17 @@ function GroupRows({
           />
         </Table.Td>
       </Table.Tr>
-      {expanded && list.map((d) => <DownloadRow key={d.id} download={d} actions={actions} inGroup />)}
+      {expanded &&
+        list.map((d) => (
+          <DownloadRow
+            key={d.id}
+            download={d}
+            actions={actions}
+            selected={d.id === selectedId}
+            onSelect={onSelect}
+            inGroup
+          />
+        ))}
     </>
   );
 }
@@ -616,10 +564,14 @@ function DownloadTable({
   downloads,
   kind,
   actions,
+  selectedId,
+  onSelect,
 }: {
   downloads: Download[];
   kind: DownloadKind;
   actions: DownloadActions;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
 }) {
   const entries = useMemo(() => groupDownloads(downloads), [downloads]);
   const isMobile = useIsMobile();
@@ -665,8 +617,8 @@ function DownloadTable({
   const tableWidth = EXPANDER_WIDTH + columns.reduce((sum, c) => sum + widths[c], 0);
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <Table verticalSpacing={6} highlightOnHover style={{ tableLayout: 'fixed', width: tableWidth }}>
+    <div style={{ overflow: 'auto', flex: 1, minHeight: 0 }}>
+      <Table verticalSpacing={6} highlightOnHover stickyHeader style={{ tableLayout: 'fixed', width: tableWidth }}>
         <colgroup>
           <col style={{ width: EXPANDER_WIDTH }} />
           {columns.map((c) => (
@@ -686,9 +638,22 @@ function DownloadTable({
         <Table.Tbody>
           {entries.map((e) =>
             e.kind === 'group' ? (
-              <GroupRows key={e.key} entry={e} kind={kind} actions={actions} />
+              <GroupRows
+                key={e.key}
+                entry={e}
+                kind={kind}
+                actions={actions}
+                selectedId={selectedId}
+                onSelect={onSelect}
+              />
             ) : (
-              <DownloadRow key={e.key} download={e.download} actions={actions} />
+              <DownloadRow
+                key={e.key}
+                download={e.download}
+                actions={actions}
+                selected={e.download.id === selectedId}
+                onSelect={onSelect}
+              />
             )
           )}
         </Table.Tbody>
@@ -737,13 +702,67 @@ function usePendingStops(downloads: Download[] | null) {
   return [shown, mark] as const;
 }
 
-/** /downloads — built-in torrent client and direct downloader. */
+const PANEL_HEIGHT_KEY = 'popcorn.downloads.panelHeight';
+const DEFAULT_PANEL_HEIGHT = 340;
+const MIN_PANEL_HEIGHT = 120;
+/** The list keeps at least this much of the page when the panel is dragged up. */
+const MIN_LIST_HEIGHT = 140;
+
+/**
+ * Height of the bottom panel, dragged at its top edge and remembered in localStorage. It is the panel's preferred
+ * height: in a short window the panel shrinks (down to {@link MIN_PANEL_HEIGHT}) so the list keeps
+ * {@link MIN_LIST_HEIGHT}. Layout: list, separator (the drag handle), panel as siblings.
+ */
+function usePanelHeight() {
+  const [height, setHeight] = useState(() => Number(localStorage.getItem(PANEL_HEIGHT_KEY)) || DEFAULT_PANEL_HEIGHT);
+  const startDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const handle = e.currentTarget;
+    const list = handle.previousElementSibling as HTMLElement;
+    const panel = handle.nextElementSibling as HTMLElement;
+    const startY = e.clientY;
+    // From what is shown, not the preferred height: that may be more than fits.
+    const start = panel.offsetHeight;
+    const max = Math.max(MIN_PANEL_HEIGHT, start + list.offsetHeight - MIN_LIST_HEIGHT);
+    let last = start;
+    handle.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => {
+      last = Math.round(Math.max(MIN_PANEL_HEIGHT, Math.min(max, start - (ev.clientY - startY))));
+      setHeight(last);
+    };
+    const up = () => {
+      localStorage.setItem(PANEL_HEIGHT_KEY, String(last));
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', up);
+      handle.removeEventListener('pointercancel', up);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+    handle.addEventListener('pointercancel', up);
+  };
+  const reset = () => {
+    localStorage.removeItem(PANEL_HEIGHT_KEY);
+    setHeight(DEFAULT_PANEL_HEIGHT);
+  };
+  return { height, startDrag, reset };
+}
+
+/**
+ * The page fills the app's content area (AppShell.Main: the viewport minus header and padding), so the list scrolls
+ * above and the panel stays at the bottom. Phones: the page scrolls as a whole instead.
+ */
+const PAGE_HEIGHT = 'calc(100dvh - var(--app-shell-header-offset, 0rem) - 2 * var(--app-shell-padding, 0rem))';
+
+/** /downloads — built-in torrent client and direct downloader: list above, details of the selected one below. */
 const DownloadsPage: React.FC = () => {
   const [received, setDownloads] = useState<Download[] | null>(null);
   const [downloads, markStopped] = usePendingStops(received);
   const actions = useDownloadActions(markStopped);
   const [tab, setTab] = useState<string | null>('Torrent');
   const [adding, setAdding] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const panel = usePanelHeight();
   const addKind: DownloadKind = tab === 'Direct' ? 'Direct' : 'Torrent';
   // Dropped .torrent files show their tab (useTorrentFileDrop).
   const { state: locationState } = useLocation();
@@ -758,9 +777,16 @@ const DownloadsPage: React.FC = () => {
     const n = byKind(kind).length;
     return n ? ` (${n})` : '';
   };
+  // Only a download of the tab shown; a removed one closes the panel.
+  const selected = downloads?.find((d) => d.id === selectedId && d.kind === addKind) ?? null;
 
   return (
-    <Stack>
+    <Stack
+      gap="sm"
+      h={isMobile ? undefined : PAGE_HEIGHT}
+      mih={isMobile ? undefined : 360}
+      style={{ overflow: isMobile ? undefined : 'hidden' }}
+    >
       <Group justify="space-between">
         <Title order={2}>Downloads</Title>
         <Button leftSection={<IconPlus size={16} />} onClick={() => setAdding(true)}>
@@ -768,7 +794,12 @@ const DownloadsPage: React.FC = () => {
         </Button>
       </Group>
       <AddDownloadDialog kind={addKind} opened={adding} onClose={() => setAdding(false)} />
-      <Tabs value={tab} onChange={setTab} keepMounted={false}>
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        keepMounted={false}
+        style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: isMobile ? undefined : MIN_LIST_HEIGHT }}
+      >
         <Tabs.List>
           <Tabs.Tab value="Torrent" leftSection={<IconMagnet size={16} />}>
             Torrent{count('Torrent')}
@@ -778,12 +809,66 @@ const DownloadsPage: React.FC = () => {
           </Tabs.Tab>
         </Tabs.List>
         {(['Torrent', 'Direct'] as const).map((kind) => (
-          <Tabs.Panel key={kind} value={kind} pt="md">
+          <Tabs.Panel
+            key={kind}
+            value={kind}
+            pt="md"
+            style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: isMobile ? undefined : 0 }}
+          >
             {kind === 'Torrent' && <PortWarning />}
-            {downloads && <DownloadTable downloads={byKind(kind)} kind={kind} actions={actions} />}
+            {downloads && (
+              <DownloadTable
+                downloads={byKind(kind)}
+                kind={kind}
+                actions={actions}
+                selectedId={selectedId}
+                onSelect={(id) => setSelectedId((current) => (current === id ? null : id))}
+              />
+            )}
           </Tabs.Panel>
         ))}
       </Tabs>
+      {selected ? (
+        <>
+          {!isMobile && (
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              title="Drag to resize, double click to reset"
+              onPointerDown={panel.startDrag}
+              onDoubleClick={panel.reset}
+              style={{
+                height: 6,
+                margin: '-4px 0',
+                cursor: 'row-resize',
+                touchAction: 'none',
+                flexShrink: 0,
+                borderTop: '1px solid var(--mantine-color-default-border)',
+              }}
+            />
+          )}
+          <div
+            style={
+              isMobile
+                ? { height: '70dvh', flexShrink: 0 }
+                : { flex: `0 1 ${panel.height}px`, minHeight: MIN_PANEL_HEIGHT }
+            }
+          >
+            <DownloadDetailsPanel
+              download={selected}
+              color={progressColor(selected.progress, selected.state)}
+              onPlay={(fileId) => actions.play(selected, fileId)}
+            />
+          </div>
+        </>
+      ) : (
+        downloads?.some((d) => d.kind === addKind) && (
+          <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+            Select a {addKind === 'Torrent' ? 'torrent' : 'download'} to see its files, details
+            {addKind === 'Torrent' ? ', peers' : ''} and pieces.
+          </Text>
+        )
+      )}
     </Stack>
   );
 };

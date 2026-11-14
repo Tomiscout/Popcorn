@@ -1,3 +1,4 @@
+using Popcorn.Domain;
 using FFMpegCore;
 using Microsoft.Extensions.Caching.Memory;
 using Popcorn.Application.Utils;
@@ -178,7 +179,10 @@ public class FileStreamService(
   private async Task<List<SubtitleTrackDto>> FindExternalSubtitlesAsync(MediaFile mediaFile)
   {
     var item = mediaFile.ItemId == Guid.Empty ? null : await mediaItemRepository.GetMediaItem(mediaFile.ItemId);
-    var found = await Task.Run(() => ExternalSubtitles.Find(mediaFile.Path, item?.FolderDirectory));
+    if (item is not null) item.Sources = await mediaItemRepository.GetSources(item.Id);
+    // Searched up to the folder of the file's source (a download / merged item lives outside the item's folder).
+    var root = item?.RootFolderOf(mediaFile);
+    var found = await Task.Run(() => ExternalSubtitles.Find(mediaFile.Path, root));
     var tracks = new List<SubtitleTrackDto>();
     foreach (var subtitle in found)
     {

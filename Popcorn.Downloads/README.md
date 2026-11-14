@@ -40,12 +40,20 @@ Built-in downloader (Downloads page) of `Popcorn.Server`: torrents (MonoTorrent 
 - Downloads with `AddToLibrary` become media items (`MediaItemService.CreateMediaItemFromScan`) as soon as the file
   list is known.
 - Downloads attached to an existing item (`AddDownloadOptions.MediaItemId` → `DownloadRecord.AttachToItemId`; item
-  page File sources tab, `pages/item-details/item-file-sources.tsx`; add dialog of the Downloads page, whose library
-  field autocompletes existing items) are saved in a folder inside the item's folder and their videos added to it
-  (`MediaItemService.AddFilesFromScan`). Deleting their files only drops those files from the item.
-- `DownloadAddBatch` = several links into one item (given, or a new empty one from `CreateLibraryItemAsync`):
-  multi-select / episode groups of `file-results.tsx` (`plugins/file-groups.ts`: episode token parsing, naming-scheme
-  groups, duplicates merged to the most seeders).
+  page File sources tab, `pages/item-details/item-file-sources.tsx`; add dialog of the Downloads page) stay in the
+  download folder and become a source of the item (`ItemSource`, `DownloadRecord.SourceId`,
+  `MediaItemService.EnsureDownloadSourceAsync`): a virtual folder of it (see Docs/Features.md, Library sources).
+  The source keeps each download's name, link and file source result (`SourceOrigin`, `FileOrigin`). Deleting their
+  files only drops those files from the item. Downloads linked before sources existed get theirs on start-up
+  (`AdoptLegacySourcesAsync`); merging items moves their downloads along (`ReassignItemAsync`).
+- The add dialog (`components/item-picker/item-picker.tsx`): New item / Existing item / Not in library. Existing
+  items are ranked for the link's name (magnet `dn`, URL / .torrent file name) by `MediaItemMatch`
+  (`MediaItemMatcher`: tokens of the cleaned name vs title / folder name) and the best one (score ≥ 0.5) is
+  preselected.
+- `DownloadAddBatch` = several links into one item and one source with its own folder in the download folder
+  (`CreateBatchTargetAsync`: given item + `SourceTitle`, or a new empty item): multi-select / episode groups of
+  `file-results.tsx` (`plugins/file-groups.ts`: episode token parsing, naming-scheme groups, duplicates merged to the
+  most seeders).
 
 ## Priorities
 
@@ -71,4 +79,9 @@ Built-in downloader (Downloads page) of `Popcorn.Server`: torrents (MonoTorrent 
   (`pages/downloads/port-warning.tsx`) when unreachable. firewalld can't be asked without root (polkit), so the
   firewall is not checked directly.
 - The page groups rows (`pages/downloads/download-groups.ts`): downloads of one library item, else unlinked ones of
-  one episode naming scheme (`parseEpisodeName`); the group row links to the item.
+  one episode naming scheme (`parseEpisodeName`); the group row links to the item. The list shows downloads and
+  groups only; clicking a download opens the resizable bottom panel (`pages/downloads/download-details.tsx`) with
+  tabs Files (folder tree, priorities, progress bars with the downloaded parts faintly marked, `download-files.tsx`),
+  General (info + trackers), Peers (torrents) and Pieces (canvas map with availability, `download-pieces.tsx`). Its
+  data is the subscription `DownloadDetails` + download id (`DownloadManager.GetDetailsAsync`), built only while
+  watched.

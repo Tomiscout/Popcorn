@@ -29,6 +29,9 @@ the timeout), downloads do a fast stop (`Popcorn.Downloads/README.md`) and plugi
 - Adds `PopcornDesktop/<ver>` to the User-Agent → web UI `isDesktopApp` (`Popcorn.Web/src/utils/platform.ts`) hides
   Float/Dock and sends `FileOpen` (server → native player / default app) instead of using the web player.
 - `-service` is accepted and ignored (old desktop files).
+- The server's tray icon (`Popcorn.Platform/Linux/LinuxTrayManager`, StatusNotifierItem + DBusMenu): click
+  (`Activate`) toggles this app: starts it, or SIGTERMs every running instance (browser processes = `Popcorn.Linux`
+  without `--type=`; killed after 3 s). The menu has Open in browser / Open app / Exit (Exit also closes the app).
 
 ### Linux player (`Popcorn.Player.Linux` + `Popcorn.Player.Native`)
 
@@ -98,9 +101,11 @@ Launched by the server via `WindowsPlayerService` from `<server dir>\Player\Popc
   `client.sendEvent(type, payload)` is typed with them (events without a payload take no argument). Responses
   (`onEvent<T>`) still use the hand-written models under `src/model`. `-p:SkipSocketContracts=true` skips the step.
 - Live data is pushed, never polled: `Subscribe` / `Unsubscribe` (`{ topic, key? }`, `SubscriptionWebService`,
-  `Push/SocketSubscriptions`), topics `DownloadList`, `DownloadStats`, `SegmentsState` (key = item id). The current
+  `Push/SocketSubscriptions`), topics `DownloadList`, `DownloadStats`, `SegmentsState` (key = item id), `DownloadDetails` (key = download id). The current
   value is sent on subscribe, then `Push/LivePushService` sends on `DownloadManager.Changed` /
-  `SegmentFinderService.StateChanged` (only when the JSON changed). Web: `useSubscription(topic, key?, enabled)`
+  `SegmentFinderService.StateChanged` (only when the JSON changed). `MediaItemHistoryChanged` (key = item id) is a
+  ping instead (payload = item id, nothing on subscribe, sent on every `ItemHistoryService.Changed`): the item page
+  asks for the item again. Web: `useSubscription(topic, key?, enabled)`
   (`src/socket/useSubscription.hook.ts`; several components may watch one topic, only the last to unmount
   unsubscribes, as the server keeps one subscription per connection and topic).
 - HTTP endpoints with live state stream NDJSON instead (`Push/JsonLines.cs`, web `utils/json-lines.ts`
@@ -141,7 +146,9 @@ One-way, same code on Linux and Windows (AF_UNIX, Windows 10 1803+): `PlayerLink
 - The server connects, writes one JSON line `{ FileId }` or `{ FilePath }` and closes. `NativePlayerService.OpenFile`
   sends to a running player, else starts one with the file as argument (and for 15 s after a start keeps retrying the
   socket instead of starting another).
-- Nothing comes back: players write history to the DB themselves.
+- Nothing comes back on this socket: players write history to the DB themselves, then `POST api/history/{itemId}/changed`
+  (`Player.Core/Services/ServerClient.cs`, ignored without a server) so the server pings the item's pages
+  (`MediaItemHistoryChanged`, see 1).
 
 ### 4. Player app ↔ its overlay UI
 

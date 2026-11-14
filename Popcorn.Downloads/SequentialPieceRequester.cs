@@ -286,4 +286,21 @@ public sealed class SequentialPieceRequester(Func<ITorrentManagerFile, bool> isV
     public void RequestRejected(IRequester peer, PieceSegment blockInfo) => _standard?.RequestRejected(peer, blockInfo);
 
     public int CurrentRequestCount() => _standard?.CurrentRequestCount() ?? 0;
+
+    /// <summary>
+    /// Pieces with requests in flight, for the Downloads page. The picker lives on MonoTorrent's thread, so this read can
+    /// race it: null when it does (the page shows the next one).
+    /// </summary>
+    public HashSet<int>? ActivePieces()
+    {
+        if (_standard is null) return [];
+        try
+        {
+            return _standard.ExportActiveRequests().Select(r => r.Request.PieceIndex).ToHashSet();
+        }
+        catch (Exception e) when (e is InvalidOperationException or ArgumentException or IndexOutOfRangeException or NullReferenceException)
+        {
+            return null;
+        }
+    }
 }

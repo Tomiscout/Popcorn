@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Popcorn.Application.Services;
 using Popcorn.Downloads;
 using Popcorn.SegmentFinder;
 using Popcorn.Server.Models;
@@ -8,14 +9,16 @@ namespace Popcorn.Server.Push;
 
 /// <summary>
 /// Pushes the subscribable socket events (<see cref="SocketSubscriptions"/>) when their source reports a change:
-/// download list + stats after every <see cref="DownloadManager.Changed"/>, a segment dialog's state after
-/// <see cref="SegmentFinderService.StateChanged"/>. Each payload is serialized once and only sent when it differs from
-/// the last one sent (an idle downloader ticks every second without anything to send).
+/// download list + stats (+ the details of watched downloads) after every <see cref="DownloadManager.Changed"/>, a
+/// segment dialog's state after <see cref="SegmentFinderService.StateChanged"/>. Each payload is serialized once and
+/// only sent when it differs from the last one sent (an idle downloader ticks every second without anything to send).
+/// Item pages get a ping after <see cref="ItemHistoryService.Changed"/> (every time: the page refetches).
 /// </summary>
 public sealed class LivePushService(
     SocketSubscriptions subscriptions,
     DownloadManager downloads,
-    SegmentFinderService segmentFinder) : IHostedService
+    SegmentFinderService segmentFinder,
+    ItemHistoryService itemHistory) : IHostedService
 {
     private readonly ConcurrentDictionary<string, string> _lastSent = new();
     private int _downloadsBusy;
@@ -24,6 +27,7 @@ public sealed class LivePushService(
     {
         downloads.Changed += OnDownloadsChanged;
         segmentFinder.StateChanged += OnSegmentsChanged;
+        itemHistory.Changed += OnHistoryChanged;
         return Task.CompletedTask;
     }
 
@@ -31,6 +35,7 @@ public sealed class LivePushService(
     {
         downloads.Changed -= OnDownloadsChanged;
         segmentFinder.StateChanged -= OnSegmentsChanged;
+        itemHistory.Changed -= OnHistoryChanged;
         return Task.CompletedTask;
     }
 
@@ -44,6 +49,9 @@ public sealed class LivePushService(
             {
                 await PushAsync(SocketRequests.DownloadList, async () => await downloads.GetListAsync());
                 await PushAsync(SocketRequests.DownloadStats, async () => await downloads.GetStatsAsync());
+                foreach (var key in subscriptions.Keys(SocketRequests.DownloadDetails))
+                    if (Guid.TryParse(key, out var id))
+                        await PushAsync(SocketRequests.DownloadDetails, async () => await downloads.GetDetailsAsync(id), key);
             }
             finally
             {
@@ -54,6 +62,14 @@ public sealed class LivePushService(
 
     private void OnSegmentsChanged(Guid itemId) => _ = Task.Run(() =>
         PushAsync(SocketRequests.SegmentsState, async () => await segmentFinder.GetStateAsync(itemId), itemId.ToString()));
+
+    private void OnHistoryChanged(Guid itemId) => _ = Task.Run(async () =>
+    {
+        var topic = SocketSubscriptions.Topic(SocketRequests.MediaItemHistoryChanged, itemId.ToString());
+        var json = WebSocketBus.Serialize(itemId);
+        foreach (var bus in subscriptions.Subscribers(topic))
+            await bus.TrySendJsonAsync(SocketRequests.MediaItemHistoryChanged, json);
+    });
 
     private async Task PushAsync(string eventType, Func<Task<object?>> load, string? key = null)
     {

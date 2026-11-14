@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { SocketRequests } from '../../socket/socket-requests';
@@ -13,6 +13,8 @@ import {
 } from '../../model/media.contract';
 import { ContinueProgress, MarqueeText } from '../../components/continue-watching/continue-watching';
 import { useWebSocket } from '../../state/websocket-context';
+import { useSocketEvents } from '../../socket/useSocketEvents.hook';
+import { useSubscription } from '../../socket/useSubscription.hook';
 import {
   ActionIcon,
   Button,
@@ -44,6 +46,7 @@ import {
   IconPhotoEdit,
   IconWorldDownload,
   IconPencil,
+  IconArrowMerge,
 } from '@tabler/icons-react';
 import { useFileUrl } from '../../state/file-context';
 import './item-details.page.css';
@@ -54,6 +57,8 @@ import { PlayerMenuItems, usePlayerOptions, WEB_PLAYER_ID } from '../../componen
 import SegmentsDialog from './segments-dialog';
 import { EditImagesModal } from './edit-images.modal';
 import { ItemFileSources } from './item-file-sources';
+import { MergeItemModal } from './merge-item.modal';
+import { SourceInfo, SourcesModal } from './sources.modal';
 
 /** Per item: the user's choice of the Files tab's "Flatten files" switch (absent = default of the item). */
 const flattenKey = (itemId: string) => `itemFlattenFiles:${itemId}`;
@@ -65,8 +70,10 @@ function readFlatten(itemId: string): boolean | null {
 
 /** Folder of the file relative to the item's folder ("" = the item's folder itself). */
 function relativeFolder(file: MediaFile, root: string | undefined): string {
-  const separator = file.path.includes('\\') && !file.path.includes('/') ? '\\' : '/';
-  const folder = file.path.slice(0, Math.max(0, file.path.lastIndexOf(separator)));
+  // The item's tree: a download / merged item is a virtual folder named after it.
+  const path = file.treePath || file.path;
+  const separator = path.includes('\\') && !path.includes('/') ? '\\' : '/';
+  const folder = path.slice(0, Math.max(0, path.lastIndexOf(separator)));
   if (!root) return folder;
   const base = root.replace(/[\\/]+$/, '');
   return folder === base ? '' : folder.startsWith(base + separator) ? folder.slice(base.length + 1) : folder;
@@ -102,6 +109,8 @@ const ItemDetailsPage: React.FC = () => {
   const [breadcrumbs, setBreadcrumbs] = useState<{ id: string; title: string }[]>([]);
   const [contextMenu, setContextMenu] = useState<FileContextMenu | null>(null);
   const [segmentsOpened, setSegmentsOpened] = useState(false);
+  const [mergeOpened, setMergeOpened] = useState(false);
+  const [sourcesOpened, setSourcesOpened] = useState(false);
   const { players, defaultPlayerName } = usePlayerOptions();
 
   const imageUrl = useFileUrl(mediaItem?.imagePath);
@@ -151,14 +160,31 @@ const ItemDetailsPage: React.FC = () => {
   useEffect(() => {
     if (!isClientReady) return;
 
-    client.onEvent<MediaItem>(SocketRequests.MediaItem, (msg) => {
-      setMediaItem(msg);
-    });
+    // Renames / picture changes resend the item without its sources.
+    client.onEvent<MediaItem>(SocketRequests.MediaItem, (msg) =>
+      setMediaItem((prev) => ({ ...msg, sources: msg.sources ?? (prev?.id === msg.id ? prev.sources : null) }))
+    );
     client.onEvent<MediaFile[]>(SocketRequests.MediaItemFileList, mediaFilesReceived);
     client.onEvent<MediaItemHistory[]>(SocketRequests.MediaItemHistory, setMediaHistory);
     client.onEvent<ContinueWatching | null>(SocketRequests.MediaItemContinue, setContinueWatching);
     client.onEvent<MediaItemFlatFileList>(SocketRequests.MediaItemFlatFileList, setFlatList);
   }, [isClientReady]);
+
+  // Played files, history and what Play continues change when anything plays the item (native player, other tabs):
+  // the server pings, the page asks again. The item's answer lists the root folder, so an open subfolder is reopened.
+  useSubscription(SocketRequests.MediaItemHistoryChanged, id);
+  const historyEvents = useMemo(
+    () => ({
+      [SocketRequests.MediaItemHistoryChanged]: (itemId: string) => {
+        if (itemId !== id) return;
+        client.sendEvent(SocketRequests.MediaItem, { id });
+        const folder = breadcrumbs.length > 1 ? breadcrumbs[breadcrumbs.length - 1] : null;
+        if (folder) client.sendEvent(SocketRequests.FolderOpen, folder.id);
+      },
+    }),
+    [client, id, breadcrumbs]
+  );
+  useSocketEvents(historyEvents);
 
   const fileRowClicked = (fileId: string) => {
     if (isOpeningFolder) return; //Need to also debounce file open
@@ -328,6 +354,7 @@ const ItemDetailsPage: React.FC = () => {
                 <Flex gap="xs">
                   {file.type === FileType.File ? <IconMovie /> : <IconFolder />}
                   <Text c={file.played ? 'dimmed' : ''}>{file.shortTitle || file.title}</Text>
+                  {file.isVirtual && <SourceInfo source={mediaItem?.sources?.find((s) => s.id === file.id)} />}
                 </Flex>
               </Table.Td>
               <Table.Td pl="0" pr="0">
@@ -341,7 +368,7 @@ const ItemDetailsPage: React.FC = () => {
     );
   };
 
-  /** `historyId` undefined = the whole history (asks first). The server answers with the item resent. */
+  /** `historyId` undefined = the whole history (asks first). The server answers with a `MediaItemHistoryChanged` ping. */
   const deleteHistory = (historyId?: number) => {
     if (!mediaItem) return;
     const send = () => {
@@ -448,6 +475,16 @@ const ItemDetailsPage: React.FC = () => {
           <Button variant="default" leftSection={<IconFolder size={14} />} onClick={openFolder}>
             Open folder
           </Button>
+          <Tooltip label="Folders and downloads the item's files come from" openDelay={300}>
+            <Button variant="default" leftSection={<IconPencil size={14} />} onClick={() => setSourcesOpened(true)}>
+              Sources
+            </Button>
+          </Tooltip>
+          <Tooltip label="Merge another library item into this one" openDelay={300}>
+            <Button variant="default" leftSection={<IconArrowMerge size={14} />} onClick={() => setMergeOpened(true)}>
+              Merge
+            </Button>
+          </Tooltip>
           <Tooltip label="Remove from library" openDelay={300}>
             <ActionIcon
               variant="subtle"
@@ -616,6 +653,15 @@ const ItemDetailsPage: React.FC = () => {
         </Tabs.Panel>
       </Tabs>
 
+      {mediaItem && <MergeItemModal item={mediaItem} opened={mergeOpened} onClose={() => setMergeOpened(false)} />}
+      {mediaItem && (
+        <SourcesModal
+          item={mediaItem}
+          files={flatList?.itemId === mediaItem.id ? flatList.files : []}
+          opened={sourcesOpened}
+          onClose={() => setSourcesOpened(false)}
+        />
+      )}
       {mediaItem && (
         <EditImagesModal
           item={mediaItem}

@@ -395,6 +395,32 @@ public sealed class DirectDownload(DownloadRecord record, HttpClient http, RateL
     public override IStreamSource? OpenFile(int index) =>
         index == 0 && FullPath is not null && Record.Length > 0 ? new FileSource(this) : null;
 
+    public override Task<DownloadDetailsDto> DetailsAsync(DownloadDetailsDto common)
+    {
+        PieceMapDto? pieces = null;
+        if (Record.Length > 0)
+        {
+            var count = ChunkCount;
+            if (Record.Finished) pieces = new PieceMapDto(count, ChunkSize, Bits.ToBase64(count, _ => true), null, null);
+            else if (Record.SupportsRanges)
+                lock (_lock)
+                {
+                    var chunks = _chunks;
+                    var inFlight = _inFlight.Keys.ToHashSet();
+                    pieces = new PieceMapDto(count, ChunkSize, Bits.ToBase64(count, i => i < chunks.Length && chunks[i]),
+                        Bits.ToBase64(count, inFlight.Contains), null);
+                }
+            else
+            {
+                // Sequential: everything before the written length.
+                var written = Interlocked.Read(ref _written);
+                pieces = new PieceMapDto(count, ChunkSize, Bits.ToBase64(count, i => (long)(i + 1) * ChunkSize <= written || written >= Record.Length),
+                    Bits.ToBase64(count, i => Running && (long)i * ChunkSize <= written && (long)(i + 1) * ChunkSize > written), null);
+            }
+        }
+        return Task.FromResult(common with { Source = Record.Source, Pieces = pieces });
+    }
+
     public override IReadOnlyList<double[]> FileRanges(int index)
     {
         if (index != 0 || Record.Length <= 0) return [];

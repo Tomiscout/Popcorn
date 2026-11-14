@@ -38,6 +38,7 @@ public class DownloadsWebService(
             BackdropUrl = request.BackdropUrl,
             MediaSource = request.MediaSource,
             MediaItemId = request.MediaItemId,
+            FileOrigin = request.FileOrigin,
         };
         await RespondAdded(() => AddLink(request.Kind, request.Url, options));
     }
@@ -51,13 +52,12 @@ public class DownloadsWebService(
     {
         if (request.Links.Count == 0) return;
         var title = string.IsNullOrWhiteSpace(request.MediaTitle) ? null : request.MediaTitle.Trim();
-        var created = request.MediaItemId is null;
-        Guid itemId;
+        DownloadManager.BatchTarget target;
         try
         {
-            itemId = request.MediaItemId ?? await downloads.CreateLibraryItemAsync(
-                title ?? throw new ArgumentException("A batch needs a library item or a title"), request.PosterUrl,
-                request.BackdropUrl, MediaSourceRef.Clean(request.MediaSource));
+            if (request.MediaItemId is null && title is null) throw new ArgumentException("A batch needs a library item or a title");
+            target = await downloads.CreateBatchTargetAsync(request.MediaItemId, title ?? "", request.SourceTitle,
+                request.PosterUrl, request.BackdropUrl, MediaSourceRef.Clean(request.MediaSource));
         }
         catch (Exception e) when (IsAddError(e))
         {
@@ -66,14 +66,19 @@ public class DownloadsWebService(
             return;
         }
 
-        var options = new AddDownloadOptions { AddToLibrary = true, MediaItemId = itemId };
         var added = 0;
         List<string> errors = [];
         foreach (var link in request.Links)
         {
             try
             {
-                await AddLink(link.Kind, link.Url, options);
+                await AddLink(link.Kind, link.Url, new AddDownloadOptions
+                {
+                    AddToLibrary = true,
+                    MediaItemId = target.ItemId,
+                    SourceId = target.SourceId,
+                    FileOrigin = link.FileOrigin,
+                });
                 added++;
             }
             catch (Exception e) when (IsAddError(e))
@@ -83,8 +88,12 @@ public class DownloadsWebService(
             }
         }
 
-        // Nothing would ever fill a new item.
-        if (added == 0 && created) await mediaItemRepository.DeleteMediaItem(itemId);
+        // Nothing would ever fill a new item / source.
+        if (added == 0)
+        {
+            if (target.Created) await mediaItemRepository.DeleteMediaItem(target.ItemId);
+            else await mediaItemRepository.DeleteSource(target.SourceId);
+        }
 
         var failed = errors.Count == 0 ? "" : $" ({errors.Count} failed: {string.Join("; ", errors.Distinct())})";
         await bus.SendEventAsync(SocketRequests.DownloadAdded, added == 0

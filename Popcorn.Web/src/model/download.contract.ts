@@ -124,3 +124,76 @@ export interface DownloadPlayback {
   /** Downloaded parts as [start, end] fractions of the playback time. */
   ranges: [number, number][];
 }
+
+/** Downloads page bottom panel of one download: subscription `DownloadDetails` + download id. */
+export interface DownloadDetails {
+  id: string;
+  kind: DownloadKind;
+  name: string;
+  savePath: string;
+  /** Magnet link or URL; null for a .torrent file. */
+  source: string | null;
+  infoHash: string | null;
+  addedAt: string;
+  completedAt: string | null;
+  /** All files, skipped ones too; -1 = unknown. */
+  totalSize: number;
+  /** Wanted files. */
+  size: number;
+  downloaded: number;
+  uploaded: number;
+  ratio: number;
+  seedingSeconds: number;
+  comment: string | null;
+  createdBy: string | null;
+  createdAt: string | null;
+  private: boolean;
+  hashFails: number;
+  /** Full copies the connected peers and we have together, null = no peers. */
+  availability: number | null;
+  trackers: Tracker[];
+  peers: Peer[];
+  /** Downloaded parts of each file (by file index) as [start, end] fractions of the file. */
+  fileRanges: [number, number][][];
+  pieces: PieceMap | null;
+}
+
+export interface Tracker {
+  tier: number;
+  url: string;
+  /** Ok, Offline, InvalidResponse, Connecting, Unknown. */
+  status: string;
+  message: string | null;
+  seeds: number | null;
+  leechers: number | null;
+  completed: number | null;
+  lastAnnounceSeconds: number | null;
+  intervalSeconds: number | null;
+}
+
+export interface Peer {
+  address: string;
+  client: string;
+  incoming: boolean;
+  seeder: boolean;
+  progress: number;
+  downloadRate: number;
+  uploadRate: number;
+  downloaded: number;
+  uploaded: number;
+  encryption: string;
+  /** D/d downloading / we want to, U/u uploading / they want to, E encrypted, I incoming, F fast peer, X extensions. */
+  flags: string;
+}
+
+/** Pieces of a torrent (chunks of a direct download). */
+export interface PieceMap {
+  count: number;
+  pieceLength: number;
+  /** Bitfield, base64, most significant bit first. */
+  have: string;
+  /** Pieces being downloaded, same encoding; null = unknown. */
+  active: string | null;
+  /** Peers having each piece, one byte per piece (max 255), base64; null = no peers. */
+  availability: string | null;
+}

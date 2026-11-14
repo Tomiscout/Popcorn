@@ -29,6 +29,9 @@ public class MediaItem
 
     public List<SegmentInfo> Segments { get; set; }
 
+    /// <summary>Where its files came from (folders, downloads, merged items); loaded with the files.</summary>
+    public List<ItemSource>? Sources { get; set; }
+
     public MediaSourceRef? Source
     {
         get => MediaSourceRef.Clean(new MediaSourceRef { PluginId = MediaPluginId, MediaId = MediaId, ImdbId = ImdbId });

@@ -124,3 +124,15 @@ internal static class Ranges
         return result;
     }
 }
+
+internal static class Bits
+{
+    /// <summary>Bitfield of <paramref name="count"/> bits as base64, most significant bit first (BitTorrent order).</summary>
+    public static string ToBase64(int count, Func<int, bool> isSet)
+    {
+        var bytes = new byte[(count + 7) / 8];
+        for (var i = 0; i < count; i++)
+            if (isSet(i)) bytes[i >> 3] |= (byte)(0x80 >> (i & 7));
+        return Convert.ToBase64String(bytes);
+    }
+}

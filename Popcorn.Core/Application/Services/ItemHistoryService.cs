@@ -7,6 +7,17 @@ namespace Popcorn.Application.Services;
 
 public class ItemHistoryService(IMediaItemRepository mediaItemRepository, IMediaFileRepository mediaFileRepository, ILogger<ItemHistoryService> logger)
 {
+    /// <summary>
+    /// An item's history (and so its played marks and what Play continues) changed: here, or in the native player,
+    /// which writes the database itself and reports it to the server (<c>HistoryController</c>).
+    /// </summary>
+    public event Action<Guid>? Changed;
+
+    public void NotifyChanged(Guid itemId)
+    {
+        if (itemId != Guid.Empty) Changed?.Invoke(itemId);
+    }
+
     public async Task<List<ItemHistoryDto>> GetItemHistoryAsync(Guid itemId, List<ItemHistory>? historyItems = null)
     {
         historyItems ??= await mediaItemRepository.GetHistoryItems(itemId);
@@ -44,5 +55,6 @@ public class ItemHistoryService(IMediaItemRepository mediaItemRepository, IMedia
             ItemId = file.ItemId,
             PlaybackTime = DateTime.UtcNow
         });
+        NotifyChanged(file.ItemId);
     }
 }

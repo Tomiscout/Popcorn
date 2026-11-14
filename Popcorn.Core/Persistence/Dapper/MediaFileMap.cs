@@ -22,5 +22,8 @@ public class MediaFileMap : EntityMap<MediaFile>
         Map(m => m.OtherTags).ToColumn("other_tags");
         Map(m => m.PlaybackPosition).ToColumn("playback_position");
         Map(m => m.Duration).ToColumn("duration");
+        Map(m => m.SourceId).ToColumn("source_id");
+        Map(m => m.TreePath).Ignore();
+        Map(m => m.IsVirtual).Ignore();
     }
 }

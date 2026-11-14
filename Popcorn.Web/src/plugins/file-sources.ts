@@ -185,6 +185,14 @@ export type LinkMedia = {
 /** The file source a result came from: fetches its `resolve` links. */
 export type LinkSource = Pick<FileSource, 'pluginId' | 'sourceId'>;
 
+/** What the library keeps of the result a download was started from (its item source's origins). */
+export const fileOrigin = (source: LinkSource, file: FileResult) => ({
+  pluginId: source.pluginId,
+  sourceId: source.sourceId || null,
+  title: file.title,
+  origin: file.origin ?? null,
+});
+
 const LINK_PREFERENCE: FileLinkKind[] = ['Magnet', 'Torrent', 'Direct'];
 
 /** The link of a result Popcorn's own client downloads in a batch (magnet first), null if it has none. */
@@ -269,10 +277,18 @@ async function withFetchNotice<T>(needed: boolean, count: number, work: () => Pr
 export function useDownloadFiles() {
   const { client } = useWebSocket();
   return useCallback(
-    async (items: { plugin: LinkSource; file: FileResult }[], media: LinkMedia | undefined, fallbackTitle: string) => {
+    async (
+      items: { plugin: LinkSource; file: FileResult }[],
+      media: LinkMedia | undefined,
+      fallbackTitle: string,
+      /** Name of the batch's folder in the item (e.g. the episode group's label); null = the item's title. */
+      sourceTitle?: string
+    ) => {
       const wanted = items
-        .map((i) => ({ source: i.plugin, link: downloadableLink(i.file) }))
-        .filter((w): w is { source: LinkSource; link: FileLink } => w.link !== null);
+        .map((i) => ({ source: i.plugin, link: downloadableLink(i.file), origin: fileOrigin(i.plugin, i.file) }))
+        .filter(
+          (w): w is { source: LinkSource; link: FileLink; origin: ReturnType<typeof fileOrigin> } => w.link !== null
+        );
       if (wanted.length === 0) {
         notifications.show({ color: 'red', message: 'None of these results has a link Popcorn can download' });
         return;
@@ -300,7 +316,12 @@ export function useDownloadFiles() {
         )
       );
 
-      const links = resolved.map((r) => r.link).filter((l): l is FileLink => l !== null && INTERNAL_LINK.test(l.url));
+      const links = resolved
+        .map((r, i) => ({ link: r.link, origin: wanted[i].origin }))
+        .filter(
+          (l): l is { link: FileLink; origin: ReturnType<typeof fileOrigin> } =>
+            l.link !== null && INTERNAL_LINK.test(l.link.url)
+        );
       const failed = resolved.filter((r) => r.error);
       if (failed.length > 0)
         notifications.show({
@@ -310,8 +331,9 @@ export function useDownloadFiles() {
         });
       if (links.length === 0) return;
       client.sendEvent(SocketRequests.DownloadAddBatch, {
-        links: links.map((l) => ({ kind: downloadKind(l.kind), url: l.url })),
+        links: links.map((l) => ({ kind: downloadKind(l.link.kind), url: l.link.url, fileOrigin: l.origin })),
         mediaItemId: media?.itemId ?? null,
+        sourceTitle: sourceTitle ?? null,
         mediaTitle: media?.title ?? fallbackTitle,
         posterUrl: media?.posterUrl ?? null,
         backdropUrl: media?.backdropUrl ?? null,
@@ -344,7 +366,7 @@ export function useOpenLink() {
   );
 
   const openResolved = useCallback(
-    (link: FileLink, target?: LinkTarget, media?: LinkMedia) => {
+    (link: FileLink, target?: LinkTarget, media?: LinkMedia, origin?: ReturnType<typeof fileOrigin>) => {
       if (!SAFE_LINK.test(link.url)) {
         console.error('Refusing to open link', link.url);
         return;
@@ -363,6 +385,7 @@ export function useOpenLink() {
           backdropUrl: media?.backdropUrl ?? null,
           mediaSource: media?.source ?? null,
           mediaItemId: media?.itemId ?? null,
+          fileOrigin: origin ?? null,
         });
         return;
       }
@@ -377,14 +400,22 @@ export function useOpenLink() {
 
   /** Returns a promise only while a `resolve` link is fetched, so callers can show a loader just then. */
   const openLink = useCallback(
-    (link: FileLink, target?: LinkTarget, media?: LinkMedia, source?: LinkSource): Promise<void> | void => {
-      if (!link.resolve) return openResolved(link, target, media);
+    (
+      link: FileLink,
+      target?: LinkTarget,
+      media?: LinkMedia,
+      source?: LinkSource,
+      /** The result the link is of: kept by the library as where the download came from. */
+      file?: FileResult
+    ): Promise<void> | void => {
+      const origin = source && file ? fileOrigin(source, file) : undefined;
+      if (!link.resolve) return openResolved(link, target, media, origin);
       if (!source) {
         console.error('A link to fetch without its file source', link);
         return;
       }
       return resolveLinks(client, source, [link]).then(([{ link: resolved, error }]) => {
-        if (resolved) openResolved(resolved, target, media);
+        if (resolved) openResolved(resolved, target, media, origin);
         else notifications.show({ color: 'red', autoClose: 8000, message: `Could not get the link: ${error}` });
       });
     },

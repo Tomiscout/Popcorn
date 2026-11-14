@@ -2,7 +2,7 @@
 import { SocketRequests } from './socket-requests';
 
 export interface SubscriptionRequest {
-  /** The pushed event: DownloadList, DownloadStats, SegmentsState (+ item id as key). */
+  /** The pushed event: DownloadList, DownloadStats, SegmentsState and MediaItemHistoryChanged (+ item id as key), DownloadDetails (+ download id). */
   topic: string;
   key?: string | null;
 }
@@ -39,6 +39,27 @@ export interface DeleteMediaItemHistoryRequest {
 export interface RenameMediaItemRequest {
   id?: string;
   title: string;
+}
+
+/** Ranks the library items for a release / file name (the add download dialog's preselected item). */
+export interface MediaItemMatchRequest {
+  name: string;
+}
+
+/** Merges `OtherId` into `TargetId` (the other item is deleted, its files kept). */
+export interface MediaItemMergeRequest {
+  targetId?: string;
+  otherId?: string;
+}
+
+/**
+ * Removes `SourceId` from item `ItemId` (not its last source); `DeleteFiles` also
+ * removes its downloads and deletes its files from disk, else its downloads go on outside the library.
+ */
+export interface MediaItemSourceRemoveRequest {
+  itemId?: string;
+  sourceId?: string;
+  deleteFiles?: boolean;
 }
 
 export interface ThumbnailRequest {
@@ -201,17 +222,22 @@ export interface DownloadAddRequest {
   backdropUrl?: string | null;
   /** Media page the download was started from (plugin + media id, IMDb id), kept by the library item. */
   mediaSource?: MediaSourceRef | null;
-  /** Existing library item to add the files to (saved inside its folder); overrides the title/poster. */
+  /** Existing library item to add the files to (a virtual folder of it); overrides the title/poster. */
   mediaItemId?: string | null;
+  /** File source result the link was picked from (kept by the item's source). */
+  fileOrigin?: FileOrigin | null;
 }
 
 /**
  * Several downloads for one library item (e.g. the episodes of a season): `MediaItemId`, or a new item
- * titled `MediaTitle` that each download is added to.
+ * titled `MediaTitle` that each download is added to. They share one source (virtual folder, own folder
+ * on disk) named `SourceTitle`.
  */
 export interface DownloadAddBatchRequest {
   links: DownloadLinkRequest[];
   mediaItemId?: string | null;
+  /** Name of the batch's folder, e.g. "Season 2"; null = the item / media title. */
+  sourceTitle?: string | null;
   mediaTitle?: string | null;
   posterUrl?: string | null;
   backdropUrl?: string | null;
@@ -322,9 +348,21 @@ export interface MediaSourceRef {
   imdbId?: string | null;
 }
 
+/** The file source plugin result a download was picked from. */
+export interface FileOrigin {
+  pluginId?: string | null;
+  /** Source of a multi-source plugin ("" / null = the plugin itself). */
+  sourceId?: string | null;
+  /** The result's title as the plugin listed it. */
+  title?: string | null;
+  /** Site an aggregator got it from (FileResult.Origin). */
+  origin?: string | null;
+}
+
 export interface DownloadLinkRequest {
   kind?: DownloadLinkKind;
   url: string;
+  fileOrigin?: FileOrigin | null;
 }
 
 export type FilePriority = 'Skip' | 'Low' | 'Normal' | 'High';
@@ -350,6 +388,9 @@ export interface SocketPayloads {
   [SocketRequests.MediaItemFileList]: MediaItemFileListRequest;
   [SocketRequests.MediaItemHistoryDelete]: DeleteMediaItemHistoryRequest;
   [SocketRequests.RenameMediaItem]: RenameMediaItemRequest;
+  [SocketRequests.MediaItemMatch]: MediaItemMatchRequest;
+  [SocketRequests.MediaItemMerge]: MediaItemMergeRequest;
+  [SocketRequests.MediaItemSourceRemove]: MediaItemSourceRemoveRequest;
   [SocketRequests.ImageFile]: string[];
   [SocketRequests.ThumbnailFile]: ThumbnailRequest;
   [SocketRequests.FileOpen]: string;

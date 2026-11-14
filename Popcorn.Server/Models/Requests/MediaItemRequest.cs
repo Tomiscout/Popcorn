@@ -41,3 +41,33 @@ public class RemoveMediaItemRequest
     public Guid Id { get; set; }
     public bool DeleteFiles { get; set; }
 }
+
+/// <summary>Ranks the library items for a release / file name (the add download dialog's preselected item).</summary>
+public class MediaItemMatchRequest
+{
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <param name="Score">0..1, title tokens in common (<c>MediaItemMatcher</c>).</param>
+public record MediaItemMatchDto(Guid Id, string Title, string? ImagePath, double Score);
+
+/// <summary>Answer to <see cref="SocketRequests.MediaItemMatch"/>: every item, best match first.</summary>
+public record MediaItemMatchResponse(string Name, List<MediaItemMatchDto> Items);
+
+/// <summary>Merges <see cref="OtherId"/> into <see cref="TargetId"/> (the other item is deleted, its files kept).</summary>
+public class MediaItemMergeRequest
+{
+    public Guid TargetId { get; set; }
+    public Guid OtherId { get; set; }
+}
+
+/// <summary>
+/// Removes <see cref="SourceId"/> from item <see cref="ItemId"/> (not its last source); <see cref="DeleteFiles"/> also
+/// removes its downloads and deletes its files from disk, else its downloads go on outside the library.
+/// </summary>
+public class MediaItemSourceRemoveRequest
+{
+    public Guid ItemId { get; set; }
+    public Guid SourceId { get; set; }
+    public bool DeleteFiles { get; set; }
+}

@@ -43,6 +43,8 @@ public abstract class Download(DownloadRecord record)
     public abstract int? StreamingFile { get; }
     /// <summary>Download rate cap from the priorities of all downloads (bytes/s, 0 = none); set every tick.</summary>
     public abstract Task SetThrottleAsync(long bytesPerSecond);
+    /// <summary>Adds what only this kind of download knows (torrent info, trackers, peers, pieces) to the common details.</summary>
+    public virtual Task<DownloadDetailsDto> DetailsAsync(DownloadDetailsDto common) => Task.FromResult(common);
     /// <summary>Called by the manager every second.</summary>
     public virtual Task TickAsync(TimeSpan elapsed) => Task.CompletedTask;
 

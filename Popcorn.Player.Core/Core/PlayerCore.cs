@@ -20,10 +20,10 @@ public class PlayerCore
     private readonly Lazy<WebEventHandler> _webSocket;
     private readonly AudioSubtitlesService _audioSubtitlesService;
     private readonly ThumbnailService _thumbnailService;
-    private readonly DownloadPlaybackClient _downloads;
+    private readonly ServerClient _downloads;
     private readonly MediaItemService _mediaItemService;
 
-    public PlayerCore(IPlayer player, MediaItemManager mediaItemManager, AudioSubtitlesService audioSubtitlesService, ThumbnailService thumbnailService, DownloadPlaybackClient downloads, MediaItemService mediaItemService, Lazy<WebEventHandler> webSocket)
+    public PlayerCore(IPlayer player, MediaItemManager mediaItemManager, AudioSubtitlesService audioSubtitlesService, ThumbnailService thumbnailService, ServerClient downloads, MediaItemService mediaItemService, Lazy<WebEventHandler> webSocket)
     {
         _mediaItemService = mediaItemService;
         _downloads = downloads;
@@ -94,10 +94,36 @@ public class PlayerCore
         return Task.CompletedTask;
     }
     
+    /// <summary>
+    /// One load at a time (file_open runs on the overlay socket, the media controls' previous on D-Bus): two
+    /// interleaved loads stop each other's file in mpv. Of requests waiting meanwhile only the newest runs.
+    /// </summary>
+    private readonly SemaphoreSlim _loadGate = new(1, 1);
+    private int _loadRequest;
+
+    /// <summary>The end of the current file asked for a next file that is not loading yet.</summary>
+    private volatile bool _nextFileRequested;
+
     public async Task LoadMedia(MediaFile file)
+    {
+        var request = Interlocked.Increment(ref _loadRequest);
+        await _loadGate.WaitAsync();
+        try
+        {
+            if (request != Volatile.Read(ref _loadRequest)) return;
+            await LoadMediaCore(file);
+        }
+        finally
+        {
+            _loadGate.Release();
+        }
+    }
+
+    private async Task LoadMediaCore(MediaFile file)
     {
         await SaveProgress();
         _isLoadingTrack = true;
+        _nextFileRequested = false;
         StopDownloadWatch();
 
         // A file the built-in downloader is still fetching (may not even exist yet) plays from the server's stream,
@@ -134,7 +160,7 @@ public class PlayerCore
         CurrentMediaFile = file;
         // Only for files without subtitles of their own.
         _externalSubtitles = CurrentMediaProbe.SubtitleStreams.Count == 0
-            ? ExternalSubtitles.Find(file.Path, _isLoadedFromArgs ? null : _mediaItemManager.CurrentMediaItem?.FolderDirectory)
+            ? ExternalSubtitles.Find(file.Path, _isLoadedFromArgs ? null : _mediaItemManager.CurrentMediaItem?.RootFolderOf(file))
             : [];
         if (_externalSubtitles.Count > 0)
         {
@@ -156,18 +182,19 @@ public class PlayerCore
             return;
         }
 
-        OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
+        OpenFolder(FolderOf(CurrentMediaFile));
     }
 
     /// <summary>Next button and end of file: the overlay decides from the plan (play it, or warn about a missing episode).</summary>
-    public void PlayNextTitle()
+    public NextFilePlan? PlayNextTitle()
     {
         var file = CurrentMediaFile;
-        if (file is null) return;
+        if (file is null) return null;
 
         // A file outside the library has nothing after it.
         var plan = _mediaItemManager.CurrentMediaItem?.GetNextFilePlan(file.Id) ?? new NextFilePlan { CurrentFileId = file.Id };
         _webSocket.Value.PostEvent("next_file_plan", plan);
+        return plan;
     }
 
     /// <summary>"Refresh files" of the missing episode warning: rescan the item and answer with a new plan.</summary>
@@ -178,7 +205,7 @@ public class PlayerCore
 
         await _mediaItemService.RescanItem(file.ItemId);
         _mediaItemManager.LoadMediaInfo(file.Id);
-        OpenFolder(Path.GetDirectoryName(file.Path));
+        OpenFolder(FolderOf(file));
         PlayNextTitle();
     }
 
@@ -201,7 +228,7 @@ public class PlayerCore
     private void PlayingStarted(object sender, EventArgs e)
     {
         if (!_isLoadingTrack) return;
-        OpenFolder(Path.GetDirectoryName(CurrentMediaFile.Path));
+        OpenFolder(FolderOf(CurrentMediaFile));
         _player.AddExternalSubtitles(_externalSubtitles);
         _audioSubtitlesService.AutoSelectAudioAndSubtitles(selectSubtitle: _externalSubtitles.Count > 0);
         _audioSubtitlesService.SendAudioAndSubtitles();
@@ -250,7 +277,7 @@ public class PlayerCore
         _audioSubtitlesService.SendAudioAndSubtitles();
         _audioSubtitlesService.SendAudioSegments(file);
         socket.PostEvent("download_ranges", _downloadRanges);
-        OpenFolder(Path.GetDirectoryName(file.Path));
+        OpenFolder(FolderOf(file));
     }
 
     private void SetDownloadRanges(double[][]? ranges)
@@ -315,9 +342,24 @@ public class PlayerCore
 
     private void PlaybackEndReached(object sender, EventArgs e)
     {
+        // eof-reached can flip true -> false -> true at one end: a seek to the very end (skipped outro tail) makes
+        // mpv seek back to the last frame. A second end must not ask for the next file again (two loads of it), nor
+        // mark the next file, whose track_loaded may already be out, as ended.
+        if (_nextFileRequested || _isLoadingTrack) return;
         _ = SaveProgress(_player.Duration);
         _webSocket.Value.PostEvent("playback_ended", null);
-        PlayNextTitle();
+        // The overlay plays it (next-file.ts); with an episode missing it shows the warning instead.
+        if (PlayNextTitle() is { NextFileId: not null, MissingLabel: null }) _nextFileRequested = true;
+    }
+
+    /// <summary>
+    /// Folder of the file in its item's tree (a virtual folder when the item has several sources, <c>MediaTree</c>),
+    /// else on disk.
+    /// </summary>
+    private string? FolderOf(MediaFile file)
+    {
+        var inItem = _mediaItemManager.CurrentMediaItem?.Files?.FirstOrDefault(f => f.Id == file.Id) ?? file;
+        return Path.GetDirectoryName(inItem.Tree());
     }
 
     public bool OpenFolder(string? path)

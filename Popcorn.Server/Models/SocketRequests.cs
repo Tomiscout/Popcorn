@@ -15,11 +15,22 @@ public static class SocketRequests
     public const string OpenMediaItemFolder = "OpenMediaItemFolder";
     public const string MediaItemFileList = "MediaItemFileList";
     public const string MediaItemHistory = "MediaItemHistory";
-    /// <summary>Item page History tab: deletes one entry, or the whole history without <c>HistoryId</c>; answered with the item resent.</summary>
+    /// <summary>Item page History tab: deletes one entry, or the whole history without <c>HistoryId</c>; answered with <see cref="MediaItemHistoryChanged"/>.</summary>
     public const string MediaItemHistoryDelete = "MediaItemHistoryDelete";
+    /// <summary>
+    /// Subscribable (+ item id), a ping with the item id: its history changed (played files, what Play continues), also
+    /// when the native player played something. The page asks for the item again.
+    /// </summary>
+    public const string MediaItemHistoryChanged = "MediaItemHistoryChanged";
     /// <summary>Item page: every file of the item in play order (<c>MediaItemFlatFileList</c> response), sent with <see cref="MediaItem"/>.</summary>
     public const string MediaItemFlatFileList = "MediaItemFlatFileList";
     public const string RenameMediaItem = "RenameMediaItem";
+    /// <summary>Library items ranked by how well their title fits a release / file name (<c>MediaItemMatchResponse</c>).</summary>
+    public const string MediaItemMatch = "MediaItemMatch";
+    /// <summary>Merges one item into another: each of its sources becomes a virtual folder of the target.</summary>
+    public const string MediaItemMerge = "MediaItemMerge";
+    /// <summary>Removes a source (virtual folder) from an item: its files and downloads leave the library, optionally the disk.</summary>
+    public const string MediaItemSourceRemove = "MediaItemSourceRemove";
     public const string ImageFile = "ImageFile";
     public const string ThumbnailFile = "ThumbnailFile";
     public const string ImageFilesBatchSent = "ImageFilesBatchSent";
@@ -70,6 +81,7 @@ public static class SocketRequests
     public const string SegmentSeen = "SegmentSeen";
     public const string SegmentAutoSkipSet = "SegmentAutoSkipSet";
     public const string DownloadList = "DownloadList";
+    public const string DownloadDetails = "DownloadDetails";
     public const string DownloadStats = "DownloadStats";
     public const string DownloadAdd = "DownloadAdd";
     public const string DownloadAddTorrentFile = "DownloadAddTorrentFile";

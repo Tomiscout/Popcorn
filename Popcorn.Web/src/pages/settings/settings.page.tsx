@@ -140,7 +140,7 @@ const SettingsPage: React.FC = () => {
               <Switch
                 checked={settings.skipSegmentsWithoutDelay ?? false}
                 onChange={(e) => saveSettings({ ...settings, skipSegmentsWithoutDelay: e.currentTarget.checked })}
-                label="Skip segments with no delay"
+                label="Skip intro/outro immediately"
                 description="Auto-skip jumps past an intro or outro as soon as it starts, without the skip button's count-down."
               />
             </Stack>

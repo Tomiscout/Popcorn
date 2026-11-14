@@ -45,6 +45,9 @@ public class MpvPlayer : IPlayer
             {
                 _paused = e.Value;
                 UpdatePlaying();
+                // mpv pauses on its own too (keep-open at the end of the file): the overlay's play button follows mpv.
+                // Before file-loaded the overlay's track_loaded state (playing) stands.
+                if (_fileLoaded) _webSocket.Value.PostEvent("play_state", !e.Value);
                 return;
             }
             if (e.Name != "eof-reached" || e.Value == _eofReached) return;
@@ -99,23 +102,32 @@ public class MpvPlayer : IPlayer
     {
         try
         {
+            // The next file plays unless the user paused this one. Read from mpv, not the observed flags (they can
+            // lag behind): keep-open pauses at the end of a file too, that pause is not the user's.
+            var keepPaused = IsPaused && _player.GetString("eof-reached") != "yes";
             Stop();
+            // Before loadfile: file-loaded (mpv's event thread) reads them and can come before loadfile returns here.
+            _currentMediaAnalysis = mediaAnalysis;
+            _currentFilePath = path;
             // An option, so it applies to every later loadfile too: always set it.
             // sub-delay is an option too: a delay set for one file must not carry over to the next.
             _player.SetProperty("sub-delay", "0");
             _player.SetProperty("start", startSeconds is { } start ? start.ToString(CultureInfo.InvariantCulture) : "none");
+            // pause is an option too and survives loadfile, including keep-open's pause at the end of a file.
+            _player.SetProperty("pause", YesNo(keepPaused));
             _player.Command("loadfile", path);
+            _logger.LogInformation("loadfile {Path} (paused: {Paused})", path, keepPaused);
         }
         catch (Exception ex)
         {
+            _currentMediaAnalysis = null;
+            _currentFilePath = null;
             var message = "Failed to open file: " + path;
             _logger.LogError(ex, message);
             _webSocket.Value.PostError(message, ex);
             return Task.FromResult(false);
         }
 
-        _currentMediaAnalysis = mediaAnalysis;
-        _currentFilePath = path;
         return Task.FromResult(true);
     }
 
@@ -125,6 +137,8 @@ public class MpvPlayer : IPlayer
         LoadMediaTracks();
         _fileLoaded = true;
         UpdatePlaying();
+        // The overlay shows a new file as playing (track_loaded); a pause kept from the previous file corrects it.
+        _webSocket.Value.PostEvent("play_state", !IsPaused);
 
         _currentMediaAnalysis = null; //Cleanup as its no longer needed.
         MediaPlaying?.Invoke(this, EventArgs.Empty); //TODO this feels kinda nasty, should review the event system
@@ -169,6 +183,7 @@ public class MpvPlayer : IPlayer
         }
 
         Duration = duration;
+        _logger.LogInformation("file-loaded {Path}, duration {Duration}", _currentFilePath, duration);
         _webSocket.Value.PostEvent("duration_update", duration);
     }
 

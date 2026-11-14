@@ -66,19 +66,10 @@ public class FileWebService(
         var player = await playerLaunchService.OpenAsync(mediaFile, playerId);
         if (player == null) return; //TODO notification
 
-        // The Popcorn player reports its own history (with playback position); external players can't.
+        // The Popcorn player records its own history (and reports it, MediaItemPlayState pushes follow); external
+        // players can't.
         if (player.Type != PlayerOptionType.Popcorn)
-        {
-            await mediaItemRepository.AddHistoryItem(mediaFile.ItemId, new ItemHistory
-            {
-                FileId = fileId,
-                PlaybackTime = DateTime.Now
-            });
-        }
-
-        await mediaFileRepository.SetFileAsPlayed(mediaFile.Id);
-        var historyItems = await itemHistoryService.GetItemHistoryAsync(mediaFile.ItemId);
-        await bus.SendEventAsync(SocketRequests.MediaItemHistory, historyItems);
+            await itemHistoryService.ItemWasPlayedAsync(mediaFile.Id);
     }
 
     [WebSocketEvent(SocketRequests.FolderOpen)]
@@ -142,35 +133,27 @@ public class FileWebService(
         await bus.SendEventAsync(SocketRequests.PlayerNextFile, plan);
     }
 
+    /// <summary>
+    /// Folder of the item's file tree (<c>MediaTree</c>): <paramref name="fileOrMediaId"/> is a file (its folder), a
+    /// folder row, a source's virtual folder (id = the source's) or the item itself (its root).
+    /// </summary>
     private async Task<PlayerPlaylistResponse?> GetPlayerPlaylistResponseForDirectory(Guid fileOrMediaId)
     {
-        Guid mediaItemId;
-        string rootPath;
-        MediaItem? mediaItem = null;
-        
-        var mediaFile = await mediaFileRepository.GetFileById(fileOrMediaId);
-        if (mediaFile == null)
-        {
-            mediaItemId = fileOrMediaId; //Media item id comes when clicking on root. I'm lazy
-            mediaItem = await mediaItemRepository.GetMediaItem(mediaItemId);
-            if (mediaItem == null) return null;
-                
-            rootPath = mediaItem.FolderDirectory;
-        }
-        else
-        {
-            mediaItemId = mediaFile.ItemId;
-            rootPath = mediaFile.Type == FileType.File ? Path.GetDirectoryName(mediaFile.Path) ?? mediaFile.Path : mediaFile.Path;
-        }
-            
-        var allFiles = await mediaFileRepository.GetFilesForItemId(mediaItemId);
-        mediaItem ??= await mediaItemRepository.GetMediaItem(mediaItemId);
+        var itemId = (await mediaFileRepository.GetFileById(fileOrMediaId))?.ItemId
+                     ?? (await mediaItemRepository.GetSource(fileOrMediaId))?.ItemId
+                     ?? fileOrMediaId;
+        var mediaItem = itemId == Guid.Empty ? null : await mediaItemRepository.GetMediaItemWithFilesAndHistory(itemId);
         if (mediaItem == null) return null;
+
+        var entry = mediaItem.Files.FirstOrDefault(f => f.Id == fileOrMediaId && !f.IsHidden());
+        var rootPath = entry is null ? mediaItem.FolderDirectory
+            : entry.Type == FileType.File ? Path.GetDirectoryName(entry.Tree()) ?? mediaItem.FolderDirectory
+            : entry.Tree();
 
         return new PlayerPlaylistResponse
         {
             Navigation = mediaItem.BuildNavigationPath(rootPath),
-            Files = allFiles.GetFilesForDirectory(rootPath)
+            Files = mediaItem.Files.GetFilesForDirectory(rootPath)
         };
     }
 

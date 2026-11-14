@@ -2,6 +2,8 @@ using Popcorn.Domain;
 using Microsoft.Extensions.Logging;
 using MonoTorrent;
 using MonoTorrent.Client;
+using MonoTorrent.Connections;
+using MonoTorrent.Trackers;
 
 namespace Popcorn.Downloads;
 
@@ -296,6 +298,121 @@ public sealed class TorrentDownload : Download
             Record.CompletedAt ??= DateTime.UtcNow;
         }
         Record.Error = State == DownloadState.Error ? Error : null;
+    }
+
+    public override async Task<DownloadDetailsDto> DetailsAsync(DownloadDetailsDto common)
+    {
+        var torrent = _manager.Torrent;
+        var peers = _manager.State is TorrentState.Stopped or TorrentState.Stopping ? [] : await _manager.GetPeersAsync();
+        var pieceCount = torrent?.PieceCount ?? 0;
+
+        return common with
+        {
+            Source = Record.Source.StartsWith("magnet:", StringComparison.OrdinalIgnoreCase) ? Record.Source : null,
+            InfoHash = _manager.InfoHashes.V1OrV2.ToHex().ToLowerInvariant(),
+            TotalSize = torrent?.Size ?? common.TotalSize,
+            Comment = string.IsNullOrWhiteSpace(torrent?.Comment) ? null : torrent.Comment,
+            CreatedBy = string.IsNullOrWhiteSpace(torrent?.CreatedBy) ? null : torrent.CreatedBy,
+            CreatedAt = torrent is { CreationDate: var created } && created > DateTime.UnixEpoch ? created.ToUniversalTime() : null,
+            Private = _manager.TrackerManager.Private,
+            HashFails = _manager.HashFails,
+            Availability = pieceCount > 0 && peers.Count > 0 ? DistributedCopies(peers, pieceCount) : null,
+            Trackers = Trackers(),
+            Peers = peers.Select(ToPeer).OrderByDescending(p => p.DownloadRate + p.UploadRate).ThenByDescending(p => p.Progress).ToList(),
+            Pieces = torrent is null ? null : new PieceMapDto(
+                pieceCount,
+                torrent.PieceLength,
+                Convert.ToBase64String(_manager.Bitfield.ToBytes()),
+                _requester.ActivePieces() is { } active ? Bits.ToBase64(pieceCount, active.Contains) : null,
+                peers.Count > 0 ? PieceAvailability(peers, pieceCount) : null),
+        };
+    }
+
+    private List<TrackerDto> Trackers()
+    {
+        var result = new List<TrackerDto>();
+        var tiers = _manager.TrackerManager.Tiers;
+        var hash = _manager.InfoHashes.V1OrV2;
+        for (var t = 0; t < tiers.Count; t++)
+        {
+            var tier = tiers[t];
+            foreach (var tracker in tier.Trackers)
+            {
+                // A tier scrapes its active tracker only.
+                ScrapeInfo? scrape = tracker == tier.ActiveTracker && tier.ScrapeInfo.TryGetValue(hash, out var s) ? s : null;
+                var announced = tracker.TimeSinceLastAnnounce;
+                result.Add(new TrackerDto(
+                    t,
+                    tracker.Uri.ToString(),
+                    tracker.Status.ToString(),
+                    string.IsNullOrWhiteSpace(tracker.FailureMessage) ? string.IsNullOrWhiteSpace(tracker.WarningMessage) ? null : tracker.WarningMessage : tracker.FailureMessage,
+                    scrape?.Complete is >= 0 and var seeds ? seeds : null,
+                    scrape?.Incomplete is >= 0 and var leechers ? leechers : null,
+                    scrape?.Downloaded is >= 0 and var completed ? completed : null,
+                    // Never announced = TimeSpan.MaxValue-ish values.
+                    announced < TimeSpan.FromDays(365) ? announced.TotalSeconds : null,
+                    tracker.UpdateInterval > TimeSpan.Zero ? tracker.UpdateInterval.TotalSeconds : null));
+            }
+        }
+        return result;
+    }
+
+    private static PeerDto ToPeer(PeerId peer)
+    {
+        var flags = new System.Text.StringBuilder();
+        if (peer.AmInterested) flags.Append(peer.IsChoking ? 'd' : 'D');
+        if (peer.IsInterested) flags.Append(peer.AmChoking ? 'u' : 'U');
+        if (peer.EncryptionType is not EncryptionType.PlainText) flags.Append('E');
+        if (peer.ConnectionDirection == Direction.Incoming) flags.Append('I');
+        if (peer.SupportsFastPeer) flags.Append('F');
+        if (peer.SupportsLTMessages) flags.Append('X');
+        var host = peer.Uri.HostNameType == UriHostNameType.IPv6 ? $"[{peer.Uri.Host.Trim('[', ']')}]" : peer.Uri.Host;
+        return new PeerDto(
+            $"{host}:{peer.Uri.Port}",
+            peer.ClientApp.ToString(),
+            peer.ConnectionDirection == Direction.Incoming,
+            peer.IsSeeder,
+            peer.BitField.Length > 0 ? peer.BitField.PercentComplete / 100 : 0,
+            peer.Monitor.DownloadRate,
+            peer.Monitor.UploadRate,
+            peer.Monitor.DataBytesReceived,
+            peer.Monitor.DataBytesSent,
+            peer.EncryptionType.ToString(),
+            flags.ToString());
+    }
+
+    private static string PieceAvailability(IReadOnlyList<PeerId> peers, int pieceCount)
+    {
+        var counts = new byte[pieceCount];
+        foreach (var peer in peers)
+        {
+            var bits = peer.BitField;
+            if (bits.Length != pieceCount) continue;
+            if (bits.AllTrue)
+            {
+                for (var i = 0; i < pieceCount; i++) if (counts[i] < 255) counts[i]++;
+                continue;
+            }
+            for (var i = bits.FirstTrue(); i >= 0 && i < pieceCount; i = i + 1 < pieceCount ? bits.FirstTrue(i + 1, pieceCount - 1) : -1)
+                if (counts[i] < 255) counts[i]++;
+        }
+        return Convert.ToBase64String(counts);
+    }
+
+    /// <summary>Distributed copies: how many full copies the peers and we have together (the rarest piece's count + the share of pieces above it).</summary>
+    private double DistributedCopies(IReadOnlyList<PeerId> peers, int pieceCount)
+    {
+        var counts = new int[pieceCount];
+        var own = _manager.Bitfield;
+        for (var i = 0; i < pieceCount; i++) counts[i] = own[i] ? 1 : 0;
+        foreach (var peer in peers)
+        {
+            var bits = peer.BitField;
+            if (bits.Length != pieceCount) continue;
+            for (var i = 0; i < pieceCount; i++) if (bits[i]) counts[i]++;
+        }
+        var min = counts.Min();
+        return min + (double)counts.Count(c => c > min) / pieceCount;
     }
 
     public override IStreamSource? OpenFile(int index) =>

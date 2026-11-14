@@ -15,11 +15,22 @@ export enum SocketRequests {
   OpenMediaItemFolder = 'OpenMediaItemFolder',
   MediaItemFileList = 'MediaItemFileList',
   MediaItemHistory = 'MediaItemHistory',
-  /** Item page History tab: deletes one entry, or the whole history without HistoryId; answered with the item resent. */
+  /** Item page History tab: deletes one entry, or the whole history without HistoryId; answered with `MediaItemHistoryChanged`. */
   MediaItemHistoryDelete = 'MediaItemHistoryDelete',
+  /**
+   * Subscribable (+ item id), a ping with the item id: its history changed (played files, what Play continues), also
+   * when the native player played something. The page asks for the item again.
+   */
+  MediaItemHistoryChanged = 'MediaItemHistoryChanged',
   /** Item page: every file of the item in play order (MediaItemFlatFileList response), sent with `MediaItem`. */
   MediaItemFlatFileList = 'MediaItemFlatFileList',
   RenameMediaItem = 'RenameMediaItem',
+  /** Library items ranked by how well their title fits a release / file name (MediaItemMatchResponse). */
+  MediaItemMatch = 'MediaItemMatch',
+  /** Merges one item into another: each of its sources becomes a virtual folder of the target. */
+  MediaItemMerge = 'MediaItemMerge',
+  /** Removes a source (virtual folder) from an item: its files and downloads leave the library, optionally the disk. */
+  MediaItemSourceRemove = 'MediaItemSourceRemove',
   ImageFile = 'ImageFile',
   ThumbnailFile = 'ThumbnailFile',
   ImageFilesBatchSent = 'ImageFilesBatchSent',
@@ -70,6 +81,7 @@ export enum SocketRequests {
   SegmentSeen = 'SegmentSeen',
   SegmentAutoSkipSet = 'SegmentAutoSkipSet',
   DownloadList = 'DownloadList',
+  DownloadDetails = 'DownloadDetails',
   DownloadStats = 'DownloadStats',
   DownloadAdd = 'DownloadAdd',
   DownloadAddTorrentFile = 'DownloadAddTorrentFile',

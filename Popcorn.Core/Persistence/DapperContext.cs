@@ -25,6 +25,7 @@ public class DapperContext
         FluentMapper.Initialize(config =>
         {
             config.AddMap(new ItemHistoryMap());
+            config.AddMap(new ItemSourceMap());
             config.AddMap(new MediaFileMap());
             config.AddMap(new MediaItemMap());
             config.AddMap(new SegmentInfoMap());

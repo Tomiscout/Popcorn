@@ -8,4 +8,8 @@ public class FolderLoadedNavigation
 
     [JsonPropertyName("title")]
     public string Title { get; set; } = string.Empty;
+
+    /// <summary>Folder row (or virtual source folder) id: the browser player opens folders by id.</summary>
+    [JsonPropertyName("fileId")]
+    public Guid? FileId { get; set; }
 }

@@ -56,6 +56,8 @@ interface NativeMediaFile {
   Id: string;
   ItemId?: string;
   Path: string;
+  /** Path in the item's file tree (C# MediaTree): differs for the virtual folders of an item with several sources. */
+  TreePath?: string | null;
   Title?: string;
   ShortTitle?: string;
   Type?: FileType;
@@ -122,7 +124,8 @@ const toSegmentsDto = (data: NativeSegments | null): PlayerSegmentsDto | null =>
 const toMediaFile = (f: NativeMediaFile): MediaFile => ({
   id: f.Id,
   itemId: f.ItemId ?? '',
-  path: f.Path,
+  // Folders are opened by their tree path (`folder_open`), files by id.
+  path: f.Type === FileType.Folder && f.TreePath ? f.TreePath : f.Path,
   title: f.Title ?? basename(f.Path),
   shortTitle: f.ShortTitle,
   type: f.Type ?? FileType.File,
@@ -241,8 +244,11 @@ export const NativePlayer = () => {
       playback_ended: () => store.setState({ isPlaying: false, playbackEnded: true, showFin: false }),
       playback_resumed: () => store.getState().setPlaybackEnded(false),
       next_file_plan: (plan: NextFilePlan) => applyNextFilePlan(plan),
-      // Sent with the state replay after the overlay reconnects (C# PlayerCore.ResendState).
-      play_state: (playing: boolean) => store.getState().setIsPlaying(playing),
+      // mpv's pause property (MpvPlayer), also in the state replay after the overlay reconnects (PlayerCore.ResendState).
+      // While buffering the overlay paused mpv itself and `isPlaying` keeps the user's wish.
+      play_state: (playing: boolean) => {
+        if (!store.getState().isBuffering) store.getState().setIsPlaying(playing);
+      },
       // OS media controls (MPRIS, media keys; C# MediaSessionService): run as if the overlay's own buttons were used.
       media_control: (action: 'play' | 'pause' | 'play_pause' | 'next') => {
         const { isPlaying } = store.getState();

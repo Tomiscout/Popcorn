@@ -1,4 +1,5 @@
-﻿using Popcorn.Domain.Enum;
+﻿using Popcorn.Domain;
+using Popcorn.Domain.Enum;
 using Popcorn.Domain.Models;
 using Popcorn.FilenameParser;
 
@@ -23,10 +24,11 @@ public static class MediaItemExtensions
 
         //If next file is sibling
         var lastItemFile = item.Files?.First(f => f.Id == lastItem.FileId);
-        var historyPaths = history?.Select(h => item.Files!.First(f => f.Id == h.FileId).Path).ToList();
+        var historyPaths = history?.Select(h => item.Files!.First(f => f.Id == h.FileId).Tree()).ToList();
 
-        var currentFolder = Directory.GetParent(lastItemFile.Path).FullName;
-        result ??= FindNextMediaFileSibling(currentFolder, item.Files, lastItemFile.Path);
+        // Folders of the item's tree (MediaTree): virtual folders per source when it has several.
+        var currentFolder = Directory.GetParent(lastItemFile.Tree()).FullName;
+        result ??= FindNextMediaFileSibling(currentFolder, item.Files, lastItemFile.Tree());
         result ??= FindNextMediaFileInSubdirectories(currentFolder, item.Files, historyPaths);
         if (result is not null)
         {
@@ -192,7 +194,7 @@ public static class MediaItemExtensions
 
     /// <summary>Folder first, then its subfolders (\0 sorts "a/b" before "a b"), as the walk of GetNextMediaFile goes.</summary>
     private static List<MediaFile> FolderOrder(IEnumerable<MediaFile> files) => files
-        .OrderBy(f => (Path.GetDirectoryName(f.Path) ?? "").Replace(Path.DirectorySeparatorChar, '\0'), StringComparer.Ordinal)
+        .OrderBy(f => (Path.GetDirectoryName(f.Tree()) ?? "").Replace(Path.DirectorySeparatorChar, '\0'), StringComparer.Ordinal)
         .ThenBy(f => f.Title).ThenBy(f => f.Path)
         .ToList();
 
@@ -273,7 +275,7 @@ public static class MediaItemExtensions
     private static bool IsFolderPlayed(MediaItem item, MediaFile folder) //TODO this can be optimised, but not too complex so whatever
     {
         if (item.History is null) return false;
-        var folderFiles = item.Files.GetFilesForDirectory(folder.Path);
+        var folderFiles = item.Files.GetFilesForDirectory(folder.Tree());
 
         foreach (var file in folderFiles)
         {
@@ -299,18 +301,23 @@ public static class MediaItemExtensions
     }
     #endregion
 
+    /// <summary>Breadcrumbs from the item's folder down to <paramref name="topFolder"/> (a folder of the item's tree).</summary>
     public static List<FolderLoadedNavigation> BuildNavigationPath(this MediaItem item, string topFolder)
     {
         //TODO no validation that provided topFolder is subpath of parent
         var navigation = new List<FolderLoadedNavigation>();
         var rootDrive = Path.GetPathRoot(topFolder);
-        var currentFolder = topFolder;
-        while(currentFolder != item.FolderDirectory && currentFolder != rootDrive)
+        var root = Path.TrimEndingDirectorySeparator(item.FolderDirectory ?? "");
+        var currentFolder = Path.TrimEndingDirectorySeparator(topFolder);
+        while(!string.IsNullOrEmpty(currentFolder) && currentFolder != root && currentFolder != rootDrive)
         {
+            // Virtual folders are named after their source, not their path.
+            var entry = item.Files?.FirstOrDefault(f => f.Type == FileType.Folder && f.Tree() == currentFolder);
             navigation.Add(new FolderLoadedNavigation()
             {
-                Title = Path.GetFileName(currentFolder),
-                Path = currentFolder
+                Title = entry?.Title ?? Path.GetFileName(currentFolder),
+                Path = currentFolder,
+                FileId = entry?.Id,
             });
             currentFolder = Path.GetDirectoryName(currentFolder)!;
         }
@@ -320,7 +327,7 @@ public static class MediaItemExtensions
     public static List<MediaFile> GetFilesForDirectory(this IList<MediaFile> files, string rootDirectory)
     {
         var resultFiles = files
-            .Where(file => Path.GetDirectoryName(file.Path) == rootDirectory)
+            .Where(file => !file.IsHidden() && Path.GetDirectoryName(file.Tree()) == rootDirectory)
             .OrderByDescending(x => x.Type)
             .ThenBy(x => x.Title)
             .ToList();
@@ -336,7 +343,7 @@ public static class MediaItemExtensions
            .OrderBy(i => i.Title)
            .ToList();
 
-        var currentFileIndex = currentFiles.IndexOf(currentFiles.FirstOrDefault(m => m.Path == lastItemPath));
+        var currentFileIndex = currentFiles.IndexOf(currentFiles.FirstOrDefault(m => m.Tree() == lastItemPath));
         if (currentFileIndex == -1)
         {
             throw new Exception("Couldn't find next file to play. History data differs from current file data");
@@ -360,7 +367,7 @@ public static class MediaItemExtensions
         if (currentFiles.Count > 0 && history is not null)
         {
             currentFiles = currentFiles
-                .Where(i => !history.Contains(i.Path))
+                .Where(i => !history.Contains(i.Tree()))
                 .ToList();
         }
         return currentFiles.FirstOrDefault();
@@ -381,7 +388,7 @@ public static class MediaItemExtensions
             .OrderBy(i => i.Title)
             .ToList();
 
-        var currentFolderIndex = parentFolders.IndexOf(parentFolders.FirstOrDefault(m => m.Path == directory));
+        var currentFolderIndex = parentFolders.IndexOf(parentFolders.FirstOrDefault(m => m.Tree() == directory));
         if (currentFolderIndex >= parentFolders.Count - 1)
         {
             return null; //Last one
@@ -389,7 +396,7 @@ public static class MediaItemExtensions
 
         for (var i = currentFolderIndex + 1; i < parentFolders.Count; i++)
         {
-            var folderFile = FindNextMediaFileInSubdirectories(parentFolders[i].Path, files, history);
+            var folderFile = FindNextMediaFileInSubdirectories(parentFolders[i].Tree(), files, history);
             if (folderFile is not null)
             {
                 return folderFile;
@@ -405,7 +412,7 @@ public static class MediaItemExtensions
         if (history is not null)
         {
             var dirFiles = allFiles
-                .Where(f => f.Type == FileType.File && !history.Contains(f.Path))
+                .Where(f => f.Type == FileType.File && !history.Contains(f.Tree()))
                 .OrderBy(f => f.Title)
                 .ToList();
             if (dirFiles.Any())
@@ -419,7 +426,7 @@ public static class MediaItemExtensions
             .ToList();
         foreach (var subdirectory in subdirectories)
         {
-            List<MediaFile> filesInSubdirectory = files.GetFilesForDirectory(subdirectory.Path)
+            List<MediaFile> filesInSubdirectory = files.GetFilesForDirectory(subdirectory.Tree())
                 .Where(f => f.Type == FileType.File)
                 .OrderBy(f => f.Title)
                 .ToList();
@@ -429,7 +436,7 @@ public static class MediaItemExtensions
             }
             else
             {
-                MediaFile nextFile = FindNextMediaFileInSubdirectories(subdirectory.Path, files, history);
+                MediaFile nextFile = FindNextMediaFileInSubdirectories(subdirectory.Tree(), files, history);
                 if (nextFile != null)
                 {
                     return nextFile;

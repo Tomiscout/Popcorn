@@ -34,6 +34,8 @@ public class SubscriptionWebService(
                 if (await segmentFinder.GetStateAsync(itemId) is { } state)
                     await bus.SendEventAsync(SocketRequests.SegmentsState, state);
                 break;
+            case SocketRequests.MediaItemHistoryChanged:
+                break; // a ping: nothing to send until it changes
             default:
                 throw new ArgumentException($"{request.Topic} can't be subscribed to");
         }

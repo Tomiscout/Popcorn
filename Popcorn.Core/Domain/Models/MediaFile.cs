@@ -8,6 +8,8 @@ public class MediaFile
 {
     public required Guid Id { get; set; } = Guid.NewGuid();
     public Guid ItemId { get; set; } = Guid.Empty;
+    /// <summary>The <see cref="ItemSource"/> it came from (null: rows written by older versions, treated as the item folder's).</summary>
+    public Guid? SourceId { get; set; }
     public string Path { get; set; }  //TODO this should be renamed to FilePath, but file migration would be needed. Or just keep it whatever
     public string Title { get; set; }
     public string ShortTitle { get; set; } = string.Empty;
@@ -15,6 +17,15 @@ public class MediaFile
     public bool Played { get; set; } = false;
     public bool IntroProcessed { get; set; } = false;
     public bool OutroProcessed { get; set; } = false;
+
+    /// <summary>
+    /// Path in the item's file tree (not stored, set by <c>MediaTree.Build</c>): <see cref="Path"/> while the item has one
+    /// source, else under a virtual folder per source inside the item's folder. Folder navigation and the folder walk of
+    /// the next file solver use it; playing uses <see cref="Path"/>.
+    /// </summary>
+    public string? TreePath { get; set; }
+    /// <summary>A source's folder in the tree, no row of its own (<see cref="Id"/> = the source's id).</summary>
+    public bool IsVirtual { get; set; }
 
     public List<SegmentLocation> SegmentLocations { get; set; } = new ();
 

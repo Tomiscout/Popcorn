@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using System.Net.Mime;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Olbrasoft.SystemTray.Linux;
@@ -21,7 +21,6 @@ public class LinuxTrayManager : ITrayManager
 
     private TrayIconManager? _trayIconManager;
     private ITrayIcon? _trayIcon;
-    private Process? _launchedAppProcess;
     private readonly string _iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tray.svg");
 
     public LinuxTrayManager(
@@ -85,6 +84,8 @@ public class LinuxTrayManager : ITrayManager
                 TrayTooltip,
                 menuHandler,
                 cancellationToken);
+            // Activate (the click that doesn't open the menu) arrives on the DBus thread.
+            _trayIcon.Clicked += (_, _) => _ = Task.Run(ToggleAppAsync);
 
             _logger.LogInformation("Tray icon started.");
         }
@@ -201,22 +202,34 @@ public class LinuxTrayManager : ITrayManager
         return Task.CompletedTask;
     }
 
+    /// <summary>Icon click: closes the desktop app if it runs, else starts it.</summary>
+    private async Task ToggleAppAsync()
+    {
+        try
+        {
+            var running = FindAppProcesses();
+            running.ForEach(static process => process.Dispose());
+            if (running.Count > 0)
+            {
+                await CloseAppAsync();
+            }
+            else
+            {
+                await OpenAppAsync(CancellationToken.None);
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Tray click: could not open/close {ExecutableName}.", AppExecutableName);
+        }
+    }
+
     private Task OpenAppAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (string.Equals(Path.GetFileNameWithoutExtension(Environment.ProcessPath), AppExecutableName, StringComparison.Ordinal))
-        {
-            _logger.LogDebug("Open app ignored because Popcorn.Linux already hosts this tray.");
-            return Task.CompletedTask;
-        }
-
-        if (_launchedAppProcess is { HasExited: false })
-        {
-            _logger.LogDebug("Open app ignored because launched Popcorn.Linux process is still running.");
-            return Task.CompletedTask;
-        }
-
+        // A running instance is not checked for: Popcorn.Linux is single-instance (CEF profile), a second launch
+        // focuses the first window and exits.
         var executablePath = ResolveAppExecutablePath();
         if (string.IsNullOrWhiteSpace(executablePath))
         {
@@ -232,17 +245,8 @@ public class LinuxTrayManager : ITrayManager
         };
         startInfo.Environment["POPCORN_SERVER_URL"] = GetServerUri().ToString();
 
-        var process = Process.Start(startInfo);
-        if (process is null)
-        {
-            _logger.LogWarning("Failed to start {ExecutableName}.", AppExecutableName);
-            return Task.CompletedTask;
-        }
-
-        process.EnableRaisingEvents = true;
-        process.Exited += OnLaunchedAppExited;
-        _launchedAppProcess = process;
-
+        // Not tracked: the app may as well have been started from the desktop entry, so closing finds it by name.
+        Process.Start(startInfo)?.Dispose();
         _logger.LogInformation("Started {ExecutableName} using existing server at {ServerUrl}.", AppExecutableName, GetServerUri());
         return Task.CompletedTask;
     }
@@ -251,57 +255,84 @@ public class LinuxTrayManager : ITrayManager
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        await StopLaunchedAppAsync();
+        await CloseAppAsync();
         _hostApplicationLifetime.StopApplication();
     }
 
-    private async Task StopLaunchedAppAsync()
+    /// <summary>
+    /// Closes every running desktop app (browser process; CEF's helpers exit with it): SIGTERM, which Chromium
+    /// handles as a normal quit, then a kill after a bounded wait so the tray's Exit always reaches StopApplication.
+    /// </summary>
+    private async Task CloseAppAsync()
     {
-        var process = _launchedAppProcess;
-        _launchedAppProcess = null;
-
-        if (process is null)
+        foreach (var process in FindAppProcesses())
         {
-            return;
-        }
-
-        process.Exited -= OnLaunchedAppExited;
-
-        try
-        {
-            if (!process.HasExited)
+            using (process)
             {
-                process.Kill(entireProcessTree: true);
-                // Bounded: the tray's Exit must always reach StopApplication.
-                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(3));
+                try
+                {
+                    if (Kill(process.Id, SigTerm) != 0)
+                    {
+                        process.Kill(entireProcessTree: true);
+                    }
+
+                    try
+                    {
+                        await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(3));
+                    }
+                    catch (TimeoutException)
+                    {
+                        process.Kill(entireProcessTree: true);
+                    }
+
+                    _logger.LogInformation("Closed {ExecutableName} (pid {Pid}).", AppExecutableName, process.Id);
+                }
+                catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                    _logger.LogWarning("Could not stop {ExecutableName}: {Message}", AppExecutableName, e.Message);
+                }
             }
         }
-        catch (Exception e) when (e is InvalidOperationException or TimeoutException)
-        {
-            _logger.LogWarning("Could not stop {ExecutableName}: {Message}", AppExecutableName, e.Message);
-        }
-        finally
-        {
-            process.Dispose();
-        }
     }
 
-    private void OnLaunchedAppExited(object? sender, EventArgs e)
+    /// <summary>Running desktop apps of this user: CEF helpers share the process name but carry <c>--type=</c>.</summary>
+    private static List<Process> FindAppProcesses()
     {
-        if (sender is not Process process)
+        var result = new List<Process>();
+        foreach (var process in Process.GetProcessesByName(AppExecutableName))
         {
-            return;
+            string cmdline;
+            try
+            {
+                cmdline = File.ReadAllText($"/proc/{process.Id}/cmdline");
+            }
+            catch (IOException)
+            {
+                process.Dispose();
+                continue;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                process.Dispose();
+                continue;
+            }
+
+            if (cmdline.Split('\0').Any(static arg => arg.StartsWith("--type=", StringComparison.Ordinal)))
+            {
+                process.Dispose();
+                continue;
+            }
+
+            result.Add(process);
         }
 
-        process.Exited -= OnLaunchedAppExited;
-
-        if (ReferenceEquals(_launchedAppProcess, process))
-        {
-            _launchedAppProcess = null;
-        }
-
-        process.Dispose();
+        return result;
     }
+
+    private const int SigTerm = 15;
+
+    [DllImport("libc", EntryPoint = "kill", SetLastError = true)]
+    private static extern int Kill(int pid, int signal);
 
     private string EnsureTrayIconFile()
     {

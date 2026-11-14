@@ -13,12 +13,34 @@ detection: [Popcorn.SegmentFinder](../Popcorn.SegmentFinder/README.md).
   - The title is renamed in place (pencil on hover, socket `RenameMediaItem` → `title` + `short_title`).
   - History tab: newest first, trash per row (on hover) + Delete all (confirm), socket `MediaItemHistoryDelete`
     (`historyId` = `ItemHistory.Id` = the table's SQLite `rowid`, read as `history_id`; none = all) → files left
-    without history get `played = 0`, the item is resent.
+    without history get `played = 0`.
+  - Played marks, history and Continue follow whatever plays the item (web player, external players, the native
+    player, other tabs): `ItemHistoryService.Changed` → `MediaItemHistoryChanged` ping → the page requests the item
+    again (and reopens its open subfolder).
   - Files tab "Flatten files" switch = every file in play order (`MediaItemExtensions.GetPlayOrder`: chains the
     next-file solver `FindNextFile` from the first episode / first file of the folder walk; files it passes over
     follow, other versions right after their episode), sent with the item as `MediaItemFlatFileList`
-    (`multipleDownloads` = more than one download is attached to the item → switch on by default). The user's choice
-    is per item in localStorage (`itemFlattenFiles:<id>`).
+    (`multipleDownloads` = the item has several sources, i.e. virtual folders → switch on by default). The user's
+    choice is per item in localStorage (`itemFlattenFiles:<id>`).
+  - Merge (`merge-item.modal.tsx`, socket `MediaItemMerge`): another item, the most similar one preselected
+    (`MediaItemMatch`), is merged into this one (`MediaItemService.MergeAsync`): its sources, files, history and
+    intro/outro references move, its downloads feed this item, it is deleted. Files stay on disk. The target takes its
+    pictures / description / media source only where it has none.
+  - Sources (pencil "Sources" button, `sources.modal.tsx`): the item's sources with their origins and video counts;
+    removing one (socket `MediaItemSourceRemove`, not the last one) drops its files and their history from the
+    library (`MediaItemService.RemoveSourceAsync`), its downloads leave the library (`DownloadManager.ReleaseSourceAsync`:
+    they go on unlinked, or with "Also delete files from disk" are removed with their files, then the source's
+    library files and folders left empty are deleted). Removing the item folder's source moves the item to the
+    oldest other source's folder.
+- **Sources and the virtual file tree**: every file belongs to an `ItemSource` (`MediaFile.SourceId`): a library
+  folder, a download or a batch of downloads; merged items' sources remember the item (`MergedFromTitle`). With one
+  source the tree is the folder on disk. With several (`Domain/MediaTree.cs`, built whenever an item is loaded with
+  its files) each source is a virtual folder inside the item's folder, named after it, id = the source's id, files
+  below it as below the source's folder (`MediaFile.TreePath`; `Path` stays the file on disk). Folder navigation
+  (item page, both players' `FolderOpen*` / `folder_open`), breadcrumbs and the next-file folder walk use the tree;
+  playing, thumbnails and streaming use `Path`; external subtitles are searched up to the file's source folder
+  (`RootFolderOf`). A virtual folder's info icon shows where its files came from (downloads, file source results).
+  Migration `ItemSources_20261114` gave every existing item one folder source.
 
 ## Players
 
@@ -80,6 +102,11 @@ detection: [Popcorn.SegmentFinder](../Popcorn.SegmentFinder/README.md).
   episode if it is now there). Find file = `/watch/<item>?tab=sources&q=<title> <SxxExx>`: browser floats the player
   and navigates, native `open_app_path` → `AppWindowLauncher` → `Popcorn.Linux --open-path=<path>` (a running
   instance takes it over in `on_already_running_app_relaunch`; no desktop app: default browser).
+  Native: the next file plays unless the user paused the current one. mpv's `pause` is an option that survives
+  `loadfile` and keep-open sets it at the end of a file, so `MpvPlayer.LoadMedia` sets it for every file (paused only
+  when paused and not at the end); mpv's pause is pushed to the overlay (`play_state`, ignored while buffering).
+  `eof-reached` can flip true → false → true at one end (a seek to the very end makes mpv seek back to the last
+  frame), so `PlayerCore` asks for the next file once per end, and loads run one at a time (newest request wins).
 - **Files still downloading**: `downloadRanges` in the player store drives both rules (`player.store.ts`, shared by
   all hosts). `canSeekTo`: seek bar, skip buttons and arrow keys refuse targets outside the downloaded parts.
   `needsBuffering`: playback stops 5 s before the end of the downloaded part it is in (or at once outside any) and

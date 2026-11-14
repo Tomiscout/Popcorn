@@ -5,13 +5,15 @@ using Popcorn.Domain.Models;
 using Popcorn.Player.Core.WebSocket;
 using Popcorn.Player.Core.Contracts;
 using Popcorn.Player.Core.Player;
+using Popcorn.Player.Core.Services;
 using Popcorn.Shared.Utils;
 
 namespace Popcorn.Player.Core.Core;
 public class MediaItemManager(
     Lazy<WebEventHandler> webSocket,
     IMediaItemRepository mediaItemRepository,
-    IMediaFileRepository mediaFileRepository)
+    IMediaFileRepository mediaFileRepository,
+    ServerClient server)
 {
     public MediaItem CurrentMediaItem { get; private set; }
 
@@ -63,7 +65,6 @@ public class MediaItemManager(
             ItemId = file.ItemId,
             PlaybackTime = DateTime.UtcNow
         });
-            
-        // TODO event to popcorn to refresh played items
+        _ = server.NotifyHistoryChangedAsync(file.ItemId); // doesn't hold up loading the file; never throws
     }
 }

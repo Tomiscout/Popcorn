@@ -20,5 +20,6 @@ public class MediaItemMap : EntityMap<MediaItem>
         Map(m => m.MediaId).ToColumn("media_id");
         Map(m => m.ImdbId).ToColumn("imdb_id");
         Map(m => m.Source).Ignore();
+        Map(m => m.Sources).Ignore();
     }
 }

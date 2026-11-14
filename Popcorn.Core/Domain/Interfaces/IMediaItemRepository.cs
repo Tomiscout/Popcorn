@@ -37,4 +37,26 @@ public interface IMediaItemRepository
     Task SetSegmentSeen(Guid segmentId);
     Task<SegmentAutoSkip?> GetSegmentAutoSkip(Guid itemId);
     Task SetSegmentAutoSkip(Guid itemId, SegmentAutoSkip? mode);
+
+    Task<List<ItemSource>> GetSources(Guid itemId);
+    Task<ItemSource?> GetSource(Guid sourceId);
+    Task InsertSource(ItemSource source);
+    /// <summary>Kind, title, root and origins of the source.</summary>
+    Task UpdateSource(ItemSource source);
+    /// <summary>Deletes a source; its files keep the id (they fall back to the item folder's source in the tree).</summary>
+    Task DeleteSource(Guid sourceId);
+    /// <summary>
+    /// Deletes a source and the files (rows, with their history and intro/outro locations) given, in one transaction;
+    /// <paramref name="folderDirectory"/> = the item's new folder (its folder source was removed), null = unchanged.
+    /// </summary>
+    Task RemoveSource(Guid itemId, Guid sourceId, IReadOnlyCollection<Guid> fileIds, string? folderDirectory);
+    /// <summary>Gives the item's files (and folders) at or below <paramref name="folder"/> to the source; returns how many.</summary>
+    Task<int> MoveFilesToSource(Guid itemId, Guid sourceId, string folder);
+    /// <summary>
+    /// Moves everything of <paramref name="otherId"/> (sources, files, history, intro/outro references) to
+    /// <paramref name="targetId"/> and deletes it, in one transaction. Its sources remember where they came from.
+    /// </summary>
+    Task MergeItems(Guid targetId, Guid otherId, string otherTitle);
+    /// <summary>Description / media source of the item where it has none.</summary>
+    Task SetMissingDetails(Guid id, string? description, MediaSourceRef? source);
 }

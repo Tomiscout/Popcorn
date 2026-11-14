@@ -81,12 +81,12 @@ public class MediaItemWebService(
             logger.LogError(e, "Could not order the files of item {itemId}", mediaItem.Id);
             files = [];
         }
-        var downloadCount = (await downloads.GetListAsync()).Count(d => d.MediaItemId == mediaItem.Id);
         await bus.SendEventAsync(SocketRequests.MediaItemFlatFileList, new MediaItemFlatFileListResponse
         {
             ItemId = mediaItem.Id,
             Files = files,
-            MultipleDownloads = downloadCount > 1,
+            // Its tree has a virtual folder per source then (downloads, merged items).
+            MultipleDownloads = mediaItem.Files.Any(f => f.IsVirtual),
         });
     }
 
@@ -97,9 +97,8 @@ public class MediaItemWebService(
             await mediaItemRepository.DeleteHistoryItem(request.ItemId, historyId);
         else
             await mediaItemRepository.DeleteHistoryAll(request.ItemId);
-
-        // History decides played marks and what Play continues: resend the whole item.
-        await SendMediaItems(new MediaItemRequest { Id = request.ItemId });
+        // History decides played marks and what Play continues: its pages (this one too) get the ping and refetch.
+        itemHistoryService.NotifyChanged(request.ItemId);
     }
 
     [WebSocketEvent(SocketRequests.RenameMediaItem)]
@@ -114,6 +113,49 @@ public class MediaItemWebService(
         mediaItem.Title = title;
         mediaItem.ShortTitle = title;
         await bus.SendEventAsync(SocketRequests.MediaItem, mediaItem);
+    }
+
+    [WebSocketEvent(SocketRequests.MediaItemMatch)]
+    public async Task Match(MediaItemMatchRequest request)
+    {
+        var items = await mediaItemRepository.GetMediaItemsWithHistory();
+        var ranked = MediaItemMatcher.Rank(request.Name, items)
+            .Select(m => new MediaItemMatchDto(m.Item.Id, m.Item.GetDisplayTitle(), m.Item.ImagePath, Math.Round(m.Score, 3)))
+            .ToList();
+        await bus.SendEventAsync(SocketRequests.MediaItemMatch, new MediaItemMatchResponse(request.Name, ranked));
+    }
+
+    /// <summary>
+    /// Merges an item into another: its sources become virtual folders of the target, its downloads feed the target,
+    /// its history and intro/outro references move along. The target's page gets the merged item.
+    /// </summary>
+    [WebSocketEvent(SocketRequests.MediaItemMerge)]
+    public async Task Merge(MediaItemMergeRequest request)
+    {
+        var merged = await mediaItemService.MergeAsync(request.TargetId, request.OtherId);
+        if (merged is null) return;
+        await downloads.ReassignItemAsync(request.OtherId, request.TargetId);
+        segmentFinder.ForgetItem(request.OtherId, []); // its references moved to the target
+        mediaImageService.DeleteImages(merged); // the pictures the target did not take
+        logger.LogInformation("Merged item {Other} ({Title}) into {Target}", request.OtherId, merged.Title, request.TargetId);
+        await SendMediaItems(new MediaItemRequest { Id = request.TargetId });
+    }
+
+    [WebSocketEvent(SocketRequests.MediaItemSourceRemove)]
+    public async Task RemoveSource(MediaItemSourceRemoveRequest request)
+    {
+        var sources = await mediaItemRepository.GetSources(request.ItemId);
+        if (sources.All(s => s.Id != request.SourceId)) return;
+        if (sources.Count <= 1) throw new InvalidOperationException("The item's only source cannot be removed; remove the item instead");
+
+        // Downloads first: stopped before their files are deleted, and not linked again when they finish.
+        var released = await downloads.ReleaseSourceAsync(request.ItemId, request.SourceId, request.DeleteFiles);
+        var failed = await mediaItemService.RemoveSourceAsync(request.ItemId, request.SourceId, request.DeleteFiles);
+        if (failed.Count > 0)
+            logger.LogWarning("Could not delete {Count} path(s) of source {Source}: {Paths}", failed.Count, request.SourceId, failed);
+        logger.LogInformation("Removed source {Source} from item {Item} ({Downloads} downloads, files deleted: {Deleted})",
+            request.SourceId, request.ItemId, released, request.DeleteFiles);
+        await SendMediaItems(new MediaItemRequest { Id = request.ItemId });
     }
 
     [WebSocketEvent(SocketRequests.MediaItemFileList)]

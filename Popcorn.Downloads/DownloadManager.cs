@@ -109,6 +109,7 @@ public sealed class DownloadManager(
             }
             logger.LogInformation("Downloads ready: {Count} restored", _downloads.Count);
             _ready.SetResult();
+            await AdoptLegacySourcesAsync();
             _ = Task.Run(() => LoopAsync(_stopping.Token));
         }
         catch (Exception e)
@@ -454,40 +455,133 @@ public sealed class DownloadManager(
         }
     }
 
-    /// <summary>Folder of the item a download is attached to (its download folder goes inside), null = the download folder.</summary>
+    /// <summary>
+    /// Folder the download's folder goes in: its batch source's folder, else null = the download folder (a download
+    /// attached to an item becomes a virtual folder of it, wherever its files are).
+    /// </summary>
     private async Task<string?> AttachFolderAsync(AddDownloadOptions options)
     {
         if (options.MediaItemId is not { } id) return null;
-        var item = await mediaItemRepository.GetMediaItem(id) ?? throw new ArgumentException("The library item no longer exists");
-        if (string.IsNullOrWhiteSpace(item.FolderDirectory)) throw new ArgumentException("The library item has no folder");
-        return Path.TrimEndingDirectorySeparator(item.FolderDirectory);
+        _ = await mediaItemRepository.GetMediaItem(id) ?? throw new ArgumentException("The library item no longer exists");
+        if (options.SourceId is not { } sourceId) return null;
+        var source = await mediaItemRepository.GetSource(sourceId);
+        if (source is null || source.ItemId != id || string.IsNullOrWhiteSpace(source.RootPath)) return null;
+        Directory.CreateDirectory(source.RootPath);
+        return Path.TrimEndingDirectorySeparator(source.RootPath);
     }
 
+    /// <summary>Where a batch of downloads goes (<see cref="CreateBatchTargetAsync"/>).</summary>
+    public record BatchTarget(Guid ItemId, Guid SourceId, bool Created);
+
     /// <summary>
-    /// A new, empty library item in its own folder of the download folder, for a batch of downloads attached to it
-    /// (e.g. the episodes of a show picked on a search page).
+    /// The library item and source a batch of downloads goes into (e.g. the episodes of a show picked on a search page),
+    /// so they end up in one virtual folder. <paramref name="itemId"/> = an existing item: a new source with its own
+    /// folder in the download folder, named <paramref name="sourceTitle"/>. Without it: a new, empty item in its own
+    /// folder of the download folder, that folder being its source.
     /// </summary>
-    public async Task<Guid> CreateLibraryItemAsync(string title, string? posterUrl, string? backdropUrl = null, MediaSourceRef? source = null)
+    public async Task<BatchTarget> CreateBatchTargetAsync(Guid? itemId, string title, string? sourceTitle, string? posterUrl,
+        string? backdropUrl = null, MediaSourceRef? source = null)
     {
         await _ready.Task;
+        if (itemId is { } existingId)
+        {
+            var existing = await mediaItemRepository.GetMediaItem(existingId) ?? throw new ArgumentException("The library item no longer exists");
+            var name = string.IsNullOrWhiteSpace(sourceTitle) ? existing.GetDisplayTitle() : sourceTitle.Trim();
+            var batchFolder = await NewFolderAsync(name);
+            var batchSource = await mediaItemService.CreateSourceAsync(existingId, ItemSourceKind.Download, name, batchFolder);
+            return new BatchTarget(existingId, batchSource.Id, false);
+        }
+
+        var folder = await NewFolderAsync(title);
+        var item = new MediaItem { FolderDirectory = folder, Title = title, Files = [], Source = source };
+        var itemSource = new ItemSource { Kind = ItemSourceKind.Download, Title = string.IsNullOrWhiteSpace(sourceTitle) ? title : sourceTitle.Trim(), RootPath = folder };
+        var id = await mediaItemService.CreateMediaItemFromScan(item, new MediaScanResult { FolderPath = folder, Title = title, Files = [], Folders = [] }, itemSource);
+        await mediaImageService.TrySetImageAsync(item, MediaImageKind.Poster, posterUrl);
+        await mediaImageService.TrySetImageAsync(item, MediaImageKind.Backdrop, backdropUrl);
+        return new BatchTarget(id, itemSource.Id, true);
+    }
+
+    private async Task<string> NewFolderAsync(string name)
+    {
         var root = _settings.ResolveDownloadFolder();
-        string folder;
         await _gate.WaitAsync();
         try
         {
-            folder = DownloadPaths.NewDownloadFolder(root, title, _downloads.Select(d => d.Record.SavePath));
+            var folder = DownloadPaths.NewDownloadFolder(root, name, _downloads.Select(d => d.Record.SavePath));
             Directory.CreateDirectory(folder);
+            return folder;
         }
         finally
         {
             _gate.Release();
         }
+    }
 
-        var item = new MediaItem { FolderDirectory = folder, Title = title, Files = [], Source = source };
-        var id = await mediaItemService.CreateMediaItemFromScan(item, new MediaScanResult { FolderPath = folder, Title = title, Files = [], Folders = [] });
-        await mediaImageService.TrySetImageAsync(item, MediaImageKind.Poster, posterUrl);
-        await mediaImageService.TrySetImageAsync(item, MediaImageKind.Backdrop, backdropUrl);
-        return id;
+    /// <summary>
+    /// Item <paramref name="fromId"/> was merged into <paramref name="toId"/>: its downloads now feed the other item, which
+    /// they do not own (deleting their files only drops those files).
+    /// </summary>
+    public async Task ReassignItemAsync(Guid fromId, Guid toId)
+    {
+        await _ready.Task;
+        await _gate.WaitAsync();
+        try
+        {
+            foreach (var record in _downloads.Select(d => d.Record).Where(r => r.MediaItemId == fromId || r.AttachToItemId == fromId))
+            {
+                if (record.MediaItemId == fromId) record.MediaItemId = toId;
+                record.AttachToItemId = toId;
+            }
+            await SaveAsync();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+        lock (_items)
+        {
+            _items.Remove(fromId);
+            _items.Remove(toId);
+        }
+        OnChanged();
+    }
+
+    /// <summary>
+    /// A source of an item is being removed: its downloads leave the library. With <paramref name="deleteFiles"/> they
+    /// are removed with their files, else they go on, linked to no item. Returns how many.
+    /// </summary>
+    public async Task<int> ReleaseSourceAsync(Guid itemId, Guid sourceId, bool deleteFiles)
+    {
+        await _ready.Task;
+        List<Guid> ids;
+        await _gate.WaitAsync();
+        try
+        {
+            var records = _downloads.Select(d => d.Record)
+                .Where(r => r.SourceId == sourceId && (r.MediaItemId == itemId || r.AttachToItemId == itemId))
+                .ToList();
+            ids = records.Select(r => r.Id).ToList();
+            if (!deleteFiles && records.Count > 0)
+            {
+                foreach (var record in records)
+                {
+                    record.MediaItemId = null;
+                    record.AttachToItemId = null;
+                    record.SourceId = null;
+                    record.AddToLibrary = false;
+                }
+                await SaveAsync();
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+        // Stopped before the caller deletes the source's files, so nothing writes into them.
+        if (deleteFiles) foreach (var id in ids) await RemoveAsync(id, deleteFiles: true);
+        lock (_items) _items.Remove(itemId);
+        OnChanged();
+        return ids.Count;
     }
 
     private DownloadRecord NewRecord(DownloadKind kind, string source, string name, AddDownloadOptions options, string? root, string? folderName = null)
@@ -506,16 +600,26 @@ public sealed class DownloadManager(
             BackdropUrl = options.BackdropUrl,
             MediaSource = MediaSourceRef.Clean(options.MediaSource),
             AttachToItemId = options.MediaItemId,
+            SourceId = options.MediaItemId is null ? null : options.SourceId,
+            FileOrigin = FileOrigin.Clean(options.FileOrigin),
         };
     }
 
     /// <summary>The same thing was added again, e.g. from a media page: link it to the library if not yet.</summary>
     private void Adopt(DownloadRecord record, AddDownloadOptions options)
     {
-        // Its files are already elsewhere: they cannot move into another item's folder.
-        if (options.MediaItemId is not null)
+        record.FileOrigin ??= FileOrigin.Clean(options.FileOrigin);
+        if (options.MediaItemId is { } itemId)
         {
-            logger.LogInformation("{Name} is already downloading, not attaching it to item {Item}", record.Name, options.MediaItemId);
+            // Sources are virtual folders: a download not in the library yet can still join an item where it is.
+            if (record.MediaItemId is null)
+            {
+                record.AddToLibrary = true;
+                record.AttachToItemId = itemId;
+                _linkAttempted.Remove(record.Id);
+            }
+            else if (record.MediaItemId != itemId)
+                logger.LogInformation("{Name} is already in another library item, not attaching it to item {Item} (merge the items instead)", record.Name, itemId);
             return;
         }
         if (!options.AddToLibrary || record.MediaItemId is not null) return;
@@ -654,6 +758,46 @@ public sealed class DownloadManager(
             });
         }
         return result.OrderByDescending(d => d.AddedAt).ToList();
+    }
+
+    /// <summary>The Downloads page's bottom panel for one download; null = no such download.</summary>
+    public async Task<DownloadDetailsDto?> GetDetailsAsync(Guid id)
+    {
+        await _ready.Task;
+        Download? download;
+        IReadOnlyList<DownloadFile> files;
+        List<IReadOnlyList<double[]>> ranges;
+        await _gate.WaitAsync();
+        try
+        {
+            download = _downloads.FirstOrDefault(d => d.Id == id);
+            if (download is null) return null;
+            files = download.Files;
+            ranges = files.Select(f => download.FileRanges(f.Index)).ToList();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        var d = download;
+        var common = new DownloadDetailsDto
+        {
+            Id = d.Id,
+            Kind = d.Record.Kind,
+            Name = d.Record.Name,
+            SavePath = d.Record.SavePath,
+            AddedAt = d.Record.AddedAt,
+            CompletedAt = d.Record.CompletedAt,
+            TotalSize = files.Count > 0 ? files.Sum(f => f.Length) : d.Size,
+            Size = d.Size,
+            Downloaded = d.Downloaded,
+            Uploaded = d.Uploaded,
+            Ratio = d.Size > 0 ? Math.Round((double)d.Uploaded / d.Size, 2) : 0,
+            SeedingSeconds = d.Record.SeedingSeconds,
+            FileRanges = ranges,
+        };
+        return await d.DetailsAsync(common);
     }
 
     /// <summary>
@@ -846,11 +990,12 @@ public sealed class DownloadManager(
                 Files = videos,
                 Folders = FoldersBetween(record.SavePath, videos),
             };
-            var itemId = await mediaItemService.CreateMediaItemFromScan(item, scan);
+            var source = new ItemSource { Kind = ItemSourceKind.Download, Title = record.Name, RootPath = record.SavePath, Origins = [OriginOf(record)] };
+            var itemId = await mediaItemService.CreateMediaItemFromScan(item, scan, source);
             await mediaImageService.TrySetImageAsync(item, MediaImageKind.Poster, record.PosterUrl);
             await mediaImageService.TrySetImageAsync(item, MediaImageKind.Backdrop, record.BackdropUrl);
             await _gate.WaitAsync();
-            try { record.MediaItemId = itemId; await SaveAsync(); }
+            try { record.MediaItemId = itemId; record.SourceId = source.Id; await SaveAsync(); }
             finally { _gate.Release(); }
             logger.LogInformation("Added download {Name} to the library ({Count} videos)", record.Name, videos.Count);
         }
@@ -859,6 +1004,16 @@ public sealed class DownloadManager(
             logger.LogError(e, "Could not add download {Name} to the library", record.Name);
         }
     }
+
+    /// <summary>What an item source keeps of the download (data: links are whole .torrent files: not kept).</summary>
+    private static SourceOrigin OriginOf(DownloadRecord record) => new()
+    {
+        DownloadId = record.Id,
+        Name = record.Name,
+        Link = record.Kind == DownloadKind.Direct || record.Source.StartsWith("magnet:", StringComparison.OrdinalIgnoreCase) ? record.Source : null,
+        AddedAt = record.AddedAt,
+        File = record.FileOrigin,
+    };
 
     /// <summary>Adds the videos of an attached download to its item; false if the item is gone (then it gets its own).</summary>
     private async Task<bool> AttachToItemAsync(DownloadRecord record, Guid itemId, List<string> videos)
@@ -870,19 +1025,21 @@ public sealed class DownloadManager(
             {
                 logger.LogWarning("Item {Item} of download {Name} was removed, adding the download as its own item", itemId, record.Name);
                 record.AttachToItemId = null;
+                record.SourceId = null;
                 return false;
             }
 
-            var root = Path.TrimEndingDirectorySeparator(item.FolderDirectory);
+            var source = await mediaItemService.EnsureDownloadSourceAsync(itemId, record.SourceId, record.SavePath, record.Name, OriginOf(record));
+            var root = Path.TrimEndingDirectorySeparator(source.RootPath);
             await mediaItemService.AddFilesFromScan(itemId, new MediaScanResult
             {
                 FolderPath = root,
                 Title = item.Title,
                 Files = videos,
                 Folders = FoldersBetween(root, videos),
-            });
+            }, source.Id);
             await _gate.WaitAsync();
-            try { record.MediaItemId = itemId; await SaveAsync(); }
+            try { record.MediaItemId = itemId; record.SourceId = source.Id; await SaveAsync(); }
             finally { _gate.Release(); }
             lock (_items) _items.Remove(itemId);
             logger.LogInformation("Added download {Name} to item {Title} ({Count} videos)", record.Name, item.Title, videos.Count);
@@ -892,6 +1049,37 @@ public sealed class DownloadManager(
             logger.LogError(e, "Could not add download {Name} to item {Item}", record.Name, itemId);
         }
         return true;
+    }
+
+    /// <summary>
+    /// Downloads linked to the library before item sources existed: each gets its source (the item's folder source
+    /// when it made the item, else a new one taking over its files), so it shows as its own virtual folder.
+    /// </summary>
+    private async Task AdoptLegacySourcesAsync()
+    {
+        List<DownloadRecord> records;
+        await _gate.WaitAsync();
+        try { records = _downloads.Select(d => d.Record).Where(r => r is { MediaItemId: not null, SourceId: null }).ToList(); }
+        finally { _gate.Release(); }
+        if (records.Count == 0) return;
+
+        foreach (var record in records)
+        {
+            try
+            {
+                if (await mediaItemRepository.GetMediaItem(record.MediaItemId!.Value) is null) continue;
+                var source = await mediaItemService.EnsureDownloadSourceAsync(record.MediaItemId.Value, null, record.SavePath, record.Name, OriginOf(record));
+                record.SourceId = source.Id;
+            }
+            catch (Exception e)
+            {
+                logger.LogWarning(e, "Could not give download {Name} its library source", record.Name);
+            }
+        }
+        await _gate.WaitAsync();
+        try { await SaveAsync(); }
+        finally { _gate.Release(); }
+        logger.LogInformation("Gave {Count} downloads their library sources", records.Count);
     }
 
     /// <summary>Folders below <paramref name="root"/> that contain the files, at any depth (the item's folder list).</summary>

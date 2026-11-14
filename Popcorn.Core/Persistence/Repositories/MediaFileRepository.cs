@@ -15,9 +15,9 @@ public class MediaFileRepository(ImageRepository imageRepository, DapperContext 
         using var connection = dbContext.CreateConnection();
         string insertSql = @"
             INSERT INTO MediaFile (id, item_id, file_path, title, short_title, type, played, intro_processed, outro_processed,
-                                   tags_processed, season, episode, format_tags, other_tags)
+                                   tags_processed, season, episode, format_tags, other_tags, source_id)
             VALUES (@Id, @ItemId, @Path, @Title, @ShortTitle, @Type, @Played, @IntroProcessed, @OutroProcessed,
-                    @TagsProcessed, @Season, @Episode, @FormatTags, @OtherTags)";
+                    @TagsProcessed, @Season, @Episode, @FormatTags, @OtherTags, @SourceId)";
 
         await connection.ExecuteAsync(insertSql, new
         {
@@ -34,7 +34,8 @@ public class MediaFileRepository(ImageRepository imageRepository, DapperContext 
             Season = file.Seasons,
             Episode = file.Episodes,
             file.FormatTags,
-            file.OtherTags
+            file.OtherTags,
+            SourceId = file.SourceId.SqliteId()
         });
     }
 

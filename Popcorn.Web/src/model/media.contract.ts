@@ -16,12 +16,70 @@ export interface MediaItem {
   description?: string | null;
   //files: MediaFile[];
   history: MediaItemHistory[];
+  /** Where its files came from (C# ItemSource); sent with the item page's item only. */
+  sources?: ItemSource[] | null;
+}
+
+// Popcorn.Core/Domain/Models/ItemSource.cs
+export enum ItemSourceKind {
+  Folder = 0,
+  Download = 1,
+}
+
+/** A set of the item's files: a library folder, a download or a batch of downloads; a virtual folder when there are several. */
+export interface ItemSource {
+  id: string;
+  itemId: string;
+  kind: ItemSourceKind;
+  title: string;
+  rootPath: string;
+  addedAt: string;
+  origins: SourceOrigin[];
+  /** Item it belonged to before that item was merged into this one. */
+  mergedFromItemId?: string | null;
+  mergedFromTitle?: string | null;
+}
+
+export interface SourceOrigin {
+  downloadId?: string | null;
+  name: string;
+  link?: string | null;
+  addedAt: string;
+  file?: FileOrigin | null;
+}
+
+/** The file source result a download was picked from. */
+export interface FileOrigin {
+  pluginId?: string | null;
+  sourceId?: string | null;
+  title?: string | null;
+  origin?: string | null;
+}
+
+// Popcorn.Server/Models/Requests/MediaItemRequest.cs
+export interface MediaItemMatch {
+  id: string;
+  title: string;
+  imagePath?: string | null;
+  /** 0..1, title words in common. */
+  score: number;
+}
+
+/** Every library item, best match for `name` first. */
+export interface MediaItemMatchResponse {
+  name: string;
+  items: MediaItemMatch[];
 }
 
 export interface MediaFile {
   id: string;
   itemId: string;
   path: string;
+  /** Path in the item's file tree (C# MediaTree): under a virtual folder per source when the item has several. */
+  treePath?: string | null;
+  /** A source's virtual folder (id = the source's id). */
+  isVirtual?: boolean;
+  sourceId?: string | null;
   title: string;
   shortTitle?: string;
   type?: FileType;

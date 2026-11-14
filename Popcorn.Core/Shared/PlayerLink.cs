@@ -11,7 +11,8 @@ public sealed record PlayerLinkMessage(Guid? FileId = null, string? FilePath = n
 /// <summary>
 /// Server → native player link, the same on Linux and Windows (AF_UNIX exists on Windows 10 1803+ too). The player
 /// listens on <see cref="SocketPath"/> while it runs; the server connects, writes one JSON line per message and
-/// closes. Nothing comes back: the player writes playback history to the database itself.
+/// closes. Nothing comes back here: the player writes playback history to the database itself and reports it over HTTP
+/// (<c>api/history/{itemId}/changed</c>).
 /// </summary>
 public static class PlayerLink
 {

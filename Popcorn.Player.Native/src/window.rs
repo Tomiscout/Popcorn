@@ -142,6 +142,9 @@ pub(crate) struct App {
     commit_damage: Option<Rect>,
     /// Transparent 1x1 placeholder until CEF's first paint (needed to map the window).
     placeholder: Option<Buffer>,
+    /// Opaque black 1x1 on the video surface until mpv's first frame replaces it, so the window
+    /// never shows through (the overlay above is mostly transparent).
+    video_placeholder: Option<Buffer>,
     frame_pending: bool,
     overlay_dirty: bool,
 
@@ -251,6 +254,7 @@ pub fn run() -> Result<(), String> {
         buffer_size: (0, 0),
         commit_damage: None,
         placeholder: None,
+        video_placeholder: None,
         frame_pending: false,
         overlay_dirty: false,
         keyboard: None,
@@ -428,6 +432,18 @@ impl App {
             video.resize(pw, ph);
         }
         cef_app::set_view(w, h, self.scale as f32);
+
+        if self.video.is_none() && self.video_placeholder.is_none() {
+            // Before Video::start (first configure): the video thread's first attach replaces it.
+            if let Ok((buffer, canvas)) = self.pool.create_buffer(1, 1, 4, wl_shm::Format::Xrgb8888) {
+                canvas.copy_from_slice(&[0, 0, 0, 0xff]);
+                if buffer.attach_to(&self.video_surface).is_ok() {
+                    self.video_surface.damage_buffer(0, 0, 1, 1);
+                    self.video_surface.commit();
+                }
+                self.video_placeholder = Some(buffer);
+            }
+        }
 
         let surface = self.window.wl_surface().clone();
         if self.buffers.is_empty() && self.placeholder.is_none() {
