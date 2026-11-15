@@ -21,7 +21,7 @@ public class SegmentSkipService(IMediaItemRepository mediaItemRepository, Settin
             ItemId = inLibrary ? file.ItemId : null,
             GlobalMode = settings.SegmentAutoSkip,
             SkipOutroTail = settings.SkipOutroTail,
-            SkipSegmentsWithoutDelay = settings.SkipSegmentsWithoutDelay,
+            AutoSkipDelay = settings.SegmentAutoSkipDelay,
             ItemMode = inLibrary ? await mediaItemRepository.GetSegmentAutoSkip(file.ItemId) : null,
             Segments = file.Id == Guid.Empty ? [] : await mediaItemRepository.GetPlayerSegments(file.Id),
         };
@@ -31,4 +31,12 @@ public class SegmentSkipService(IMediaItemRepository mediaItemRepository, Settin
 
     /// <summary><paramref name="mode"/> null = back to the global setting.</summary>
     public Task SetItemModeAsync(Guid itemId, SegmentAutoSkip? mode) => mediaItemRepository.SetSegmentAutoSkip(itemId, mode);
+
+    /// <summary>The global <see cref="SettingsModel.SegmentAutoSkipDelay"/>, from a player's settings menu.</summary>
+    public async Task SetDelayAsync(int seconds)
+    {
+        var settings = await settingsRepository.GetSettingsAsync();
+        settings.SegmentAutoSkipDelay = seconds; // clamped by SaveSettings
+        await settingsRepository.SaveSettings(settings);
+    }
 }

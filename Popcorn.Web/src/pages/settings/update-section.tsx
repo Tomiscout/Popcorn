@@ -7,7 +7,8 @@ import { UpdateCheckResult, UpdateStatus } from '../../model/update.contract';
 /**
  * Settings → General → Updates. The check runs Popcorn.Installer without a window on the server; only an available
  * release asks (version + release notes), and yes starts the installer's own window, which closes and restarts
- * Popcorn. Hidden where the installer is not bundled (dev builds, Linux for now).
+ * Popcorn. "Open installer" starts its plain window (check, force reinstall, uninstall). Hidden where the installer
+ * is not bundled (dev builds).
  */
 const UpdateSection: React.FC = () => {
   const { client, isClientReady } = useWebSocket();
@@ -54,6 +55,13 @@ const UpdateSection: React.FC = () => {
       <Group>
         <Button onClick={check} loading={checking} disabled={updating}>
           Check for updates
+        </Button>
+        <Button
+          variant="default"
+          onClick={() => client.sendEvent(SocketRequests.UpdateOpenInstaller)}
+          disabled={updating}
+        >
+          Open installer
         </Button>
         {result?.status === 'Available' && !offerOpen && !updating && (
           <Button variant="light" onClick={() => setOfferOpen(true)}>

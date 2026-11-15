@@ -7,6 +7,11 @@ public static class SocketRequests
     public const string Unsubscribe = "Unsubscribe";
     public const string MediaList = "MediaList";
     public const string PlaybackProgress = "PlaybackProgress";
+    /// <summary>
+    /// Web player, ~2 min before the outro of the current file (file id): prepare the next file for the browser (remux,
+    /// separate audio track) in the background. Playing it before that is done joins the running work.
+    /// </summary>
+    public const string PlaybackPreload = "PlaybackPreload";
     /// <summary>Item page: <c>ContinueWatching</c> of the item (null when it has no file), sent with <see cref="MediaItem"/>.</summary>
     public const string MediaItemContinue = "MediaItemContinue";
     public const string MediaItem = "MediaItem";
@@ -59,6 +64,10 @@ public static class SocketRequests
     public const string UpdateStatus = "UpdateStatus";
     public const string UpdateCheck = "UpdateCheck";
     public const string UpdateInstall = "UpdateInstall";
+    public const string UpdateOpenInstaller = "UpdateOpenInstaller";
+    public const string CacheList = "CacheList";
+    public const string CacheClear = "CacheClear";
+    public const string CacheClearLogs = "CacheClearLogs";
     public const string ErrorWhenHandlingEvent = "ErrorWhenHandlingEvent";
     public const string PluginList = "PluginList";
     public const string PluginSearch = "PluginSearch";
@@ -78,8 +87,11 @@ public static class SocketRequests
     public const string SegmentsSetType = "SegmentsSetType";
     public const string SegmentsDelete = "SegmentsDelete";
     public const string SegmentsApply = "SegmentsApply";
+    public const string SegmentsEditInfo = "SegmentsEditInfo";
+    public const string SegmentsSetRange = "SegmentsSetRange";
     public const string SegmentSeen = "SegmentSeen";
     public const string SegmentAutoSkipSet = "SegmentAutoSkipSet";
+    public const string SegmentAutoSkipDelaySet = "SegmentAutoSkipDelaySet";
     public const string DownloadList = "DownloadList";
     public const string DownloadDetails = "DownloadDetails";
     public const string DownloadStats = "DownloadStats";

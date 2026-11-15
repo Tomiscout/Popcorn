@@ -161,6 +161,7 @@ pub fn install(
             install_dir.display()
         )));
     }
+    clear_web_cache();
     report(platform::TEXTS.refresh_step, 0.9, false);
     platform::register(install_dir, &package.manifest.version, false, false);
 
@@ -207,6 +208,19 @@ pub fn install(
 
 /// A new install goes into a missing or empty folder only: never move aside (and delete) other files because
 /// `--install-dir` pointed at them.
+/// The server sends `Cache-Control` for its web files, but the desktop app's browser may still hold copies cached
+/// without it (or from a server that did not send it) and would keep loading the old UI bundle. An update is the one
+/// time the UI changes and nothing has the profile open, so its HTTP cache goes then. Failing is not fatal.
+fn clear_web_cache() {
+    for dir in paths::web_cache_dirs() {
+        match std::fs::remove_dir_all(&dir) {
+            Ok(()) => info!("Cleared {}", dir.display()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => warning!("Could not clear {}: {e}", dir.display()),
+        }
+    }
+}
+
 fn check_new_folder(install_dir: &Path) -> anyhow::Result<()> {
     if std::fs::read_dir(install_dir).is_ok_and(|mut entries| entries.next().is_some()) {
         bail!(

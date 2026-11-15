@@ -8,6 +8,7 @@ import {
   type PlayerState,
 } from '../../../state/player.store';
 import { postMessage } from '../../../utils/events';
+import { prepareCanvas, tickSteps, waveBarHeight, waveColumns } from '../../../utils/waveform';
 import { formatDelay, nudgeSubtitleDelay, setSubtitleDelay } from '../../subtitle-delay';
 import { firstCueFrom, isImageSubtitle, parseSubtitleCues, type SubtitleCue } from './subtitle-cues';
 import './SubtitleSync.css';
@@ -53,29 +54,6 @@ function formatClock(seconds: number, withMs = false) {
   const s = total % 60;
   const sec = withMs ? s.toFixed(3).padStart(6, '0') : Math.floor(s).toString().padStart(2, '0');
   return `${sign}${h > 0 ? `${h}:${m.toString().padStart(2, '0')}` : m}:${sec}`;
-}
-
-/** Tick spacing (minor, labelled) for the seconds shown. */
-function tickSteps(span: number): [number, number] {
-  if (span <= 6) return [0.25, 1];
-  if (span <= 15) return [0.5, 2];
-  if (span <= 30) return [1, 5];
-  return [2, 10];
-}
-
-/** Canvas sized to its CSS box in device pixels; returns the context scaled to CSS pixels. */
-function prepareCanvas(canvas: HTMLCanvasElement) {
-  const dpr = window.devicePixelRatio || 1;
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
-  if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
-  }
-  const ctx = canvas.getContext('2d')!;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, width, height);
-  return { ctx, width, height };
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -266,31 +244,11 @@ export const SubtitleSync = () => {
 
       if (audioTrack !== null) {
         const columns = Math.ceil(w.width);
-        const heights = new Float32Array(columns);
-        const known = new Uint8Array(columns);
-        let loudest = 0;
-        for (let c = 0; c < columns; c++) {
-          const from = Math.floor((t0 + c / pxPerSec) * WAVEFORM_PEAKS_PER_SECOND);
-          const to = Math.max(from + 1, Math.floor((t0 + (c + 1) / pxPerSec) * WAVEFORM_PEAKS_PER_SECOND));
-          let peak = 0;
-          let have = false;
-          for (let p = Math.max(0, from); p < to; p++) {
-            const window = Math.floor(p / (WAVEFORM_WINDOW_SECONDS * WAVEFORM_PEAKS_PER_SECOND));
-            const peaks = state.waveforms[waveformKey(fileId, audioTrack, window)];
-            if (!peaks) continue;
-            const value = peaks[p - window * WAVEFORM_WINDOW_SECONDS * WAVEFORM_PEAKS_PER_SECOND];
-            if (value === undefined) continue;
-            have = true;
-            if (value > peak) peak = value;
-          }
-          // Back to linear amplitude (the host sends square roots), so loud and quiet parts stay apart.
-          const amplitude = (peak / 255) ** 2;
-          heights[c] = amplitude;
-          known[c] = have ? 1 : 0;
-          if (amplitude > loudest) loudest = amplitude;
-        }
-        // Relative to the loudest part in view (with a floor, so near silence stays flat), mildly compressed.
-        const reference = Math.max(loudest, 0.004);
+        const windowPeaks = WAVEFORM_WINDOW_SECONDS * WAVEFORM_PEAKS_PER_SECOND;
+        const { heights, known, loudest } = waveColumns(columns, t0, pxPerSec, (p) => {
+          const window = Math.floor(p / windowPeaks);
+          return state.waveforms[waveformKey(fileId, audioTrack, window)]?.[p - window * windowPeaks];
+        });
         const centre = Math.floor(columns / 2);
         for (let c = 0; c < columns; c++) {
           if (!known[c]) {
@@ -300,7 +258,7 @@ export const SubtitleSync = () => {
             }
             continue;
           }
-          const h = Math.max(1, (heights[c] / reference) ** 0.75 * (mid - 3));
+          const h = waveBarHeight(heights[c], loudest, mid - 3);
           w.ctx.fillStyle = c < centre ? COLORS.waveDim : COLORS.wave;
           w.ctx.fillRect(c, mid - h, 1, h * 2);
         }

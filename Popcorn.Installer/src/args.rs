@@ -25,7 +25,8 @@ Options:
                        ~/.local/bin/Popcorn on Linux)
   --repo <owner/name>  GitHub repository (default: POPCORN_UPDATE_REPO or the built-in one)
   --prerelease         also offer pre-releases
-  --force              offer the latest release even when it is not newer (reinstall, downgrade)
+  --force              offer the latest release even when it is not newer (reinstall, downgrade),
+                       and download FFmpeg even when the installed one is under 6 months old
   --no-restart         do not start Popcorn again afterwards
   --no-autostart       fresh install: do not start Popcorn at sign-in (the window asks)
   --no-relocate        run in place instead of from a copy outside the install folder

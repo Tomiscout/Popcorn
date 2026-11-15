@@ -43,8 +43,10 @@ export interface Settings {
   segmentAutoSkip: SegmentAutoSkip;
   /** Skipping an outro that ends within 10 seconds of the end of the file skips those seconds too. */
   skipOutroTail: boolean;
-  /** Auto-skip at once instead of after the skip button's count-down. */
-  skipSegmentsWithoutDelay: boolean;
+  /** Seconds of the skip button's count-down before auto-skip (0 = at once), 0..99999. */
+  segmentAutoSkipDelay: number;
+  /** Days of log files kept (today counts as one), 1..3650; older ones are deleted by the server. */
+  logRetentionDays: number;
   /** ISO 639-2 codes in order of preference: the players start with the first audio track in one of them. */
   prefferedAudioLanguages: string[];
   /** Same for subtitles: a track in one of them is turned on at the start. */

@@ -24,10 +24,11 @@ public class SegmentsWebService(WebSocketBus bus, SegmentFinderService segmentFi
     }
 
     [WebSocketEvent(SocketRequests.SegmentsScan)]
-    public Task Scan(Guid itemId)
+    public Task Scan(SegmentsScanRequest request)
     {
-        segmentFinder.StartScan(itemId);
-        return SendStateAsync(itemId);
+        segmentFinder.StartScan(request.ItemId,
+            new SegmentScanOptions(request.FileIds, request.SegmentIds, request.Replace));
+        return SendStateAsync(request.ItemId);
     }
 
     [WebSocketEvent(SocketRequests.SegmentsSetType)]
@@ -56,6 +57,33 @@ public class SegmentsWebService(WebSocketBus bus, SegmentFinderService segmentFi
         }
     }
 
+    [WebSocketEvent(SocketRequests.SegmentsEditInfo)]
+    public async Task EditInfo(SegmentsEditInfoRequest request)
+    {
+        try
+        {
+            var info = await segmentFinder.GetEditInfoAsync(request.ItemId, request.SegmentId);
+            await bus.SendEventAsync(SocketRequests.SegmentsEditInfo, info);
+        }
+        catch (Exception e)
+        {
+            await bus.SendEventAsync(SocketRequests.SegmentsEditInfo, new { request.SegmentId, Error = e.Message });
+        }
+    }
+
+    [WebSocketEvent(SocketRequests.SegmentsSetRange)]
+    public async Task SetRange(SegmentsSetRangeRequest request)
+    {
+        try
+        {
+            await segmentFinder.SetReferenceRangeAsync(request.ItemId, request.SegmentId, request.Start, request.Length);
+        }
+        finally
+        {
+            await SendStateAsync(request.ItemId);
+        }
+    }
+
     [WebSocketEvent(SocketRequests.SegmentsDelete)]
     public async Task Delete(SegmentsDeleteRequest request)
     {
@@ -76,6 +104,10 @@ public class SegmentsWebService(WebSocketBus bus, SegmentFinderService segmentFi
     /// <summary>Web player settings menu: the item's auto-skip override.</summary>
     [WebSocketEvent(SocketRequests.SegmentAutoSkipSet)]
     public Task SetAutoSkip(SegmentAutoSkipSetRequest request) => segmentSkipService.SetItemModeAsync(request.ItemId, request.Mode);
+
+    /// <summary>Web player settings menu: the global auto-skip count-down in seconds.</summary>
+    [WebSocketEvent(SocketRequests.SegmentAutoSkipDelaySet)]
+    public Task SetAutoSkipDelay(int seconds) => segmentSkipService.SetDelayAsync(seconds);
 
     private async Task SendStateAsync(Guid itemId)
     {

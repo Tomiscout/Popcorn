@@ -55,6 +55,7 @@ public class Startup
         {
             RequestPath = "/plugins",
             FileProvider = new PluginWebFileProvider(pluginManager),
+            OnPrepareResponse = SetWebCacheHeaders,
         });
 
         var webPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "web");
@@ -64,7 +65,7 @@ public class Startup
         if (webFiles != null)
         {
             app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = webFiles });
-            app.UseStaticFiles(new StaticFileOptions { FileProvider = webFiles });
+            app.UseStaticFiles(new StaticFileOptions { FileProvider = webFiles, OnPrepareResponse = SetWebCacheHeaders });
         }
         else
         {
@@ -89,11 +90,27 @@ public class Startup
             // so missing assets still 404.
             if (webFiles != null)
             {
-                endpoints.MapFallbackToFile("index.html", new StaticFileOptions { FileProvider = webFiles });
+                endpoints.MapFallbackToFile("index.html",
+                    new StaticFileOptions { FileProvider = webFiles, OnPrepareResponse = SetWebCacheHeaders });
             }
         });
     }
     
+    /// <summary>
+    /// Without Cache-Control Chromium (the desktop app's CEF, with its persistent cache) caches index.html
+    /// heuristically and keeps loading the old bundle after an update. HTML and other unhashed files (plugin UIs too)
+    /// are revalidated on every load (ETag → 304); Vite's content-hashed <c>assets/</c> never change, so they are
+    /// cached for good. Copies cached without these headers are dropped by the installer on every update
+    /// (<c>clear_web_cache</c> in Popcorn.Installer, <c>make install-linux</c>).
+    /// </summary>
+    private static void SetWebCacheHeaders(Microsoft.AspNetCore.StaticFiles.StaticFileResponseContext ctx)
+    {
+        var path = ctx.Context.Request.Path.Value ?? "";
+        ctx.Context.Response.Headers.CacheControl = path.StartsWith("/assets/", StringComparison.Ordinal)
+            ? "public, max-age=31536000, immutable"
+            : "no-cache";
+    }
+
     private static async Task HandleWebSocket(HttpContext context, IServiceScopeFactory serviceScopeFactory)
     {
         if (context.WebSockets.IsWebSocketRequest)

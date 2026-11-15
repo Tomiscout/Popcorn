@@ -94,7 +94,7 @@ fn main() -> ExitCode {
         }
     }
 
-    let Some(_instance) = platform::single_instance() else {
+    let Some(instance) = platform::single_instance() else {
         info!("Another installer is running, exiting.");
         platform::show_text("Popcorn Installer is already running.", false);
         return ExitCode::SUCCESS;
@@ -112,6 +112,11 @@ fn main() -> ExitCode {
     let _ = std::env::set_current_dir(&work_dir);
 
     let result = ui::run(config);
+    // The uninstaller would find this one still running.
+    drop(instance);
+    if let Ok(ui::After::Uninstall) = result {
+        start_uninstall(&install_dir);
+    }
     if args.uninstall
         && let Ok(exe) = std::env::current_exe()
         && exe
@@ -203,6 +208,28 @@ fn relocate(args: &Args, install_dir: &Path) -> anyhow::Result<bool> {
         .spawn()?;
     info!("Continuing in {}", copy.display());
     Ok(true)
+}
+
+/// The up-to-date screen's "Uninstall Popcorn": the installer again with `--uninstall` (asks there). Its own process:
+/// it relocates to %TEMP% on Windows and logs there, the data folder it deletes holds this one's copy and log.
+fn start_uninstall(install_dir: &Path) {
+    let args = Args {
+        install_dir: Some(install_dir.to_path_buf()),
+        uninstall: true,
+        ..Args::default()
+    };
+    match std::env::current_exe().and_then(|exe| {
+        Command::new(exe)
+            .args(args.to_args())
+            .current_dir(std::env::temp_dir())
+            .spawn()
+    }) {
+        Ok(_) => info!("Started the uninstaller"),
+        Err(e) => {
+            error!("Cannot start the uninstaller: {e}");
+            platform::show_text(&format!("Cannot start the uninstaller: {e}"), true);
+        }
+    }
 }
 
 /// Copies left by earlier runs (the current one is in use and stays).

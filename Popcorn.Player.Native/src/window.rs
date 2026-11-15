@@ -436,7 +436,8 @@ impl App {
         if self.video.is_none() && self.video_placeholder.is_none() {
             // Before Video::start (first configure): the video thread's first attach replaces it.
             if let Ok((buffer, canvas)) = self.pool.create_buffer(1, 1, 4, wl_shm::Format::Xrgb8888) {
-                canvas.copy_from_slice(&[0, 0, 0, 0xff]);
+                // The pool rounds allocations up (64 bytes here): only the first pixel is the buffer.
+                canvas[..4].copy_from_slice(&[0, 0, 0, 0xff]);
                 if buffer.attach_to(&self.video_surface).is_ok() {
                     self.video_surface.damage_buffer(0, 0, 1, 1);
                     self.video_surface.commit();

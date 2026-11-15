@@ -3,13 +3,15 @@ import { AutostartState, PlayerOption, Settings } from '../../model/settings.con
 import { SocketRequests } from '../../socket/socket-requests';
 import { useWebSocket } from '../../state/websocket-context';
 import { Button, Code, Loader, Radio, Skeleton, Stack, Switch, Tabs, Text, Title } from '@mantine/core';
-import { SegmentAutoSkip, segmentAutoSkipOptions } from '../../model/segments.contract';
+import { DEFAULT_AUTO_SKIP_DELAY, SegmentAutoSkip, segmentAutoSkipOptions } from '../../model/segments.contract';
+import { AutoSkipDelayInput } from '../../components/auto-skip-delay-input';
 import { isDesktopApp } from '../../utils/platform';
 import PlayerList, { newPlayerId } from './player-list';
 import PluginList from './plugin-list';
 import DownloadSettingsSection from './download-settings';
 import UpdateSection from './update-section';
 import LanguageSettings from './language-settings';
+import CacheSection from './cache-section';
 
 // Own chunk: date picker + virtual list, only needed on the Logs tab.
 const LogViewer = lazy(() => import('./logs/log-viewer'));
@@ -72,6 +74,7 @@ const SettingsPage: React.FC = () => {
             <Tabs.Tab value="general">General</Tabs.Tab>
             <Tabs.Tab value="downloads">Downloads</Tabs.Tab>
             <Tabs.Tab value="plugins">Plugins</Tabs.Tab>
+            <Tabs.Tab value="storage">Storage</Tabs.Tab>
             <Tabs.Tab value="logs">Logs</Tabs.Tab>
           </Tabs.List>
 
@@ -131,17 +134,15 @@ const SettingsPage: React.FC = () => {
                   ))}
                 </Stack>
               </Radio.Group>
+              <AutoSkipDelayInput
+                value={settings.segmentAutoSkipDelay ?? DEFAULT_AUTO_SKIP_DELAY}
+                onChange={(segmentAutoSkipDelay) => saveSettings({ ...settings, segmentAutoSkipDelay })}
+              />
               <Switch
                 checked={settings.skipOutroTail ?? true}
                 onChange={(e) => saveSettings({ ...settings, skipOutroTail: e.currentTarget.checked })}
                 label="Also skip what's left after an outro"
                 description="When an outro ends within 10 seconds of the end of the file, skipping it goes straight to the end."
-              />
-              <Switch
-                checked={settings.skipSegmentsWithoutDelay ?? false}
-                onChange={(e) => saveSettings({ ...settings, skipSegmentsWithoutDelay: e.currentTarget.checked })}
-                label="Skip intro/outro immediately"
-                description="Auto-skip jumps past an intro or outro as soon as it starts, without the skip button's count-down."
               />
             </Stack>
           </Tabs.Panel>
@@ -159,6 +160,10 @@ const SettingsPage: React.FC = () => {
               </Text>
               <PluginList />
             </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="storage">
+            <CacheSection settings={settings} onChange={saveSettings} />
           </Tabs.Panel>
 
           <Tabs.Panel value="logs">

@@ -24,7 +24,7 @@ public sealed class DownloadManager(
     MediaItemService mediaItemService,
     MediaImageService mediaImageService,
     IMediaItemRepository mediaItemRepository,
-    IMediaFileRepository mediaFileRepository) : IHostedService
+    IMediaFileRepository mediaFileRepository) : IHostedService, IIncompleteFiles
 {
     private const long MaxTorrentFileBytes = 16 * 1024 * 1024;
     /// <summary>A download one priority below the highest downloading one gets this share of their rate (squared for two below, ...).</summary>
@@ -822,6 +822,35 @@ public sealed class DownloadManager(
         var title = item is null ? null : item.Title ?? string.Empty;
         lock (_items) _items[id] = (DateTime.UtcNow, title, files);
         return (title is not null, title, files);
+    }
+
+    public async Task<IReadOnlySet<string>> GetIncompleteFilesAsync(bool waitForStart)
+    {
+        if (!_ready.Task.IsCompletedSuccessfully)
+        {
+            if (!waitForStart) return new HashSet<string>();
+            try
+            {
+                await _ready.Task;
+            }
+            catch
+            {
+                // The client failed to start: nothing is downloading.
+                return new HashSet<string>();
+            }
+        }
+        await _gate.WaitAsync();
+        try
+        {
+            return _downloads.SelectMany(d => d.Files)
+                .Where(f => f.Progress < 1)
+                .Select(f => Path.GetFullPath(f.FullPath))
+                .ToHashSet(StringComparer.Ordinal);
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     /// <summary>The download a file on disk belongs to, if it is one of ours; null for any other file.</summary>

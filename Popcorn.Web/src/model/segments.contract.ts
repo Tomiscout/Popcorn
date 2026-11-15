@@ -24,6 +24,24 @@ export interface SegmentReference {
   length: number;
   /** Files that have it, as episode ranges ("S01E05–E09", "S02–S04"). */
   appliedTo: string[];
+  /** Changes when its audio is re-cut (cache key of the listening clip). */
+  audioVersion: number;
+}
+
+/**
+ * Range editor of a saved segment (answer to `SegmentsEditInfo`), seconds in the audio it is cut from: the source
+ * media file (`sourceLabel`) or, when that is unknown, the segment's own clip (`sourceLabel` null, only trimming).
+ * The waveform / audio endpoints `api/segments/{id}/edit/{waveform|audio}` cover `windowStart` + `windowLength`.
+ */
+export interface SegmentEditInfo {
+  segmentId: string;
+  type: SegmentType;
+  sourceLabel: string | null;
+  /** Where the segment starts now. */
+  start: number;
+  length: number;
+  windowStart: number;
+  windowLength: number;
 }
 
 export interface SegmentSpan {
@@ -48,6 +66,8 @@ export interface SegmentFileState {
   title: string;
   introScanned: boolean;
   outroScanned: boolean;
+  /** Not fully downloaded: scans skip it, detection refuses it. */
+  downloading: boolean;
   segments: SegmentOption[];
 }
 
@@ -96,7 +116,7 @@ export const segmentAutoSkipOptions: { value: SegmentAutoSkip; label: string; de
   {
     value: 'Always',
     label: 'Auto-skip all intros/outros',
-    description: 'Every intro and outro is skipped after a short count-down.',
+    description: 'Every intro and outro is skipped after the auto-skip delay.',
   },
   {
     value: 'AfterFirstOccurrence',
@@ -106,6 +126,14 @@ export const segmentAutoSkipOptions: { value: SegmentAutoSkip; label: string; de
   { value: 'Never', label: "Don't auto-skip", description: 'Only the skip button is shown.' },
 ];
 
+/** Bounds of `SettingsModel.SegmentAutoSkipDelay` (seconds). */
+export const MAX_AUTO_SKIP_DELAY = 99999;
+export const DEFAULT_AUTO_SKIP_DELAY = 10;
+
+/** Whole seconds within 0..MAX_AUTO_SKIP_DELAY. */
+export const clampAutoSkipDelay = (value: number) =>
+  Math.min(MAX_AUTO_SKIP_DELAY, Math.max(0, Math.round(Number.isFinite(value) ? value : DEFAULT_AUTO_SKIP_DELAY)));
+
 /** Server `PlayerSegments` (web player metadata; the native player gets the same in PascalCase). */
 export interface PlayerSegmentsDto {
   itemId: string | null;
@@ -113,8 +141,8 @@ export interface PlayerSegmentsDto {
   itemMode: SegmentAutoSkip | null;
   /** Skipping an outro that ends near the end of the file skips the rest of the file too. */
   skipOutroTail: boolean;
-  /** Auto-skip at once instead of after the skip button's count-down. */
-  skipSegmentsWithoutDelay: boolean;
+  /** Seconds of the skip button's count-down before auto-skip (0 = at once); global setting. */
+  autoSkipDelay: number;
   segments: {
     segmentId: string;
     /** Seconds; negative = outro, relative to the end of the file. */

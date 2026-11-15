@@ -30,6 +30,8 @@ public interface IMediaItemRepository
     Task DeleteSegmentInfo(Guid segmentId);
     /// <summary>Changes a reference's type and drops its locations (their start sign is the old type's).</summary>
     Task SetSegmentType(Guid segmentId, SegmentType type);
+    /// <summary>New length / source start of a reference whose audio was re-cut; its locations are dropped.</summary>
+    Task SetSegmentRange(Guid segmentId, double length, double? sourceStart);
     /// <summary>Marks files of the item that have no location of <paramref name="type"/> as not scanned for it.</summary>
     Task ResetSegmentsProcessed(Guid itemId, SegmentType type);
     /// <summary>Locations of a file with their references' seen state (<see cref="PlayerSegments"/> fields only).</summary>

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Popcorn.Domain;
 using FFMpegCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -14,12 +15,24 @@ namespace Popcorn.Server.Services;
 
 public record StreamFile(string filePath, string mimeType);
 
+/// <summary>Singleton: it owns the running remuxes (<see cref="PrepareStreamFileAsync"/>).</summary>
 public class FileStreamService(
   ILogger<FileStreamService> logger,
   SettingsRepository settingsRepository,
   IMediaItemRepository mediaItemRepository,
+  AudioTrackService audioTracks,
   IMemoryCache memoryCache)
 {
+  /// <summary>
+  /// Running remuxes by cache key: a second request for the same file (the player opening a file that is being
+  /// preloaded, a reload) waits for the running one instead of starting ffmpeg again on the same output file.
+  /// </summary>
+  private readonly ConcurrentDictionary<string, Lazy<Task<StreamFile?>>> remuxes = new();
+
+  /// <summary>
+  /// The file the web player streams: the MP4 remux with the default audio track (made on first use, kept in the
+  /// stream cache), the file itself when the browser plays it as it is, null when it can't.
+  /// </summary>
   public async Task<StreamFile?> PrepareStreamFileAsync(MediaFile mediaFile)
   {
     var metadata = await GetMediaFileMetadataAsync(mediaFile);
@@ -29,42 +42,64 @@ public class FileStreamService(
 
     // The remux carries the default (preferred language) audio track: one per track.
     var cacheKey = $"{mediaFile.Id}-stream-{audioTrack?.Index}";
-    if (memoryCache.TryGetValue(cacheKey, out StreamFile? cached) &&
-        (cached == null || (cached != null && File.Exists(cached.filePath))))
-    {
-      return cached;
-    }
+    if (TryGetCachedStream(cacheKey, out var cached)) return cached;
 
-    var outPath = Path.Combine(DirectoryUtils.StreamCache, $"{mediaFile.Id}-audio{audioTrack?.Index}.mp4");
-    string mime;
+    // Not awaited inside the factory: the job outlives the request that started it (it isn't cancelled with it).
+    var job = remuxes.GetOrAdd(cacheKey, key => new Lazy<Task<StreamFile?>>(
+      () => Task.Run(() => RemuxAsync(key, mediaFile, metadata, audioTrack))));
+    return await job.Value;
+  }
 
+  private bool TryGetCachedStream(string cacheKey, out StreamFile? cached) =>
+    memoryCache.TryGetValue(cacheKey, out cached) && (cached == null || File.Exists(cached.filePath));
+
+  private async Task<StreamFile?> RemuxAsync(string cacheKey, MediaFile mediaFile, MediaFileMetadata metadata,
+    AudioTrackDto? audioTrack)
+  {
     try
     {
+      // Finished between the caller's cache check and this job starting.
+      if (TryGetCachedStream(cacheKey, out var cached)) return cached;
+
+      var outPath = Path.Combine(DirectoryUtils.StreamCache, $"{mediaFile.Id}-audio{audioTrack?.Index}.mp4");
+      string mime;
+
       // --- Case 1: H.264/H.265 video → MP4 target ---
       if (IsRemuxedToMp4(metadata.FormatNames, metadata.VideoDefaultCodec))
       {
         mime = "video/mp4";
-        
-        var args = FFMpegArguments.FromFileInput(mediaFile.Path);
-
-        await args.OutputToFile(outPath, overwrite: true, opts =>
+        // Written next to it and moved in place when done: a remux that broke off is never served.
+        var part = outPath + ".part";
+        try
         {
-          opts.WithVideoCodec("copy");
-
-          if (audioTrack != null && CodecUtils.IsAudioCodecMp4Compatible(audioTrack.Codec))
+          logger.LogInformation("Remuxing {Path} for the web player", mediaFile.Path);
+          await FFMpegArguments.FromFileInput(mediaFile.Path).OutputToFile(part, overwrite: true, opts =>
           {
-            // Keep supported audio
-            opts.WithAudioCodec("copy");
-            opts.WithCustomArgument($"-map 0:v -map 0:{audioTrack.Index}");
-          }
-          else
-          {
-            // Drop audio (will be fetched separately)
-            opts.WithCustomArgument("-map 0:v -an");
-          }
+            opts.WithVideoCodec("copy");
 
-          opts.WithCustomArgument("-movflags +faststart");
-        }).ProcessAsynchronously();
+            if (audioTrack != null && CodecUtils.IsAudioCodecMp4Compatible(audioTrack.Codec))
+            {
+              // Keep supported audio
+              opts.WithAudioCodec("copy");
+              opts.WithCustomArgument($"-map 0:v -map 0:{audioTrack.Index}");
+            }
+            else
+            {
+              // Drop audio (will be fetched separately)
+              opts.WithCustomArgument("-map 0:v -an");
+            }
+
+            opts.ForceFormat("mp4");
+            opts.WithCustomArgument("-movflags +faststart");
+          }).ProcessAsynchronously();
+          File.Move(part, outPath, overwrite: true);
+          logger.LogInformation("Remuxed {Path}", mediaFile.Path);
+        }
+        catch
+        {
+          TryDelete(part);
+          throw;
+        }
       }
       // --- Case 2: VP8/VP9 + Opus/Vorbis → WebM target ---
       else if (metadata.FormatNames.Contains("matroska") &&
@@ -79,16 +114,55 @@ public class FileStreamService(
         memoryCache.Set(cacheKey, (StreamFile?)null, TimeSpan.FromDays(1));
         return null;
       }
+
+      var streamFile = new StreamFile(outPath, mime);
+      memoryCache.Set(cacheKey, streamFile, TimeSpan.FromDays(1));
+      return streamFile;
     }
     catch (Exception ex)
     {
       logger.LogError(ex, "Failed to prepare stream for {FileId}", mediaFile.Id);
       throw;
     }
+    finally
+    {
+      // After the cache entry is set: a caller arriving now finds it there (or starts a new job after a failure).
+      remuxes.TryRemove(cacheKey, out _);
+    }
+  }
 
-    var streamFile = new StreamFile(outPath, mime);
-    memoryCache.Set(cacheKey, streamFile, TimeSpan.FromDays(1));
-    return streamFile;
+  /// <summary>
+  /// Web player, before the current file ends: prepares what playing <paramref name="mediaFile"/> will need (the
+  /// remux, and the conversion of its start audio track when the video won't carry it), so that it starts right away.
+  /// Playing it meanwhile joins the running jobs (<see cref="PrepareStreamFileAsync"/>, <see cref="AudioTrackService.Watch"/>).
+  /// </summary>
+  public async Task PreloadAsync(MediaFile mediaFile)
+  {
+    var metadata = await GetMediaFileMetadataAsync(mediaFile);
+    if (metadata == null) return;
+
+    // The track the web player starts with (VideoPlayer.tsx): played from the video when it is the remux's (and the
+    // remux could keep it), else converted separately.
+    var startIndex = metadata.AudioStartIndex ?? metadata.AudioDefaultIndex;
+    var startTrack = metadata.AudioTracks.FirstOrDefault(t => t.Index == startIndex);
+    var remuxed = IsRemuxedToMp4(metadata.FormatNames, metadata.VideoDefaultCodec);
+    var separate = startTrack != null && (startTrack.Index != metadata.AudioDefaultIndex ||
+                                          (remuxed && !CodecUtils.IsAudioCodecMp4Compatible(startTrack.Codec)));
+    if (separate) audioTracks.Preload(mediaFile, startTrack!);
+
+    await PrepareStreamFileAsync(mediaFile);
+  }
+
+  private void TryDelete(string path)
+  {
+    try
+    {
+      File.Delete(path);
+    }
+    catch (Exception ex)
+    {
+      logger.LogWarning(ex, "Could not delete {Path}", path);
+    }
   }
 
 

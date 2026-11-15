@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using FFMpegCore;
 using Popcorn.Shared.Ffmpeg;
+using Popcorn.Shared.Utils;
 using Serilog;
 
 namespace Popcorn.Application.Utils;
@@ -33,8 +34,49 @@ public static class ThumbnailRenderer
         public double AverageMs => Runs == 0 ? double.MaxValue : (double)TotalMs / Runs;
     }
 
-    /// <returns>Whether <paramref name="outputFile"/> was written (false also when cancelled).</returns>
+    /// <summary>
+    /// Renders into <see cref="DirectoryUtils.ThumbnailsRenderingFolder"/> and moves the result to
+    /// <paramref name="outputFile"/>: the cache is shared by the server and the native players, and a reader that
+    /// sees the file must never get a half-written jpg (ffmpeg writes in place).
+    /// </summary>
+    /// <returns>Whether <paramref name="outputFile"/> exists now (false also when cancelled).</returns>
     public static bool Render(string inputFile, IMediaAnalysis metadata, string outputFile, long timeInSeconds,
+        CancellationToken ct)
+    {
+        var partFile = Path.Combine(DirectoryUtils.ThumbnailsRenderingFolder,
+            $"{Path.GetFileNameWithoutExtension(outputFile)}.{Guid.NewGuid():N}{Path.GetExtension(outputFile)}");
+        try
+        {
+            if (!RenderTo(inputFile, metadata, partFile, timeInSeconds, ct)) return false;
+            try
+            {
+                File.Move(partFile, outputFile, overwrite: true);
+            }
+            catch (IOException) when (new FileInfo(outputFile) is { Exists: true, Length: > 0 })
+            {
+                // Windows: the other process made the same thumbnail and is reading it; that one is as good.
+            }
+            return true;
+        }
+        finally
+        {
+            TryDelete(partFile);
+        }
+    }
+
+    private static void TryDelete(string file)
+    {
+        try
+        {
+            File.Delete(file);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not delete {file}", file);
+        }
+    }
+
+    private static bool RenderTo(string inputFile, IMediaAnalysis metadata, string outputFile, long timeInSeconds,
         CancellationToken ct)
     {
         var stream = ThumbnailUtils.GetVideoStream(metadata)

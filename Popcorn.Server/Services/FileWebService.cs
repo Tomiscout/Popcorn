@@ -1,3 +1,4 @@
+using Popcorn.Downloads;
 using Popcorn.Application.Extensions;
 using Popcorn.Application.Services;
 using Popcorn.Domain;
@@ -22,6 +23,8 @@ public class FileWebService(
     PlayerLaunchService playerLaunchService,
     MediaItemService mediaItemService,
     ItemHistoryService itemHistoryService,
+    FileStreamService fileStreamService,
+    DownloadManager downloads,
     ILogger<FileWebService> logger
     )
 {
@@ -110,6 +113,36 @@ public class FileWebService(
             request.Position < 0 || request.Duration <= 0) return;
 
         await mediaFileRepository.SetPlaybackProgress(request.FileId, Math.Min(request.Position, request.Duration), request.Duration);
+    }
+
+    /// <summary>
+    /// Web player, a while before the current file ends: prepares the file that plays after it (the one
+    /// <see cref="PlayerNextFile"/> answers with) in the background. Sent again (another tab, a reload) it joins the
+    /// running work. Files still downloading are skipped: they are played from the download stream, never remuxed.
+    /// </summary>
+    [WebSocketEvent(SocketRequests.PlaybackPreload)]
+    public async Task PlaybackPreload(Guid fileId)
+    {
+        var file = await mediaFileRepository.GetFileById(fileId);
+        var item = file is null || file.ItemId == Guid.Empty ? null : await mediaItemRepository.GetMediaItemWithFilesAndHistory(file.ItemId);
+        var nextId = item?.GetNextFilePlan(fileId).NextFileId;
+        var next = nextId is null ? null : await mediaFileRepository.GetFileById(nextId.Value);
+        if (next is null || !File.Exists(next.Path)) return;
+        if (await downloads.GetPlaybackAsync(next.Path) is { Complete: false }) return;
+
+        // Not awaited: the socket handles its events one after the other, and a remux takes a while.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                logger.LogInformation("Preloading {Path} for the web player", next.Path);
+                await fileStreamService.PreloadAsync(next);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Preloading {Path} failed", next.Path);
+            }
+        });
     }
 
     /// <summary>Web player, at the end of a file or on its next button: what to play, or which episode is missing.</summary>

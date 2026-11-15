@@ -12,8 +12,8 @@ public class PlayerSegments
     public SegmentAutoSkip? ItemMode { get; set; }
     /// <inheritdoc cref="SettingsModel.SkipOutroTail"/>
     public bool SkipOutroTail { get; set; } = true;
-    /// <inheritdoc cref="SettingsModel.SkipSegmentsWithoutDelay"/>
-    public bool SkipSegmentsWithoutDelay { get; set; }
+    /// <inheritdoc cref="SettingsModel.SegmentAutoSkipDelay"/>
+    public int AutoSkipDelay { get; set; } = 10;
     public List<PlayerSegment> Segments { get; set; } = [];
 }
 

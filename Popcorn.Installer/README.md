@@ -25,7 +25,11 @@ when `Popcorn.Server.exe` is in it.
   `Explorer\StartupApproved\Run`, so it is listed under Task Manager → Startup apps and the Settings page's Startup
   switch shows and changes the same thing) and the Settings → Apps entry (HKCU `Uninstall\Popcorn`, `UninstallString` = `Popcorn.Installer.exe
   --uninstall`, `QuietUninstallString` with `--confirm`), and starts the server. Only into a missing or empty folder.
-- **Installed**: "Popcorn is up to date", or the newer release with its notes ("Update" / "Later").
+- **Installed**: "Popcorn is up to date", or the newer release with its notes ("Update" / "Later"). The up-to-date
+  screen has "Check again", "Force reinstall" (checks again as with `--force`: the latest release, offered as
+  "Reinstall" when it is the installed version, and FFmpeg downloaded again) and a red "Uninstall Popcorn" (closes
+  the window and starts the installer again with `--uninstall`, which asks as below). Settings → Updates → "Open
+  installer" starts it this way (no options).
 - `--confirm` (alias `--yes`) skips the question. `--from-app` (passed by the tray and Settings → Updates) = `--confirm`, and the finish screen has no buttons; started on its own it shows Open Popcorn and Open in browser, which close the installer.
 - `--uninstall`: asks (with "also delete the library data", ticked by default; `--keep-data` unticks it), then
   stops Popcorn, removes the shortcut, autostart and Settings → Apps entry, the install folder (only if it really is
@@ -40,9 +44,9 @@ Single-dash spellings work too (`-update-check`, `-confirm`, `-uninstall`).
 ## Started from Popcorn
 
 The tray (Check for updates) and Settings → General → Updates (`UpdateService` + `UpdateWebService` in the server,
-`pages/settings/update-section.tsx`; sockets `UpdateStatus`/`UpdateCheck`/`UpdateInstall`) use it: the check runs
+`pages/settings/update-section.tsx`; sockets `UpdateStatus`/`UpdateCheck`/`UpdateInstall`/`UpdateOpenInstaller`) use it: the check runs
 `--update-check` hidden on the server (answer as its own event, not on the socket loop), only an available release
-asks (version + notes modal), yes starts the installer window with `--from-app`. The server finds it next to itself
+asks (version + notes modal), yes starts the installer window with `--from-app`. "Open installer" starts the window without options. The server finds it next to itself
 (`Popcorn.Installer.exe` / `Popcorn.Installer.Linux`).
 
 ## Releases it looks for
@@ -81,7 +85,9 @@ always offered the release.
    event (`Popcorn.Server/Program.cs`, clean shutdown). After 20 s, or if the server is older and has no event,
    kill it.
 5. Rename `<install>` to `<install>.old`, then `<install>.new` to `<install>`, retrying for ~10 s while files are
-   still held. Any failure puts the old folder back.
+   still held. Any failure puts the old folder back. Then delete the desktop app's HTTP + code cache
+   (`paths::web_cache_dirs`: `cef/Default/` on Linux, `webview2/EBWebView/Default/` on Windows; localStorage and
+   cookies stay), so it cannot keep showing the old UI bundle.
 6. Rewrite the Settings → Apps entry (version, size, uninstall command; only if its `InstallLocation` is this
    folder or there is none).
 7. Start again whatever was running. If the new server exits with an error within 5 s, the old version is
@@ -97,8 +103,11 @@ From [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds/releases), relea
 asset `*-win64-gpl-shared*.zip` of the newest release branch (`ffmpeg-n9.0-latest-win64-gpl-shared-9.0.zip`), the
 master build if there is none. Its `bin/` contents go next to `Popcorn.Server.exe`, without `ffplay.exe`; the server
 and the players run them from there (`Popcorn.Core/Shared/Ffmpeg/FfmpegBinaries.cs`; PATH is never changed). `ffmpeg-files.txt` in the
-install folder lists the files (the DLL names change with FFmpeg versions), first line `# <asset> <digest>`.
+install folder lists the files (the DLL names change with FFmpeg versions), first line `# <asset> <digest>`, second
+`# downloaded <unix seconds>`.
 
+- Downloaded less than 6 months ago (`MAX_AGE`, 182 days): kept, GitHub is not asked. `--force` downloads the latest
+  build anyway (also when it is the installed one). A list without the `downloaded` line counts as due.
 - Same build as installed (digest): not downloaded again, the listed files are copied from the current install.
 - GitHub not reachable (rate limit: 60 anonymous API calls an hour), download or unpack failed: the same copy.
 - Nothing to copy either (first install): installed without FFmpeg, with a warning on the last screen.

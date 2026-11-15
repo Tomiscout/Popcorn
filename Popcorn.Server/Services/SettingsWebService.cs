@@ -7,6 +7,7 @@ using Popcorn.Persistence;
 using Popcorn.Server.Attributes;
 using Popcorn.Server.Models;
 using Popcorn.Server.Models.Requests;
+using Popcorn.Server.Services.Disk;
 using Popcorn.Shared.Interfaces;
 using Popcorn.Shared.Languages;
 
@@ -20,7 +21,8 @@ public class SettingsWebService(
     PlayerLaunchService playerLaunchService,
     INativeFolderService nativeFolderService,
     DownloadManager downloadManager,
-    INativeAutostart autostart)
+    INativeAutostart autostart,
+    LogCleanupService logCleanup)
 {
     [WebSocketEvent(SocketRequests.GetSettings)]
     public async Task SendSettings()
@@ -32,8 +34,10 @@ public class SettingsWebService(
     [WebSocketEvent(SocketRequests.UpdateSettings)]
     public async Task UpdateSettings(SettingsModel settings)
     {
+        var oldRetention = (await settingsRepository.GetSettingsAsync()).LogRetentionDays;
         await settingsRepository.SaveSettings(settings);
         await downloadManager.ApplySettingsAsync(settings.Downloads);
+        if (settings.LogRetentionDays < oldRetention) await logCleanup.CleanupAsync();
         await SendSettings(); // echo back the normalized list (built-ins restored, invalid entries dropped)
     }
 

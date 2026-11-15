@@ -14,6 +14,11 @@ import { CenterPlayButton } from './Components/CenterPlayButton/CenterPlayButton
 import { SubtitleSync } from './Components/SubtitleSync/SubtitleSync';
 import { isTouchDevice } from '../utils/platform';
 
+/** Idle time before the controls hide. */
+const CONTROLS_HIDE_MS = 4000;
+/** The controls stay up this long when a new file starts playing. */
+const NEW_FILE_CONTROLS_MS = 5000;
+
 interface PlayerOverlayProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
   /** Extra classes on the container (`inline` / `floating` / `fullscreen` / `native`). */
   className: string;
@@ -42,8 +47,13 @@ export const PlayerOverlay = forwardRef<HTMLDivElement, PlayerOverlayProps>(
     // A user's pause wins over the indicator: nothing is waiting for the download then.
     const showBuffering = usePlayerStore((s) => s.isBuffering && s.isPlaying);
     const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+    // Time the controls hide at: activity only extends it (a mouse move must not cut a new file's 5 s short).
+    const controlsHideAt = useRef(0);
+    const fileId = usePlayerStore((s) => s.fileId);
 
-    const displayControls = () => {
+    const displayControls = (hideAfterMs = CONTROLS_HIDE_MS) => {
+      const now = Date.now();
+      controlsHideAt.current = Math.max(controlsHideAt.current, now + hideAfterMs);
       setShowControls(true);
       if (containerRef.current) containerRef.current.style.cursor = 'initial';
 
@@ -56,16 +66,23 @@ export const PlayerOverlay = forwardRef<HTMLDivElement, PlayerOverlayProps>(
         if (containerRef.current && !usePlayerStore.getState().holdControls) {
           containerRef.current.style.cursor = 'none';
         }
-      }, 4000);
+      }, controlsHideAt.current - now);
     };
 
     const hideControls = () => {
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      controlsHideAt.current = 0;
       setShowControls(false);
     };
     const toggleControlsByTap = () => (controlsActive ? hideControls() : displayControls());
 
-    useEventListeners('keyup', { default: displayControls });
+    // Another file started (next/previous episode, picked from the list): show what is playing for a while.
+    useEffect(() => {
+      if (fileId) displayControls(NEW_FILE_CONTROLS_MS);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fileId]);
+
+    useEventListeners('keyup', { default: () => displayControls() });
     // Mouse only: a tap also sends a mouse move, but taps on the video toggle the controls (CaptureClickArea).
     // Touches elsewhere (buttons, seek bar) keep the controls up.
     useEffect(() => {

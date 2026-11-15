@@ -399,8 +399,8 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
     {
         using var connection = dbContext.CreateConnection();
         string insertSql = @"
-            INSERT INTO SegmentInfo (segment_id, item_id, file_path, length, type) 
-            VALUES (@SegmentId, @ItemId, @FilePath, @Length, @Type)";
+            INSERT INTO SegmentInfo (segment_id, item_id, file_path, length, type, source_file_id, source_start) 
+            VALUES (@SegmentId, @ItemId, @FilePath, @Length, @Type, @SourceFileId, @SourceStart)";
 
         await connection.ExecuteAsync(insertSql, new
         {
@@ -409,6 +409,8 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
             segment.FilePath,
             segment.Length,
             segment.Type,
+            SourceFileId = segment.SourceFileId.SqliteId(),
+            segment.SourceStart,
         });
     }
 
@@ -489,6 +491,18 @@ public class MediaItemRepository(DapperContext dbContext, IMediaFileRepository m
         using var transaction = connection.BeginTransaction();
         var id = segmentId.SqliteId();
         await connection.ExecuteAsync("UPDATE SegmentInfo SET type = @Type WHERE segment_id = @Id", new { Id = id, Type = (int)type }, transaction);
+        await connection.ExecuteAsync("DELETE FROM SegmentLocation WHERE segment_id = @Id", new { Id = id }, transaction);
+        transaction.Commit();
+    }
+
+    public async Task SetSegmentRange(Guid segmentId, double length, double? sourceStart)
+    {
+        using var connection = dbContext.CreateConnection();
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+        var id = segmentId.SqliteId();
+        await connection.ExecuteAsync("UPDATE SegmentInfo SET length = @Length, source_start = @SourceStart WHERE segment_id = @Id",
+            new { Id = id, Length = length, SourceStart = sourceStart }, transaction);
         await connection.ExecuteAsync("DELETE FROM SegmentLocation WHERE segment_id = @Id", new { Id = id }, transaction);
         transaction.Commit();
     }

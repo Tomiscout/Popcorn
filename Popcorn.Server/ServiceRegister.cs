@@ -23,6 +23,9 @@ public static class ServiceRegister
     public static void AddPopcornServices(this IServiceCollection services)
     {
         services.AddSingleton<ScratchFilesCleanupService>();
+        services.AddSingleton<CacheFilesService>();
+        services.AddSingleton<LogCleanupService>();
+        services.AddHostedService(sp => sp.GetRequiredService<LogCleanupService>());
         services.AddSingleton<FolderService>();
         services.AddSingleton<MediaItemService>();
         services.AddSingleton<MediaImageService>();
@@ -30,6 +33,7 @@ public static class ServiceRegister
         services.AddSingleton<SegmentSkipService>();
         services.AddSingleton<DownloadManager>();
         services.AddHostedService(sp => sp.GetRequiredService<DownloadManager>());
+        services.AddSingleton<IIncompleteFiles>(sp => sp.GetRequiredService<DownloadManager>());
         services.AddSingleton<ImageRepository>();
         services.AddSingleton<SettingsRepository>();
         services.AddSingleton<JsonRepository>();
@@ -38,7 +42,7 @@ public static class ServiceRegister
         services.AddSingleton<IFileService, FileService>();
         services.AddSingleton<PlayerLaunchService>();
         services.AddSingleton<UpdateService>();
-        services.AddScoped<FileStreamService>();
+        services.AddSingleton<FileStreamService>();
         services.AddSingleton<AudioTrackService>();
         services.AddSingleton<SocketSubscriptions>();
         services.AddHostedService<LivePushService>();

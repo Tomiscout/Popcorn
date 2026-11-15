@@ -7,6 +7,11 @@ export enum SocketRequests {
   Unsubscribe = 'Unsubscribe',
   MediaList = 'MediaList',
   PlaybackProgress = 'PlaybackProgress',
+  /**
+   * Web player, ~2 min before the outro of the current file (file id): prepare the next file for the browser (remux,
+   * separate audio track) in the background. Playing it before that is done joins the running work.
+   */
+  PlaybackPreload = 'PlaybackPreload',
   /** Item page: ContinueWatching of the item (null when it has no file), sent with `MediaItem`. */
   MediaItemContinue = 'MediaItemContinue',
   MediaItem = 'MediaItem',
@@ -59,6 +64,10 @@ export enum SocketRequests {
   UpdateStatus = 'UpdateStatus',
   UpdateCheck = 'UpdateCheck',
   UpdateInstall = 'UpdateInstall',
+  UpdateOpenInstaller = 'UpdateOpenInstaller',
+  CacheList = 'CacheList',
+  CacheClear = 'CacheClear',
+  CacheClearLogs = 'CacheClearLogs',
   ErrorWhenHandlingEvent = 'ErrorWhenHandlingEvent',
   PluginList = 'PluginList',
   PluginSearch = 'PluginSearch',
@@ -78,8 +87,11 @@ export enum SocketRequests {
   SegmentsSetType = 'SegmentsSetType',
   SegmentsDelete = 'SegmentsDelete',
   SegmentsApply = 'SegmentsApply',
+  SegmentsEditInfo = 'SegmentsEditInfo',
+  SegmentsSetRange = 'SegmentsSetRange',
   SegmentSeen = 'SegmentSeen',
   SegmentAutoSkipSet = 'SegmentAutoSkipSet',
+  SegmentAutoSkipDelaySet = 'SegmentAutoSkipDelaySet',
   DownloadList = 'DownloadList',
   DownloadDetails = 'DownloadDetails',
   DownloadStats = 'DownloadStats',

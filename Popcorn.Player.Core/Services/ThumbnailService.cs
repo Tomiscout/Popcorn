@@ -10,7 +10,7 @@ using Serilog;
 namespace Popcorn.Player.Core.Services;
 public class ThumbnailService(Lazy<PlayerCore> playerCore, Lazy<WebEventHandler> webSocket)
 {
-    private readonly string OutputFolder = Path.Combine(DirectoryUtils.DataFolder, "thumb");
+    private static string OutputFolder => DirectoryUtils.ThumbnailsFolder;
 
     public void Initialize()
     {

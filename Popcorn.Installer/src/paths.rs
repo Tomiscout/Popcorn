@@ -19,6 +19,20 @@ pub fn updates_dir() -> PathBuf {
     data_dir().join("updates")
 }
 
+/// HTTP + code caches of the desktop app's browser profile (Popcorn.Linux: CEF in `cef/`, Popcorn.Windows: WebView2 in
+/// `webview2/`). Only these: localStorage and cookies stay.
+pub fn web_cache_dirs() -> Vec<PathBuf> {
+    let profile = if cfg!(windows) {
+        data_dir()
+            .join("webview2")
+            .join("EBWebView")
+            .join("Default")
+    } else {
+        data_dir().join("cef").join("Default")
+    };
+    vec![profile.join("Cache"), profile.join("Code Cache")]
+}
+
 /// The installer's own folder when it is an installed bundle, else the installed one (Settings → Apps entry), else
 /// the default install location (installed there or not).
 pub fn default_install_dir() -> PathBuf {

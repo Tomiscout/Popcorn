@@ -18,7 +18,7 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { IconAlertCircle, IconTrash } from '@tabler/icons-react';
+import { IconAlertCircle, IconPencil, IconTrash } from '@tabler/icons-react';
 import { useWebSocket } from '../../state/websocket-context';
 import { useSocketEvents } from '../../socket/useSocketEvents.hook';
 import { useSubscription } from '../../socket/useSubscription.hook';
@@ -32,6 +32,7 @@ import {
   SegmentsState,
   SegmentType,
 } from '../../model/segments.contract';
+import SegmentRangeEditor from './segment-range-editor';
 
 interface SegmentsDialogProps {
   itemId: string;
@@ -59,7 +60,8 @@ const clock = (seconds: number) => {
 const formatSpan = ({ start, length }: SegmentSpan) =>
   start >= 0 ? `${clock(start)}–${clock(start + length)}` : `−${clock(-start)} (${clock(length)})`;
 
-const audioUrl = (segmentId: string) => `http://${resolveServerHost()}/api/segments/${segmentId}/audio`;
+const audioUrl = (segmentId: string, version: number) =>
+  `http://${resolveServerHost()}/api/segments/${segmentId}/audio?v=${version}`;
 
 /** The item has this segment type: a saved reference or a file that has / could get it (e.g. from a chapter). */
 const inUse = (state: SegmentsState, type: SegmentType) =>
@@ -67,14 +69,24 @@ const inUse = (state: SegmentsState, type: SegmentType) =>
 
 const hasApplied = (f: SegmentFileState, type: SegmentType) => f.segments.some((o) => o.type === type && o.applied);
 
-const missing = (f: SegmentFileState, state: SegmentsState) => TYPES.some((t) => inUse(state, t) && !hasApplied(f, t));
+const missing = (f: SegmentFileState, state: SegmentsState) =>
+  !f.downloading && TYPES.some((t) => inUse(state, t) && !hasApplied(f, t));
 
-const FileLabel: React.FC<{ label: string; title: string }> = ({ label, title }) => (
-  <Tooltip label={title} openDelay={300}>
-    <Text size="sm" truncate>
-      {label}
-    </Text>
-  </Tooltip>
+const FileLabel: React.FC<{ file: SegmentFileState }> = ({ file }) => (
+  <Group gap={6} wrap="nowrap">
+    <Tooltip label={file.title} openDelay={300}>
+      <Text size="sm" truncate>
+        {file.label}
+      </Text>
+    </Tooltip>
+    {file.downloading && (
+      <Tooltip label="Not fully downloaded yet: scans skip it until it is">
+        <Badge size="xs" color="gray" variant="light" style={{ flexShrink: 0 }}>
+          downloading
+        </Badge>
+      </Tooltip>
+    )}
+  </Group>
 );
 
 const AppliedTo: React.FC<{ ranges: string[] }> = ({ ranges }) => {
@@ -98,9 +110,13 @@ const AppliedTo: React.FC<{ ranges: string[] }> = ({ ranges }) => {
  * Intro/outro skip setup for a media item, in two tabs:
  * 1. Segment candidates: pick 2 to 5 files → "Find shared audio" compares their beginnings and endings and saves the
  *    shared audio as segments (intro from the beginning, outro from the ending); change the type or delete them.
- * 2. Apply segments: "Scan" looks for the saved segments (and intro / outro chapters) in every file and saves the
- *    best match for each type a file has none of yet. Every match is listed per file: click to add / remove one.
- *    Files where nothing was found (e.g. a season with a new opening) can be compared in the first tab.
+ * 2. Apply segments: "Scan all" looks for every saved segment (and intro / outro chapters) in every file and saves
+ *    the best match for each type a file has none of yet. "Scan missing" / "Scan selected" look only for the ticked
+ *    saved segments in the files missing a segment / the selected files; "Scan selected" replaces what the files had
+ *    of the scanned types with the find. Every match is listed per file: click to add / remove one. Files where
+ *    nothing was found (e.g. a season with a new opening) can be compared in the first tab.
+ * The saved segments list is the same in both tabs (in Apply segments with the ticks for the scans). The pencil of a
+ * saved segment opens its range editor (waveform of the file it was cut from); a new range drops it from its files.
  */
 const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose }) => {
   const { client } = useWebSocket();
@@ -108,6 +124,12 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
   const [tab, setTab] = useState<Tab>('candidates');
   const [selected, setSelected] = useState<string[]>([]);
   const [filter, setFilter] = useState<'all' | 'missing'>('all');
+  /** Apply tab file selection (no limit, unlike the candidates one). */
+  const [scanFiles, setScanFiles] = useState<string[]>([]);
+  /** Saved segments unticked for "Scan missing" / "Scan selected"; new ones start ticked. */
+  const [unpicked, setUnpicked] = useState<string[]>([]);
+  /** Saved segment open in the range editor. */
+  const [editing, setEditing] = useState<string | null>(null);
 
   const events = useMemo(
     () => ({
@@ -127,13 +149,21 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
   const missingFiles = useMemo(() => (state ? state.files.filter((f) => missing(f, state)) : []), [state]);
   useEffect(() => {
     if (!state) return;
-    const ids = new Set(state.files.map((f) => f.id));
+    // Files still downloading cannot be compared or scanned.
+    const ids = new Set(state.files.filter((f) => !f.downloading).map((f) => f.id));
     setSelected((prev) => {
       const kept = prev.filter((id) => ids.has(id));
       if (kept.length > 0) return kept;
-      return (missingFiles.length >= 2 ? missingFiles : state.files).slice(0, 2).map((f) => f.id);
+      const ready = state.files.filter((f) => !f.downloading);
+      return (missingFiles.length >= 2 ? missingFiles : ready).slice(0, 2).map((f) => f.id);
     });
+    setScanFiles((prev) => prev.filter((id) => ids.has(id)));
   }, [state?.files]);
+  useEffect(() => {
+    if (!state) return;
+    const ids = new Set(state.references.map((r) => r.id));
+    setUnpicked((prev) => prev.filter((id) => ids.has(id)));
+  }, [state?.references]);
 
   if (!state) {
     return (
@@ -143,11 +173,29 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
     );
   }
 
-  const toggleFile = (id: string) =>
+  const isDownloading = (id: string) => state.files.some((f) => f.id === id && f.downloading);
+  const toggleFile = (id: string) => {
+    if (isDownloading(id)) return;
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].slice(-MAX_DETECT_FILES)));
+  };
 
   const detect = () => client.sendEvent(SocketRequests.SegmentsDetect, { itemId, fileIds: selected });
-  const scan = () => client.sendEvent(SocketRequests.SegmentsScan, itemId);
+  const pickedSegments = state.references.filter((r) => !unpicked.includes(r.id)).map((r) => r.id);
+  /** Nothing ticked while there are saved segments: a scan of the subset would look for nothing. */
+  const noneTicked = state.references.length > 0 && pickedSegments.length === 0;
+  const scanAll = () => client.sendEvent(SocketRequests.SegmentsScan, { itemId });
+  /** Only the ticked saved segments; all ticked = as "Scan all" (chapters too) but only on these files. */
+  const scanFilesFor = (fileIds: string[], replace: boolean) =>
+    client.sendEvent(SocketRequests.SegmentsScan, {
+      itemId,
+      fileIds,
+      segmentIds: pickedSegments.length === state.references.length ? null : pickedSegments,
+      replace,
+    });
+  const togglePicked = (id: string) =>
+    setUnpicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const toggleScanFile = (id: string) =>
+    setScanFiles((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   const setType = (segmentId: string, type: SegmentType) =>
     client.sendEvent(SocketRequests.SegmentsSetType, { itemId, segmentId, type });
   const remove = (segmentId: string) => client.sendEvent(SocketRequests.SegmentsDelete, { itemId, segmentId });
@@ -161,9 +209,20 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
   };
 
   const shownFiles = filter === 'missing' ? missingFiles : state.files;
+  // The header checkbox of the Apply tab only (de)selects the files the filter shows.
+  const shownSelectable = shownFiles.filter((f) => !f.downloading).length;
+  const shownSelected = shownFiles.filter((f) => scanFiles.includes(f.id)).length;
+  const allShownSelected = shownSelectable > 0 && shownSelected === shownSelectable;
+  const toggleAllShown = () => {
+    const shown = new Set(shownFiles.filter((f) => !f.downloading).map((f) => f.id));
+    setScanFiles((prev) =>
+      allShownSelected ? prev.filter((id) => !shown.has(id)) : [...prev.filter((id) => !shown.has(id)), ...shown]
+    );
+  };
   const introCount = state.files.filter((f) => hasApplied(f, SegmentType.Intro)).length;
   const outroCount = state.files.filter((f) => hasApplied(f, SegmentType.Outro)).length;
-  const notScanned = state.files.filter((f) => !f.introScanned || !f.outroScanned).length;
+  const readyFiles = state.files.filter((f) => !f.downloading).length;
+  const notScanned = state.files.filter((f) => !f.downloading && (!f.introScanned || !f.outroScanned)).length;
 
   // "Intro 1", "Outro 2": references numbered per type as listed under Saved segments.
   const referenceNames = new Map(
@@ -195,7 +254,7 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
   const optionChips = (f: SegmentFileState, type: SegmentType) => {
     const options = f.segments.filter((o) => o.type === type);
     if (options.length === 0) {
-      if (!inUse(state, type)) return null;
+      if (!inUse(state, type) || f.downloading) return null;
       const scanned = type === SegmentType.Intro ? f.introScanned : f.outroScanned;
       return (
         <Badge color={scanned ? 'red' : 'gray'} variant="outline">
@@ -227,6 +286,65 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
       </Group>
     );
   };
+
+  /** The saved segments, in the Apply tab with a tick per segment for "Scan missing" / "Scan selected". */
+  const savedSegments = (pickable: boolean) =>
+    state.references.length > 0 && (
+      <Stack gap="xs">
+        <Title order={5}>
+          Saved segments
+          {pickable && (
+            <Text span size="sm" c="dimmed">
+              {' '}
+              ticked ones are looked for by Scan missing / Scan selected
+            </Text>
+          )}
+        </Title>
+        {state.references.map((r) => (
+          <Group key={r.id} gap="sm" wrap="nowrap">
+            {pickable && (
+              <Checkbox
+                checked={!unpicked.includes(r.id)}
+                disabled={running}
+                onChange={() => togglePicked(r.id)}
+                aria-label={`Scan for ${referenceNames.get(r.id)}`}
+              />
+            )}
+            <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
+              <Text size="sm">
+                {referenceNames.get(r.id)} · {clock(r.length)}
+              </Text>
+              <AppliedTo ranges={r.appliedTo} />
+            </Stack>
+            <audio controls preload="none" src={audioUrl(r.id, r.audioVersion)} style={{ height: 32 }} />
+            <Tooltip label="Edit the range (removes it from the files it is applied to)">
+              <ActionIcon variant="subtle" disabled={running} onClick={() => setEditing(r.id)}>
+                <IconPencil size={16} />
+              </ActionIcon>
+            </Tooltip>
+            <Button.Group>
+              {TYPES.map((t) => (
+                <Button
+                  key={t}
+                  size="xs"
+                  color={typeColor(t)}
+                  variant={r.type === t ? 'filled' : 'default'}
+                  disabled={running}
+                  onClick={() => r.type !== t && setType(r.id, t)}
+                >
+                  {typeName(t)}
+                </Button>
+              ))}
+            </Button.Group>
+            <Tooltip label="Delete (removes it from all files)">
+              <ActionIcon variant="subtle" color="red" disabled={running} onClick={() => remove(r.id)}>
+                <IconTrash size={16} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        ))}
+      </Stack>
+    );
 
   const filesHeader = (
     <Group justify="space-between">
@@ -290,41 +408,7 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
                 </Text>
               )}
 
-              {state.references.length > 0 && (
-                <Stack gap="xs">
-                  <Title order={5}>Saved segments</Title>
-                  {state.references.map((r) => (
-                    <Group key={r.id} gap="sm" wrap="nowrap">
-                      <Stack gap={0} style={{ flex: 1, minWidth: 0 }}>
-                        <Text size="sm">
-                          {referenceNames.get(r.id)} · {clock(r.length)}
-                        </Text>
-                        <AppliedTo ranges={r.appliedTo} />
-                      </Stack>
-                      <audio controls preload="none" src={audioUrl(r.id)} style={{ height: 32 }} />
-                      <Button.Group>
-                        {TYPES.map((t) => (
-                          <Button
-                            key={t}
-                            size="xs"
-                            color={typeColor(t)}
-                            variant={r.type === t ? 'filled' : 'default'}
-                            disabled={running}
-                            onClick={() => r.type !== t && setType(r.id, t)}
-                          >
-                            {typeName(t)}
-                          </Button>
-                        ))}
-                      </Button.Group>
-                      <Tooltip label="Delete (removes it from all files)">
-                        <ActionIcon variant="subtle" color="red" disabled={running} onClick={() => remove(r.id)}>
-                          <IconTrash size={16} />
-                        </ActionIcon>
-                      </Tooltip>
-                    </Group>
-                  ))}
-                </Stack>
-              )}
+              {savedSegments(false)}
 
               <Stack gap="xs">
                 {filesHeader}
@@ -340,12 +424,21 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
                     </Table.Thead>
                     <Table.Tbody>
                       {shownFiles.map((f) => (
-                        <Table.Tr key={f.id} style={{ cursor: 'pointer' }} onClick={() => toggleFile(f.id)}>
+                        <Table.Tr
+                          key={f.id}
+                          style={{ cursor: f.downloading ? 'default' : 'pointer' }}
+                          onClick={() => toggleFile(f.id)}
+                        >
                           <Table.Td>
-                            <Checkbox checked={selected.includes(f.id)} onChange={() => {}} tabIndex={-1} />
+                            <Checkbox
+                              checked={selected.includes(f.id)}
+                              disabled={f.downloading}
+                              onChange={() => {}}
+                              tabIndex={-1}
+                            />
                           </Table.Td>
                           <Table.Td>
-                            <FileLabel label={f.label} title={f.title} />
+                            <FileLabel file={f} />
                           </Table.Td>
                           <Table.Td>{appliedBadges(f, SegmentType.Intro)}</Table.Td>
                           <Table.Td>{appliedBadges(f, SegmentType.Outro)}</Table.Td>
@@ -375,9 +468,11 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
                     ? 'No saved segments yet: a scan only picks up intro / outro chapter markers of the files.'
                     : notScanned > 0
                       ? `Scan to find the saved segments in the files (${notScanned} not scanned with the current ones). The best match is saved for every file that has none yet.`
-                      : 'Click a segment to add it to or remove it from a file. Hover a file for its full name.'}
+                      : 'Click a segment to add it to or remove it from a file. Scan selected puts the ticked segments on the selected files in place of what they had. Hover a file for its full name.'}
                 </Text>
               )}
+
+              {savedSegments(true)}
 
               <Stack gap="xs">
                 {filesHeader}
@@ -385,6 +480,15 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
                   <Table stickyHeader>
                     <Table.Thead>
                       <Table.Tr>
+                        <Table.Th w={32}>
+                          <Checkbox
+                            checked={allShownSelected}
+                            indeterminate={shownSelected > 0 && !allShownSelected}
+                            disabled={shownSelectable === 0}
+                            onChange={toggleAllShown}
+                            aria-label="Select all shown files"
+                          />
+                        </Table.Th>
                         <Table.Th>File</Table.Th>
                         <Table.Th>Intro</Table.Th>
                         <Table.Th>Outro</Table.Th>
@@ -393,8 +497,15 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
                     <Table.Tbody>
                       {shownFiles.map((f) => (
                         <Table.Tr key={f.id}>
+                          <Table.Td>
+                            <Checkbox
+                              checked={scanFiles.includes(f.id)}
+                              disabled={f.downloading}
+                              onChange={() => toggleScanFile(f.id)}
+                            />
+                          </Table.Td>
                           <Table.Td maw={200}>
-                            <FileLabel label={f.label} title={f.title} />
+                            <FileLabel file={f} />
                           </Table.Td>
                           <Table.Td>{optionChips(f, SegmentType.Intro)}</Table.Td>
                           <Table.Td>{optionChips(f, SegmentType.Outro)}</Table.Td>
@@ -406,14 +517,39 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
               </Stack>
 
               <Group justify="flex-end">
-                <Button disabled={running} onClick={scan}>
-                  Scan {state.files.length} file(s)
+                <Button
+                  variant="default"
+                  disabled={running || noneTicked || scanFiles.length === 0}
+                  onClick={() => scanFilesFor(scanFiles, true)}
+                >
+                  Scan selected ({scanFiles.length})
+                </Button>
+                <Button
+                  variant="default"
+                  disabled={running || noneTicked || missingFiles.length === 0}
+                  onClick={() =>
+                    scanFilesFor(
+                      missingFiles.map((f) => f.id),
+                      false
+                    )
+                  }
+                >
+                  Scan missing ({missingFiles.length})
+                </Button>
+                <Button disabled={running} onClick={scanAll}>
+                  Scan all ({readyFiles})
                 </Button>
               </Group>
             </Stack>
           </Tabs.Panel>
         </Tabs>
       </Stack>
+      <SegmentRangeEditor
+        itemId={itemId}
+        reference={(editing && !running && state.references.find((r) => r.id === editing)) || null}
+        name={(editing && referenceNames.get(editing)) || ''}
+        onClose={() => setEditing(null)}
+      />
     </Modal>
   );
 };

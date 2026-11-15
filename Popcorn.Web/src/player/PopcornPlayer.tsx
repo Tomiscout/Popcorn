@@ -6,7 +6,7 @@ import Draggable from 'react-draggable';
 import './PopcornPlayer.css';
 import { disableDefaultListeners } from './Utlis/listener.utils';
 import { initEvents, registerEventHandler, unregisterEventHandler } from '../utils/events';
-import { usePlayerStore, type PlayerState } from '../state/player.store';
+import { isOutro, usePlayerStore, type PlayerState } from '../state/player.store';
 import { createPortal } from 'react-dom';
 import { VideoPlayer as RawVideoPlayer } from './Components/VideoPlayer';
 import { useVideoMetadata } from '../query/video.query';
@@ -30,6 +30,9 @@ const ESCAPE_TAKERS = '[role="dialog"], [role="menu"], [role="listbox"], .skip-b
 
 /** `ScreenOrientation.lock` is missing from TypeScript's DOM types. */
 type LockableOrientation = ScreenOrientation & { lock?: (orientation: 'landscape') => Promise<void> };
+
+/** The next file is prepared (remux, separate audio track) this long before the outro, or the end without one. */
+const PRELOAD_BEFORE_END_SECONDS = 120;
 
 /** The video waits (paused, `isPlaying` = the user's wish) for the download or for a separately loaded audio track. */
 const isHeld = (s: PlayerState) => s.isBuffering || s.isAudioLoading;
@@ -114,6 +117,27 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
       window.clearTimeout(retry);
     };
   }, [fileId]);
+
+  // Series: the server prepares the next file (`PlaybackPreload`: remux + audio conversion) while this one plays, so
+  // that it starts right away. Once per file; playing the next one earlier joins that work on the server.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!fileId || !video || !client) return;
+    let sent = false;
+    const check = () => {
+      const { metadata, segments } = usePlayerStore.getState();
+      // Metadata + segments of this file only (they are replaced after the file changes).
+      if (sent || metadata?.fileId !== fileId || !metadata.nextFile?.nextFileId) return;
+      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+      const outroStarts = segments.filter(isOutro).map((s) => video.duration + s.start / 1000);
+      const end = Math.min(video.duration, ...outroStarts);
+      if (video.currentTime < end - PRELOAD_BEFORE_END_SECONDS) return;
+      sent = true;
+      client.sendEvent(SocketRequests.PlaybackPreload, fileId);
+    };
+    video.addEventListener('timeupdate', check);
+    return () => video.removeEventListener('timeupdate', check);
+  }, [fileId, client, videoRef]);
 
   // Where we are in the file, for the home page's "continue watching": every 10 s, on pause / end and when it changes.
   useEffect(() => {
@@ -317,6 +341,9 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
       if (itemId) client?.sendEvent(SocketRequests.SegmentAutoSkipSet, { itemId, mode });
     };
 
+    const segmentAutoSkipDelaySetHandler = (seconds: number) =>
+      client?.sendEvent(SocketRequests.SegmentAutoSkipDelaySet, seconds);
+
     const closeHandler = () => {
       const { resetState, closePlayer, setIsFullscreen } = usePlayerStore.getState();
       resetState();
@@ -342,6 +369,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
     registerEventHandler('player_close', closeHandler);
     registerEventHandler('segment_seen', segmentSeenHandler);
     registerEventHandler('segment_auto_skip_set', segmentAutoSkipSetHandler);
+    registerEventHandler('segment_auto_skip_delay_set', segmentAutoSkipDelaySetHandler);
     registerEventHandler('set_playback_time', setPlaybackTime);
     registerEventHandler('play_status_changed', onToggle);
     registerEventHandler('skip_seconds', onSkip);
@@ -362,6 +390,7 @@ export const PopcornPlayer: React.FC<PopcornPlayerProps> = ({ videoRef }) => {
       unregisterEventHandler('player_close', closeHandler);
       unregisterEventHandler('segment_seen', segmentSeenHandler);
       unregisterEventHandler('segment_auto_skip_set', segmentAutoSkipSetHandler);
+      unregisterEventHandler('segment_auto_skip_delay_set', segmentAutoSkipDelaySetHandler);
       unregisterEventHandler('set_playback_time', setPlaybackTime);
       unregisterEventHandler('play_status_changed', onToggle);
       unregisterEventHandler('skip_seconds', onSkip);

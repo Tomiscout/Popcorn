@@ -4,8 +4,8 @@ namespace Popcorn.Server.Services.Disk;
 
 public class ScratchFilesCleanupService(ILogger<ScratchFilesCleanupService> logger)
 {
-    private static readonly TimeSpan MaxAge = TimeSpan.FromDays(1);
-    private const long MaxTotalSizeBytes = 10L * 1024 * 1024 * 1024; // 10 GB
+    public static readonly TimeSpan MaxAge = TimeSpan.FromDays(1);
+    public const long MaxTotalSizeBytes = 10L * 1024 * 1024 * 1024; // 10 GB
 
     public void InitialCleanup()
     {
@@ -62,12 +62,21 @@ public class ScratchFilesCleanupService(ILogger<ScratchFilesCleanupService> logg
     
     private Task CleanupThumbnailsCache()
     {
-        if (!Directory.Exists(DirectoryUtils.ThumbnailsFolder))
-            return Task.CompletedTask;
+        CleanupThumbnails(DirectoryUtils.ThumbnailsFolder);
+        // Left over by a process killed while rendering; a day old, nobody is still writing them.
+        CleanupThumbnails(DirectoryUtils.ThumbnailsRenderingFolder);
+        DeleteLegacyPlayerThumbnails();
+        return Task.CompletedTask;
+    }
+
+    private void CleanupThumbnails(string folder)
+    {
+        if (!Directory.Exists(folder))
+            return;
 
         var now = DateTime.UtcNow;
 
-        var files = new DirectoryInfo(DirectoryUtils.ThumbnailsFolder).GetFiles(
+        var files = new DirectoryInfo(folder).GetFiles(
             "*",
             SearchOption.TopDirectoryOnly
         );
@@ -79,8 +88,22 @@ public class ScratchFilesCleanupService(ILogger<ScratchFilesCleanupService> logg
                 TryDelete(file);
             }
         }
+    }
 
-        return Task.CompletedTask;
+    /// <summary>The native players' old thumbnail folder (they use <c>ThumbnailsCache/</c> now): only a cache, dropped.</summary>
+    private void DeleteLegacyPlayerThumbnails()
+    {
+        var folder = DirectoryUtils.LegacyPlayerThumbnailsFolder;
+        if (!Directory.Exists(folder))
+            return;
+        try
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not delete the old player thumbnails folder {folder}", folder);
+        }
     }
 
     private void TryDelete(FileInfo file)

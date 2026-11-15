@@ -6,7 +6,7 @@ import { PlayerFeatures, PlayerFeaturesProvider } from '../player-features';
 import { disableDefaultListeners } from '../Utlis/listener.utils';
 import { postMessage, registerEventHandler, unregisterEventHandler } from '../../utils/events';
 import { perFileSyncState, thumbnailKey, usePlayerStore } from '../../state/player.store';
-import type { PlayerSegmentsDto, SegmentAutoSkip } from '../../model/segments.contract';
+import { DEFAULT_AUTO_SKIP_DELAY, type PlayerSegmentsDto, type SegmentAutoSkip } from '../../model/segments.contract';
 import { AudioTrackDto, MediaFileMetadata, SubtitleTrackDto } from '../../query/models/video.models';
 import { FileType, FolderLoadedNavigation, MediaFile } from '../../model/media.contract';
 import type { ChapterInfo, MediaInfo, NextFilePlan } from '../../query/models/video.models';
@@ -47,7 +47,7 @@ interface NativeSegments {
   GlobalMode: SegmentAutoSkip;
   ItemMode?: SegmentAutoSkip | null;
   SkipOutroTail?: boolean;
-  SkipSegmentsWithoutDelay?: boolean;
+  AutoSkipDelay?: number;
   Segments?: { SegmentId: string; StartSeconds: number; Length: number; Seen: boolean }[];
 }
 
@@ -112,7 +112,7 @@ const toSegmentsDto = (data: NativeSegments | null): PlayerSegmentsDto | null =>
     globalMode: data.GlobalMode,
     itemMode: data.ItemMode ?? null,
     skipOutroTail: data.SkipOutroTail ?? true,
-    skipSegmentsWithoutDelay: data.SkipSegmentsWithoutDelay ?? false,
+    autoSkipDelay: data.AutoSkipDelay ?? DEFAULT_AUTO_SKIP_DELAY,
     segments: (data.Segments ?? []).map((s) => ({
       segmentId: s.SegmentId,
       startSeconds: s.StartSeconds,
@@ -337,6 +337,7 @@ export const NativePlayer = () => {
       player_close: () => send('player_close'),
       segment_seen: (segmentId: string) => send('segment_seen', segmentId),
       segment_auto_skip_set: (mode: SegmentAutoSkip | null) => send('segment_auto_skip_set', mode),
+      segment_auto_skip_delay_set: (seconds: number) => send('segment_auto_skip_delay_set', seconds),
     };
     for (const [name, handler] of Object.entries(outbound)) registerEventHandler(name, handler);
 

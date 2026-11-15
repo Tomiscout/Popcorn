@@ -10,7 +10,8 @@ namespace Popcorn.Server.Push;
 /// <summary>
 /// Pushes the subscribable socket events (<see cref="SocketSubscriptions"/>) when their source reports a change:
 /// download list + stats (+ the details of watched downloads) after every <see cref="DownloadManager.Changed"/>, a
-/// segment dialog's state after <see cref="SegmentFinderService.StateChanged"/>. Each payload is serialized once and
+/// segment dialog's state after <see cref="SegmentFinderService.StateChanged"/> (and after download changes: its
+/// files' downloading flags). Each payload is serialized once and
 /// only sent when it differs from the last one sent (an idle downloader ticks every second without anything to send).
 /// Item pages get a ping after <see cref="ItemHistoryService.Changed"/> (every time: the page refetches).
 /// </summary>
@@ -52,6 +53,10 @@ public sealed class LivePushService(
                 foreach (var key in subscriptions.Keys(SocketRequests.DownloadDetails))
                     if (Guid.TryParse(key, out var id))
                         await PushAsync(SocketRequests.DownloadDetails, async () => await downloads.GetDetailsAsync(id), key);
+                // Open segment dialogs show which files are still downloading (sent only when that changes).
+                foreach (var key in subscriptions.Keys(SocketRequests.SegmentsState))
+                    if (Guid.TryParse(key, out var id))
+                        await PushAsync(SocketRequests.SegmentsState, async () => await segmentFinder.GetStateAsync(id), key);
             }
             finally
             {

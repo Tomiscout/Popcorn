@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using FFMpegCore;
+using FFMpegCore.Exceptions;
 
 namespace Popcorn.SegmentFinder;
 
@@ -79,15 +80,46 @@ internal static class AudioExtractor
 
     private static async Task ExtractAsync(string file, int streamIndex, double start, double length, string format, string outputPath)
     {
-        await FFMpegArguments
-            .FromFileInput(file, true, o => o.Seek(TimeSpan.FromSeconds(start)))
-            .OutputToFile(outputPath, true, o => o
-                .WithCustomArgument($"-map 0:{streamIndex} -vn -sn -dn {format}")
-                .WithCustomArgument($"-t {Format(length)}"))
-            .ProcessAsynchronously();
+        try
+        {
+            await FFMpegArguments
+                .FromFileInput(file, true, o => o.Seek(TimeSpan.FromSeconds(start)))
+                .OutputToFile(outputPath, true, o => o
+                    .WithCustomArgument($"-map 0:{streamIndex} -vn -sn -dn {format}")
+                    .WithCustomArgument($"-t {Format(length)}"))
+                .ProcessAsynchronously();
+        }
+        catch (FFMpegException e)
+        {
+            // Its message is ffmpeg's whole output: on a broken file one error line per packet, megabytes of them.
+            throw new AudioExtractionException($"Failed to extract audio from {file}: {Summarize(e.Message)}");
+        }
 
         if (!File.Exists(outputPath)) throw new InvalidOperationException($"Failed to extract audio from {file}");
     }
 
+    /// <summary>The distinct lines of ffmpeg's error output after its banner, at most <see cref="MaxErrorLines"/>.</summary>
+    private static string Summarize(string output)
+    {
+        var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var first = lines.First();
+        var started = Array.FindIndex(lines, l => l.StartsWith("Press [q]", StringComparison.Ordinal));
+        // Failed before transcoding (bad input, no stream): the reason is at the end.
+        var errors = (started >= 0
+                ? lines.Skip(started + 1).Where(l => l.StartsWith('[') || l.Contains("rror", StringComparison.Ordinal))
+                : lines.Skip(1).Reverse().Take(MaxErrorLines).Reverse())
+            .Distinct()
+            .Take(MaxErrorLines)
+            .ToList();
+        // first = "ffmpeg exited with non-zero exit-code (69 - ffmpeg version ...": keep the exit code only.
+        var code = first.IndexOf(" - ", StringComparison.Ordinal) is var dash and > 0 ? first[..dash] + ")" : first;
+        return errors.Count == 0 ? code : $"{code}: {string.Join(" | ", errors)}";
+    }
+
+    private const int MaxErrorLines = 5;
+
     private static string Format(double seconds) => seconds.ToString("F3", CultureInfo.InvariantCulture);
 }
+
+/// <summary>ffmpeg could not read the file; the message is a short summary of its output.</summary>
+public class AudioExtractionException(string message) : Exception(message);

@@ -245,6 +245,7 @@
 
 /* Rows */
 .log-row {
+  user-select: text;
   --lvl-color: #888;
   --app-color: #888;
   border-left: 2px solid transparent;
@@ -420,4 +421,45 @@
 
 .log-jump:hover {
   background: #c34343;
+}
+
+/* Copy button at the end of the main line, shown on hover */
+.log-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -2px;
+  width: 20px;
+  height: 17px;
+  margin-left: 8px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--log-dim);
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  user-select: none;
+  transition: opacity 100ms;
+}
+
+.log-row:hover .log-copy,
+.log-copy:focus-visible,
+.log-copy.copied {
+  opacity: 1;
+}
+
+.log-copy:hover {
+  color: var(--log-text);
+  border-color: var(--log-border);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.log-copy.copied {
+  color: #6ee7a8;
+}
+
+/* Rows with detail expand on a click, but the message is text to select */
+.log-row.has-detail .log-msg {
+  cursor: text;
 }

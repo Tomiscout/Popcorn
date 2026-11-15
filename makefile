@@ -102,6 +102,8 @@ install-linux:
 		{ echo "ASP.NET Core 10 runtime missing (needed by Popcorn.Server). Arch: sudo pacman -S aspnet-runtime"; exit 1; }
 	systemctl --user stop $(SYSTEMD_SERVICE_NAME) 2>/dev/null || true
 	$(MAKE) --no-print-directory kill-popcorn
+	# The desktop app's HTTP cache (as the installer does on updates): it could still hold the old UI bundle
+	rm -rf "$${XDG_DATA_HOME:-$$HOME/.local/share}/Popcorn/cef/Default/Cache" "$${XDG_DATA_HOME:-$$HOME/.local/share}/Popcorn/cef/Default/Code Cache"
 	rm -rf $(INSTALL_DIR)
 	mkdir -p $(INSTALL_DIR)
 	cp -r $(LINUX_DIR)/* $(INSTALL_DIR)

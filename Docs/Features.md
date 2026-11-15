@@ -70,7 +70,10 @@ detection: [Popcorn.SegmentFinder](../Popcorn.SegmentFinder/README.md).
   `player.html?ws=ws://127.0.0.1:<port>` against a running Linux player (port = Fleck server, usually 8181). When the
   overlay (re)connects, C# replays the current file's state (`PlayerCore.ResendState`).
 - **Seek-bar thumbnails** (server `MediaThumbnailsService`, player `ThumbnailService`) go through
-  `ThumbnailRenderer.Render` (`Popcorn.Core/Application/Utils`):
+  `ThumbnailRenderer.Render` (`Popcorn.Core/Application/Utils`) into one shared cache, `ThumbnailsCache/<fileId>-<seconds>.jpg`
+  (a thumbnail made while watching in the browser is reused by the native player and vice versa). ffmpeg writes into
+  `ThumbnailsCache/rendering/` and the finished file is renamed into place, so neither process can read a half-written
+  one:
   - Hardware decoders come from the GPUs actually present (`Shared/Ffmpeg/GpuAdapters`: PCI vendor ids from
     `/sys/class/drm/renderD*` / the Windows display adapter registry class; never `ffmpeg -hwaccels`, which lists what
     ffmpeg was built with, e.g. qsv without an Intel GPU) → `ThumbnailUtils.HardwareMethods` (NVIDIA: `*_cuvid` +
@@ -137,8 +140,10 @@ detection: [Popcorn.SegmentFinder](../Popcorn.SegmentFinder/README.md).
 - `SegmentSkipService` gives the players `PlayerSegments` (locations, modes, `SegmentInfo.seen`).
 - The decision is in the overlay (`ProgressBar.tsx`, `shouldAutoSkip`): made when a segment is entered and only on
   its first entry per file playback (seeking back shows the button full without a count-down). Auto-skip = the skip
-  button's 10 s count-down, or an immediate seek with `SettingsModel.SkipSegmentsWithoutDelay`
-  (`PlayerSegments.SkipSegmentsWithoutDelay`, Settings page).
+  button's count-down of `SettingsModel.SegmentAutoSkipDelay` seconds (default 10, 0..99999, 0 = immediate seek;
+  `PlayerSegments.AutoSkipDelay`). Global only, set on the Settings page or in the player gear's Auto-skip tab
+  (`segment_auto_skip_delay_set`: browser to the `SegmentAutoSkipDelaySet` socket event, native to
+  `WebEventHandler`; both save `settings.json`).
 - Reaching a segment's end (watched, skipped, seeked past) posts `segment_seen`. Both hosts forward `segment_seen` /
   `segment_auto_skip_set`: browser to the `SegmentSeen` / `SegmentAutoSkipSet` socket events, native to
   `WebEventHandler`.

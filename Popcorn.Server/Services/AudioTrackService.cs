@@ -27,6 +27,8 @@ public sealed class AudioTrackService(ILogger<AudioTrackService> logger)
         /// <summary>True when the converted file is there, false when the conversion failed or was cancelled.</summary>
         public readonly TaskCompletionSource<bool> Done = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public int Watchers;
+        /// <summary>Preloaded (<see cref="Preload"/>): runs to the end even while nobody watches it.</summary>
+        public bool Pinned;
         public long LastWatched = Environment.TickCount64;
     }
 
@@ -50,24 +52,11 @@ public sealed class AudioTrackService(ILogger<AudioTrackService> logger)
     /// </summary>
     public async Task Watch(MediaFile mediaFile, AudioTrackDto track, Func<AudioTrackState, Task> report, CancellationToken ct)
     {
-        var path = CachePath(mediaFile.Id, track.Index);
-        Conversion conversion;
+        Conversion? conversion;
         lock (conversions)
         {
-            if (File.Exists(path))
-            {
-                conversion = null!;
-            }
-            else
-            {
-                if (!conversions.TryGetValue(path, out conversion!))
-                {
-                    conversion = new Conversion();
-                    conversions[path] = conversion;
-                    _ = Task.Run(() => ConvertAsync(mediaFile, track, path, conversion));
-                }
-                conversion.Watchers++;
-            }
+            conversion = StartOrJoin(mediaFile, track);
+            if (conversion is not null) conversion.Watchers++;
         }
         if (conversion is null)
         {
@@ -91,6 +80,32 @@ public sealed class AudioTrackService(ILogger<AudioTrackService> logger)
         }
     }
 
+    /// <summary>
+    /// Converts the track ahead of playing it (the web player's next file) unless it is there or being converted.
+    /// Not cancelled for lack of watchers: nobody watches it until that file plays. Playing it joins this conversion.
+    /// </summary>
+    public void Preload(MediaFile mediaFile, AudioTrackDto track)
+    {
+        lock (conversions)
+        {
+            if (StartOrJoin(mediaFile, track) is { } conversion) conversion.Pinned = true;
+        }
+    }
+
+    /// <summary>The running conversion of the track, started if needed; null when the converted file is there. Under the lock.</summary>
+    private Conversion? StartOrJoin(MediaFile mediaFile, AudioTrackDto track)
+    {
+        var path = CachePath(mediaFile.Id, track.Index);
+        if (File.Exists(path)) return null;
+        if (!conversions.TryGetValue(path, out var conversion))
+        {
+            conversion = new Conversion();
+            conversions[path] = conversion;
+            _ = Task.Run(() => ConvertAsync(mediaFile, track, path, conversion));
+        }
+        return conversion;
+    }
+
     private async Task ConvertAsync(MediaFile mediaFile, AudioTrackDto track, string path, Conversion conversion)
     {
         var part = path + ".part";
@@ -98,7 +113,7 @@ public sealed class AudioTrackService(ILogger<AudioTrackService> logger)
         {
             bool abandoned;
             lock (conversions)
-                abandoned = conversion.Watchers == 0 && Environment.TickCount64 - conversion.LastWatched > Grace.TotalMilliseconds;
+                abandoned = !conversion.Pinned && conversion.Watchers == 0 && Environment.TickCount64 - conversion.LastWatched > Grace.TotalMilliseconds;
             if (abandoned) conversion.Cancel.Cancel();
         }, null, Grace, TimeSpan.FromSeconds(5));
 

@@ -4,7 +4,7 @@ using Popcorn.Server.Models.Requests;
 
 namespace Popcorn.Server.Services;
 
-/// <summary>Settings page → Updates: check silently, then (on the user's yes) run the installer's update.</summary>
+/// <summary>Settings page → Updates: check silently, then (on the user's yes) run the installer's update; or open the installer's plain window.</summary>
 [WebSocketService]
 public class UpdateWebService(WebSocketBus bus, UpdateService updates, ILogger<UpdateWebService> logger)
 {
@@ -50,6 +50,13 @@ public class UpdateWebService(WebSocketBus bus, UpdateService updates, ILogger<U
     public Task Install()
     {
         updates.StartUpdate();
+        return Task.CompletedTask;
+    }
+
+    [WebSocketEvent(SocketRequests.UpdateOpenInstaller)]
+    public Task OpenInstaller()
+    {
+        updates.OpenInstaller();
         return Task.CompletedTask;
     }
 }

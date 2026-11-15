@@ -16,6 +16,7 @@ use crate::log::{info, warning};
 use crate::package::{self, Package};
 use crate::paths;
 
+#[derive(Clone)]
 pub struct Config {
     pub install_dir: PathBuf,
     /// Install this zip instead of looking on GitHub.
@@ -58,6 +59,11 @@ enum Source {
 impl Offer {
     pub fn is_file(&self) -> bool {
         matches!(self.source, Source::File(_))
+    }
+
+    /// `--force` / "Force reinstall" offering the installed version again.
+    pub fn is_reinstall(&self) -> bool {
+        !self.fresh && self.installed.as_deref() == Some(self.version.as_str())
     }
 }
 
@@ -259,11 +265,26 @@ fn download_and_install(
     Ok(warnings)
 }
 
-/// The FFmpeg build to download; None = keep the installed files (same build, or GitHub not reachable).
+/// The FFmpeg build to download; None = keep the installed files (younger than `ffmpeg::MAX_AGE` without `--force`,
+/// same build, or GitHub not reachable).
 fn ffmpeg_to_download(config: &Config) -> Option<Asset> {
+    if !config.force
+        && let Some(age) = ffmpeg::installed_age(&config.install_dir)
+        && age < ffmpeg::MAX_AGE
+    {
+        info!(
+            "FFmpeg was downloaded {} days ago; keeping it (updated after {} days, or with --force)",
+            age.as_secs() / 86400,
+            ffmpeg::MAX_AGE.as_secs() / 86400
+        );
+        return None;
+    }
     let github = GitHub::new(ffmpeg::REPO, config.token.clone());
     match ffmpeg::latest(&github) {
-        Ok(asset) if ffmpeg::installed_id(&config.install_dir) == Some(ffmpeg::id(&asset)) => {
+        Ok(asset)
+            if !config.force
+                && ffmpeg::installed_id(&config.install_dir) == Some(ffmpeg::id(&asset)) =>
+        {
             info!("FFmpeg {} is installed already", asset.name);
             None
         }

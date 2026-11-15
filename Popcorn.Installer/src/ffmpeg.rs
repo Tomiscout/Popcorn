@@ -4,12 +4,14 @@
 //! static GPL tar.xz (`ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz`; the shared one's binaries look for their libraries
 //! in `../lib`). Its `bin/` goes next to Popcorn.Server, without ffplay. `ffmpeg-files.txt` lists what came from it (the DLL names change with FFmpeg
 //! versions) and which build it was, so the next update can carry the same files over: when GitHub cannot be reached
-//! (rate limit) or the build has not changed since.
+//! (rate limit), the build has not changed since, or the installed one is younger than `MAX_AGE` (then GitHub is not
+//! even asked; `--force` downloads anyway).
 
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context, bail};
 
@@ -19,6 +21,9 @@ pub const REPO: &str = "BtbN/FFmpeg-Builds";
 const TAG: &str = "latest";
 pub const FILES: &str = "ffmpeg-files.txt";
 const EXE: &str = std::env::consts::EXE_SUFFIX;
+/// An installed FFmpeg is kept (not looked up, not downloaded) until it is this old, unless `--force`.
+pub const MAX_AGE: Duration = Duration::from_secs(182 * 24 * 60 * 60);
+const DOWNLOADED: &str = "# downloaded ";
 
 /// Name tokens of the build: target, licence, linking, archive type.
 #[cfg(all(windows, target_arch = "aarch64"))]
@@ -89,6 +94,24 @@ pub fn installed_id(dir: &Path) -> Option<String> {
     let text = std::fs::read_to_string(dir.join(FILES)).ok()?;
     let first = text.lines().next()?;
     Some(first.strip_prefix('#')?.trim().to_string())
+}
+
+/// How long ago the FFmpeg in `dir` was downloaded (`# downloaded <unix seconds>` in `ffmpeg-files.txt`, carried
+/// over with the files). None: no FFmpeg, or a list from before the line existed.
+pub fn installed_age(dir: &Path) -> Option<Duration> {
+    let text = std::fs::read_to_string(dir.join(FILES)).ok()?;
+    let secs: u64 = text
+        .lines()
+        .find_map(|line| line.strip_prefix(DOWNLOADED))?
+        .trim()
+        .parse()
+        .ok()?;
+    // A time in the future (clock changed) counts as just downloaded.
+    Some(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH + Duration::from_secs(secs))
+            .unwrap_or_default(),
+    )
 }
 
 /// Puts FFmpeg into `dest` from `source`, from the current install (`current`) when a zip fails. Returns the files.
@@ -294,7 +317,11 @@ fn copy(from: &Path, dest: &Path) -> anyhow::Result<Vec<String>> {
 }
 
 fn write_list(dest: &Path, id: &str, files: &[String]) -> anyhow::Result<()> {
-    let mut text = format!("# {id}\n");
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let mut text = format!("# {id}\n{DOWNLOADED}{now}\n");
     for file in files {
         text.push_str(file);
         text.push('\n');

@@ -11,7 +11,10 @@ Everything is built around `Popcorn.Server`.
 
 ASP.NET Core host. Serves the `Popcorn.Web` bundle from `web/`, WebSocket RPC at `/ws`, REST video streaming at
 `api/video`. Runs headless / as systemd user service. Browser playback uses the web player in
-`Popcorn.Web/src/player`.
+`Popcorn.Web/src/player`. The bundle's HTML (and other unhashed files) go out with `Cache-Control: no-cache`, the
+hashed `assets/` as immutable (`Startup.SetWebCacheHeaders`): without it the desktop app's persistent CEF cache keeps
+the old `index.html`, and so the old bundle, after an update. Updates (`Popcorn.Installer`, `make install-linux`) also
+delete the desktop apps' HTTP cache, for copies cached without these headers.
 
 Shutdown is meant to take well under a second: hosted services stop concurrently with a 10 s backstop
 (`HostOptions` in `PopcornServerHost`; `TimeoutStopSec=20` in `popcorn.service`), open `/ws` sockets are closed from
@@ -129,6 +132,13 @@ Launched by the server via `WindowsPlayerService` from `<server dir>\Player\Popc
     with the request; the only option for files still downloading).
   - `VideoPlayer.tsx` plays the stream offset by `start` and moves to the converted file at the next reload (seek
     outside its buffer) or pause, holding the video (`isAudioLoading`) while the audio loads.
+- `api/video/{fileId}` remuxes H.264/H.265 to MP4 (`FileStreamService`, singleton): one remux per file + audio track at
+  a time, later requests wait for the running one (`.part` until done).
+- Preloading the next file: `PopcornPlayer.tsx` sends socket `PlaybackPreload` (current file id) once,
+  `PRELOAD_BEFORE_END_SECONDS` (120 s) before the outro (the end without one). The server (`FileWebService`) finds the
+  file `PlayerNextFile` would play and, in the background, remuxes it and starts the conversion of its start audio
+  track when the video won't carry it (`AudioTrackService.Preload`: pinned, not cancelled for lack of watchers).
+  Opening that file before it is done joins both jobs; nothing restarts. Files still downloading are skipped.
 - `DownloadsController`: `api/downloads/{id}/files/{index}` (waiting range stream), `api/downloads/playback?path=` /
   `playback/{fileId}` (download state + downloaded ranges as fractions of playback time via the container index,
   `MediaTimeline`: MKV/WebM Cues, MP4 sample tables, byte fractions when there is none). Used by both players: seek
@@ -263,7 +273,11 @@ log, window events (`Ready` = WebView2 created) and dropped file paths).
 ## Runtime data
 
 - Data folder: `DirectoryUtils.DataFolder` = `LocalApplicationData/Popcorn/` (`~/.local/share/Popcorn/` on Linux):
-  SQLite DB, `logs/`, `ThumbnailsCache/`, `StreamCache/`, `downloads/` (download list + torrent engine state; the
+  SQLite DB, `logs/`, caches (`ThumbnailsCache/` seek thumbnails, shared by the server (web player) and the native players; the players' old
+  `thumb/` folder is deleted at server start,
+  `StreamCache/` remuxes + converted audio + subtitles; all named `<fileId>-...`, files older than a day deleted at
+  server start, `StreamCache/` also trimmed to 10 GB; Settings → Storage lists and clears them: `CacheFilesService`, `CacheList` / `CacheClear`, which skips `.part` files; every user checks a file exists before using it),
+  `downloads/` (download list + torrent engine state; the
   files themselves go to `DownloadSettings.DownloadFolder`, default `~/Downloads/Popcorn`, one folder per download),
   `plugins/` (user-installed plugins, win over bundled ones; + `plugins.json` = disabled ids).
 - Logging: Serilog everywhere, one file per app and day `logs/YYYY-MM-DD-<App>.txt` (date first so the folder sorts
@@ -271,13 +285,20 @@ log, window events (`Ready` = WebView2 created) and dropped file paths).
   `LogFileName.cs`, both linked into Popcorn.Windows; rolls at midnight, `_001` suffix when another process of the
   app holds the day's file — on Unix a POSIX record lock, `FileShare.Read` alone doesn't exclude writers there); Rust
   apps (`Popcorn.Linux`, `Popcorn.Installer` `src/log.rs`) the same names. The server renames old
-  `<App>-YYYYMMDD.txt` files at start (`LogFileName.MigrateLegacyNames`).
-- Log viewer: Settings → Logs (`pages/settings/logs/log-viewer.tsx`, lazy chunk; `@mantine/dates` range picker,
+  `<App>-YYYYMMDD.txt` files at start (`LogFileName.MigrateLegacyNames`). A .NET app's file growing past 100 MB is
+  emptied and restarted with its last 10 events + a warning that it was truncated (the sink opens it
+  `OpenOrCreate` + seek to end, not `Append`, so it can `SetLength(0)`; the Rust apps' files are not capped).
+  Retention: `SettingsModel.LogRetentionDays` (default 7, today included; Settings → Storage), applied by the server's
+  `LogCleanupService` at start, every 6 h and when the setting is lowered — daily files by the day in their name,
+  CEF's logs by last write. "Clear logs" there (`CacheClearLogs`) deletes all but today's files: the running apps hold
+  those open, and deleting one on Linux would send the rest of the day's logs to an unlinked file.
+- Log viewer: Settings → Logs (`pages/settings/logs/log-viewer.tsx`, lazy chunk, opens on Today; `@mantine/dates` range picker,
   `@tanstack/react-virtual` list) reads them merged through `LogsController` (`POST api/logs/query`,
   `Popcorn.Server/Logs/LogReader.cs`: daily files + CEF's `cef.log`/`cef-player.log`, filters = days/excluded
   apps/excluded levels/search, newest 5000; live = `POST api/logs/live` streams new entries (NDJSON) from the
   per-file byte `cursor` on, only while the range has no end day). Requests to `/api/logs` are filtered out of the
-  server's own log (`Program.IsLogViewerRequest`).
+  server's own log (`Program.IsLogViewerRequest`). A row with detail lines expands on a plain click only (drags and
+  double/triple clicks select text); its hover copy button copies the main line plus the detail lines.
 - Desktop entry: `Popcorn.Linux/popcorn.desktop` template (`@INSTALL_DIR@` substituted; Uninstall Popcorn action =
   `Popcorn.Installer.Linux --uninstall`), installed only if missing by make, (re)written by Popcorn.Installer;
   launches `Popcorn.Linux`. Window app_id / WM_CLASS is `popcorn` so it matches this file.

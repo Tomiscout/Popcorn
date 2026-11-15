@@ -7,7 +7,7 @@ namespace Popcorn.Server.Services;
 
 /// <summary>
 /// Updates through Popcorn.Installer next to the server (in every bundle `cargo xtask bundle` makes). The check runs it without a window (<c>--update-check</c>: JSON on stdout), the update
-/// with its window and <c>--from-app</c> (= <c>--confirm</c>, and nothing to open at the end): it downloads, stops this server, swaps the files and starts it again.
+/// with its window and <c>--from-app</c>; "Open installer" starts it plain (= <c>--confirm</c>, and nothing to open at the end): it downloads, stops this server, swaps the files and starts it again.
 /// </summary>
 public class UpdateService(ILogger<UpdateService> logger)
 {
@@ -97,15 +97,30 @@ public class UpdateService(ILogger<UpdateService> logger)
     /// <summary>Starts the installer's window on the update; it closes this server itself.</summary>
     public void StartUpdate()
     {
+        logger.LogInformation("Starting the update ({Installer} --from-app)", InstallerPath);
+        StartInstaller("--from-app");
+    }
+
+    /// <summary>The installer's own window, no options: it checks and asks like when started by hand (update, or when
+    /// up to date: check again, force reinstall, uninstall).</summary>
+    public void OpenInstaller()
+    {
+        logger.LogInformation("Opening {Installer}", InstallerPath);
+        StartInstaller();
+    }
+
+    private void StartInstaller(params string[] args)
+    {
         if (!IsSupported)
             throw new InvalidOperationException("Popcorn.Installer is not installed");
-        logger.LogInformation("Starting the update ({Installer} --from-app)", InstallerPath);
-        Process.Start(new ProcessStartInfo(InstallerPath)
+        var startInfo = new ProcessStartInfo(InstallerPath)
         {
-            ArgumentList = { "--from-app" },
             UseShellExecute = false,
             // Outside the install folder: a working directory in it would keep the installer from renaming it.
             WorkingDirectory = DirectoryUtils.DataFolder,
-        })?.Dispose();
+        };
+        foreach (var arg in args)
+            startInfo.ArgumentList.Add(arg);
+        Process.Start(startInfo)?.Dispose();
     }
 }

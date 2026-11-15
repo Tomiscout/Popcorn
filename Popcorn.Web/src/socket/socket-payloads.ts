@@ -114,12 +114,23 @@ export interface SettingsModel {
   segmentAutoSkip?: SegmentAutoSkip;
   /** Skipping an outro that ends within 10 seconds of the end of the file skips those last seconds too. */
   skipOutroTail?: boolean;
-  /** Auto-skip jumps past an intro/outro as soon as it starts instead of after the skip button's count-down. */
-  skipSegmentsWithoutDelay?: boolean;
+  /**
+   * Seconds of the skip button's count-down before auto-skip jumps past an intro/outro (0 = as soon as it starts),
+   * 0..`MaxSegmentAutoSkipDelay`.
+   */
+  segmentAutoSkipDelay?: number;
+  /** Days of log files kept in logs/ (today counts as one); older ones are deleted by the server. */
+  logRetentionDays?: number;
 }
 
 export interface AutostartSetRequest {
   enabled?: boolean;
+}
+
+/** CacheClear: deletes cached files; `Kind` / `FileId` null mean all of them. */
+export interface CacheClearRequest {
+  kind?: CacheKind | null;
+  fileId?: string | null;
 }
 
 export interface PluginSearchRequest {
@@ -188,6 +199,26 @@ export interface SegmentsDetectRequest {
   fileIds: string[];
 }
 
+/**
+ * "Scan all" leaves everything but `ItemId` at its default. "Scan missing" / "Scan selected" name the
+ * files and the saved segments to look for.
+ */
+export interface SegmentsScanRequest {
+  itemId?: string;
+  /** Null = every file of the item. */
+  fileIds?: string[] | null;
+  /**
+   * Saved segments (references) to match; null = all of them plus chapters named intro / outro. With a list only
+   * the types in it are scanned, chapters are not read and files are not marked scanned.
+   */
+  segmentIds?: string[] | null;
+  /**
+   * What is found replaces the file's saved segments of that type ("Scan selected"); otherwise only types the file
+   * has no saved segment of get the find.
+   */
+  replace?: boolean;
+}
+
 export interface SegmentsSetTypeRequest {
   itemId?: string;
   segmentId?: string;
@@ -203,6 +234,23 @@ export interface SegmentsDeleteRequest {
 export interface SegmentsApplyRequest {
   itemId?: string;
   files: Record<string, SegmentPick[]>;
+}
+
+/** Range editor of a saved segment: answered with `SegmentEditInfo`. */
+export interface SegmentsEditInfoRequest {
+  itemId?: string;
+  segmentId?: string;
+}
+
+/**
+ * Re-cuts a saved segment's audio; seconds in the editor's audio (`SegmentEditInfo`). Drops it from the
+ * files it was applied to (scan again).
+ */
+export interface SegmentsSetRangeRequest {
+  itemId?: string;
+  segmentId?: string;
+  start?: number;
+  length?: number;
 }
 
 export interface SegmentAutoSkipSetRequest {
@@ -307,6 +355,9 @@ export interface DownloadSettings {
  */
 export type SegmentAutoSkip = 'Always' | 'AfterFirstOccurrence' | 'Never';
 
+/** What a cached file is for (Settings → Storage). */
+export type CacheKind = 'Thumbnails' | 'Remux' | 'Audio' | 'Subtitles';
+
 export interface FileQuery {
   text: string;
   title?: string | null;
@@ -381,6 +432,7 @@ export interface SocketPayloads {
   [SocketRequests.Unsubscribe]: SubscriptionRequest;
   [SocketRequests.MediaList]: void;
   [SocketRequests.PlaybackProgress]: PlaybackProgressRequest;
+  [SocketRequests.PlaybackPreload]: string;
   [SocketRequests.MediaItem]: MediaItemRequest;
   [SocketRequests.RemoveMediaItem]: RemoveMediaItemRequest;
   [SocketRequests.RefreshMediaItem]: string;
@@ -418,6 +470,10 @@ export interface SocketPayloads {
   [SocketRequests.UpdateStatus]: void;
   [SocketRequests.UpdateCheck]: void;
   [SocketRequests.UpdateInstall]: void;
+  [SocketRequests.UpdateOpenInstaller]: void;
+  [SocketRequests.CacheList]: void;
+  [SocketRequests.CacheClear]: CacheClearRequest;
+  [SocketRequests.CacheClearLogs]: void;
   [SocketRequests.PluginList]: void;
   [SocketRequests.PluginSearch]: PluginSearchRequest;
   [SocketRequests.PluginDetails]: PluginDetailsRequest;
@@ -432,12 +488,15 @@ export interface SocketPayloads {
   [SocketRequests.OpenLink]: OpenLinkRequest;
   [SocketRequests.SegmentsState]: string;
   [SocketRequests.SegmentsDetect]: SegmentsDetectRequest;
-  [SocketRequests.SegmentsScan]: string;
+  [SocketRequests.SegmentsScan]: SegmentsScanRequest;
   [SocketRequests.SegmentsSetType]: SegmentsSetTypeRequest;
   [SocketRequests.SegmentsDelete]: SegmentsDeleteRequest;
   [SocketRequests.SegmentsApply]: SegmentsApplyRequest;
+  [SocketRequests.SegmentsEditInfo]: SegmentsEditInfoRequest;
+  [SocketRequests.SegmentsSetRange]: SegmentsSetRangeRequest;
   [SocketRequests.SegmentSeen]: string;
   [SocketRequests.SegmentAutoSkipSet]: SegmentAutoSkipSetRequest;
+  [SocketRequests.SegmentAutoSkipDelaySet]: number;
   [SocketRequests.DownloadList]: void;
   [SocketRequests.DownloadStats]: void;
   [SocketRequests.DownloadAdd]: DownloadAddRequest;

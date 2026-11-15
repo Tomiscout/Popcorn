@@ -18,5 +18,7 @@ public class SegmentInfoMap : EntityMap<SegmentInfo>
         Map(m => m.Length).ToColumn("length");
         Map(m => m.Type).ToColumn("type");
         Map(m => m.Seen).ToColumn("seen");
+        Map(m => m.SourceFileId).ToColumn("source_file_id");
+        Map(m => m.SourceStart).ToColumn("source_start");
     }
 }

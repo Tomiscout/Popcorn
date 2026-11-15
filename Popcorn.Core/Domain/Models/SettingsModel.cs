@@ -22,8 +22,19 @@ public class SettingsModel
     /// <summary>Skipping an outro that ends within 10 seconds of the end of the file skips those last seconds too.</summary>
     public bool SkipOutroTail { get; set; } = true;
 
-    /// <summary>Auto-skip jumps past an intro/outro as soon as it starts instead of after the skip button's count-down.</summary>
-    public bool SkipSegmentsWithoutDelay { get; set; }
+    public const int MaxSegmentAutoSkipDelay = 99999;
+
+    /// <summary>
+    /// Seconds of the skip button's count-down before auto-skip jumps past an intro/outro (0 = as soon as it starts),
+    /// 0..<see cref="MaxSegmentAutoSkipDelay"/>.
+    /// </summary>
+    public int SegmentAutoSkipDelay { get; set; } = 10;
+
+    public const int MinLogRetentionDays = 1;
+    public const int MaxLogRetentionDays = 3650;
+
+    /// <summary>Days of log files kept in <c>logs/</c> (today counts as one); older ones are deleted by the server.</summary>
+    public int LogRetentionDays { get; set; } = 7;
 
     /// <summary>
     /// Drops invalid entries and makes sure both built-in players exist exactly once. Missing built-ins are seeded
@@ -32,6 +43,8 @@ public class SettingsModel
     public void NormalizePlayers()
     {
         Downloads ??= new(); // settings.json from before downloads existed, or a client sending null
+        SegmentAutoSkipDelay = Math.Clamp(SegmentAutoSkipDelay, 0, MaxSegmentAutoSkipDelay);
+        LogRetentionDays = LogRetentionDays <= 0 ? 7 : Math.Clamp(LogRetentionDays, MinLogRetentionDays, MaxLogRetentionDays);
 
         Players = (Players ?? new())
             .Where(p => p is not null)

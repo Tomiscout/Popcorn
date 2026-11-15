@@ -41,8 +41,18 @@ enum Stage {
     },
 }
 
+/// What main does once the window is closed.
+pub enum After {
+    Nothing,
+    /// "Uninstall Popcorn" on the up-to-date screen: main starts `--uninstall` (it needs its own process: on
+    /// Windows a copy in %TEMP%, outside the data folder it deletes).
+    Uninstall,
+}
+
 struct Worker {
     config: Config,
+    /// "Force reinstall": checks (and installs) as with `--force` from then on.
+    force: AtomicBool,
     stage: Mutex<Stage>,
     cancel: AtomicBool,
     /// The window was closed during a cancellable step: it closes once the job has stopped and cleaned up.
@@ -74,10 +84,17 @@ impl Worker {
         }
     }
 
+    /// The config with "Force reinstall" applied.
+    fn config(&self) -> Config {
+        let mut config = self.config.clone();
+        config.force |= self.force.load(Ordering::Relaxed);
+        config
+    }
+
     fn check(self: &Arc<Self>) {
         self.set(Stage::Checking);
         let worker = self.clone();
-        std::thread::spawn(move || match update::check(&worker.config) {
+        std::thread::spawn(move || match update::check(&worker.config()) {
             Ok(Check::UpToDate { version }) => worker.set(Stage::UpToDate { version }),
             Ok(Check::Offer(offer)) => {
                 info!(
@@ -117,7 +134,7 @@ impl Worker {
             let report = |step: &str, progress: f32, cancellable: bool| {
                 worker.working(step, progress, cancellable)
             };
-            match update::run(&worker.config, &offer, autostart, &report, &worker.cancel) {
+            match update::run(&worker.config(), &offer, autostart, &report, &worker.cancel) {
                 Ok(warnings) => worker.set(Stage::Done {
                     version: offer.version,
                     fresh: offer.fresh,
@@ -184,6 +201,7 @@ struct App {
     delete_data: bool,
     /// Fresh install: the "Start Popcorn on system startup" box (unticked = `--no-autostart`).
     autostart: bool,
+    after: Arc<Mutex<After>>,
 }
 
 impl eframe::App for App {
@@ -484,6 +502,8 @@ impl App {
                         ui.add_space(4.0);
                         ui.heading(if offer.fresh {
                             "Install Popcorn"
+                        } else if offer.is_reinstall() {
+                            "Reinstall Popcorn"
                         } else if offer.is_file() {
                             "Install this Popcorn package"
                         } else {
@@ -526,7 +546,11 @@ impl App {
                     ui.checkbox(&mut self.autostart, "Start Popcorn on system startup")
                         .on_hover_text(platform::TEXTS.autostart_hint);
                 } else {
-                    ui.weak("Popcorn closes during the update and starts again afterwards.");
+                    ui.weak(if offer.is_reinstall() {
+                        "Popcorn closes during the reinstall and starts again afterwards."
+                    } else {
+                        "Popcorn closes during the update and starts again afterwards."
+                    });
                 }
             }
             Stage::ConfirmUninstall => {
@@ -626,7 +650,7 @@ impl App {
         }
     }
 
-    fn buttons(&self, ui: &mut egui::Ui, ctx: &egui::Context, stage: &Stage) {
+    fn buttons(&mut self, ui: &mut egui::Ui, ctx: &egui::Context, stage: &Stage) {
         let close = |ui: &mut egui::Ui, text: &str| {
             if ui
                 .add(egui::Button::new(text).min_size(egui::vec2(88.0, 0.0)))
@@ -652,13 +676,29 @@ impl App {
                 }
             }
             Stage::UpToDate { .. } => {
+                // Right to left: Check again rightmost, Uninstall leftmost.
                 if ui.button("Check again").clicked() {
                     self.worker.check();
+                }
+                if ui
+                    .button("Force reinstall")
+                    .on_hover_text("Download and install the latest release again (--force)")
+                    .clicked()
+                {
+                    info!("Force reinstall");
+                    self.worker.force.store(true, Ordering::Relaxed);
+                    self.worker.check();
+                }
+                if ui.add(danger("Uninstall Popcorn")).clicked() {
+                    *self.after.lock().unwrap() = After::Uninstall;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
             }
             Stage::Available(offer) => {
                 let action = if offer.fresh || offer.is_file() {
                     "Install"
+                } else if offer.is_reinstall() {
+                    "Reinstall"
                 } else {
                     "Update"
                 };
@@ -690,7 +730,7 @@ impl App {
     }
 }
 
-pub fn run(config: Config) -> anyhow::Result<()> {
+pub fn run(config: Config) -> anyhow::Result<After> {
     let title = if config.uninstall {
         "Uninstall Popcorn"
     } else {
@@ -716,6 +756,8 @@ pub fn run(config: Config) -> anyhow::Result<()> {
         ..Default::default()
     };
 
+    let after = Arc::new(Mutex::new(After::Nothing));
+    let app_after = after.clone();
     eframe::run_native(
         title,
         options,
@@ -724,6 +766,7 @@ pub fn run(config: Config) -> anyhow::Result<()> {
             let autostart = config.autostart;
             let worker = Arc::new(Worker {
                 config,
+                force: AtomicBool::new(false),
                 stage: Mutex::new(Stage::Checking),
                 cancel: AtomicBool::new(false),
                 closing: AtomicBool::new(false),
@@ -738,10 +781,12 @@ pub fn run(config: Config) -> anyhow::Result<()> {
                 popcorn: PopcornBox::new(&cc.egui_ctx),
                 delete_data,
                 autostart,
+                after: app_after,
             }))
         }),
     )
-    .map_err(|e| anyhow::anyhow!("{e}"))
+    .map_err(|e| anyhow::anyhow!("{e}"))?;
+    Ok(std::mem::replace(&mut *after.lock().unwrap(), After::Nothing))
 }
 
 /// The main action's button: filled with the progress bar's colour.
@@ -753,4 +798,14 @@ fn accent(text: &str) -> egui::Button<'_> {
     )
     .fill(PROGRESS_FILL)
     .min_size(egui::vec2(88.0, 0.0))
+}
+
+/// A destructive action's button: red, like the close button's hover.
+fn danger(text: &str) -> egui::Button<'_> {
+    egui::Button::new(
+        egui::RichText::new(text)
+            .color(egui::Color32::WHITE)
+            .strong(),
+    )
+    .fill(egui::Color32::from_rgb(0xC4, 0x2B, 0x1C))
 }

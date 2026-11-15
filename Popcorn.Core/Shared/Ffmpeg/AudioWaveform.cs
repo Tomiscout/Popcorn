@@ -4,8 +4,8 @@ using FFMpegCore.Pipes;
 namespace Popcorn.Shared.Ffmpeg;
 
 /// <summary>
-/// Waveform peaks of a short window of an audio track, for the players' subtitle syncer: only the part around the
-/// playback position is decoded (input seek), never the whole file.
+/// Waveform peaks of a window of an audio track, for the players' subtitle syncer (only the part around the playback
+/// position is decoded, input seek, never the whole file) and the segment range editor.
 /// </summary>
 public static class AudioWaveform
 {
@@ -24,11 +24,12 @@ public static class AudioWaveform
     /// </summary>
     /// <param name="input">File path or URL (a download stream).</param>
     /// <param name="map">ffmpeg stream specifier of the track: <c>"3"</c> (stream index), <c>"a:0"</c>.</param>
+    /// <param name="maxSeconds">Longest window decoded (the segment range editor reads a few minutes at once).</param>
     public static async Task<byte[]> ReadPeaksAsync(string input, string map, double start, double duration,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, double maxSeconds = MaxSeconds)
     {
         start = Math.Max(0, start);
-        duration = Math.Clamp(duration, 0.1, MaxSeconds);
+        duration = Math.Clamp(duration, 0.1, maxSeconds);
 
         void Input(FFMpegArgumentOptions opts) => opts.Seek(TimeSpan.FromSeconds(start));
         var arguments = Uri.TryCreate(input, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https"

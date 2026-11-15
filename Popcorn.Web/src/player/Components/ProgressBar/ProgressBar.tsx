@@ -74,7 +74,7 @@ const ProgressBar = () => {
     segments,
     segmentAutoSkip,
     skipOutroTail,
-    skipSegmentsWithoutDelay,
+    autoSkipDelay,
     downloadRanges,
     setCurrentTime,
   } = usePlayerStore();
@@ -147,7 +147,7 @@ const ProgressBar = () => {
   }, [nearActiveEnd, activeSegment?.key]);
 
   // Auto-skip is decided when a segment is entered, and only the first time per file playback: seeking back into a
-  // segment shows the button without the count-down. Without delay it skips right away, else after the count-down.
+  // segment shows the button without the count-down. With a 0 s delay it skips right away, else after the count-down.
   useEffect(() => {
     const previous = previousSegment.current;
     previousSegment.current = activeSegment;
@@ -161,7 +161,7 @@ const ProgressBar = () => {
     enteredSegments.current.add(activeSegment.key);
     const mode = segmentAutoSkip?.itemMode ?? segmentAutoSkip?.globalMode ?? 'Always';
     if (!firstEntry || !shouldAutoSkip(mode, activeSegment.segment)) return;
-    if (skipSegmentsWithoutDelay) handleSkip();
+    if (autoSkipDelay <= 0) handleSkip();
     else setCountdownSegment(activeSegment.key);
   }, [activeSegment?.key]);
 
@@ -250,7 +250,7 @@ const ProgressBar = () => {
           <SkipButton
             key={kind}
             text={`Skip ${kind}`}
-            duration={10}
+            duration={Math.max(autoSkipDelay, 1)}
             isVisible={activeSegment?.kind === kind}
             autoSkip={activeSegment?.kind === kind && countdownSegment === activeSegment.key}
             onSkip={handleSkip}

@@ -102,6 +102,8 @@ public class WebEventHandler
                 Run(_segmentSkipService.MarkSeenAsync(Guid.Parse(message.Data!.GetJsonString()))); break;
             case "segment_auto_skip_set":
                 SetSegmentAutoSkip(message.Data); break;
+            case "segment_auto_skip_delay_set":
+                Run(_segmentSkipService.SetDelayAsync(message.Data!.GetJsonInt32())); break;
             default:
                 throw new NotImplementedException($"Event from _player not supported: {message.Name}");
         }

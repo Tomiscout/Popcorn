@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { AudioTrackDto, MediaFileMetadata, NextFilePlan, SubtitleTrackDto } from '../query/models/video.models';
 import { FolderLoadedNavigation, MediaFile } from '../model/media.contract';
-import type { PlayerSegmentsDto, SegmentAutoSkip } from '../model/segments.contract';
+import { DEFAULT_AUTO_SKIP_DELAY, type PlayerSegmentsDto, type SegmentAutoSkip } from '../model/segments.contract';
 
 /** Intro/outro segment, in ms. A negative `start` counts from the end of the file. */
 export interface PlayerSegment {
@@ -46,7 +46,7 @@ export function fromPlayerSegmentsDto(dto: PlayerSegmentsDto | null | undefined)
       ? { itemId: dto.itemId ?? null, globalMode: dto.globalMode, itemMode: dto.itemMode ?? null }
       : null,
     skipOutroTail: dto?.skipOutroTail ?? true,
-    skipSegmentsWithoutDelay: dto?.skipSegmentsWithoutDelay ?? false,
+    autoSkipDelay: dto?.autoSkipDelay ?? DEFAULT_AUTO_SKIP_DELAY,
   };
 }
 
@@ -102,7 +102,7 @@ export const perFileSyncState = {
 };
 
 /** Peaks per second of the `waveforms` windows (Popcorn.Shared `AudioWaveform.PeaksPerSecond`). */
-export const WAVEFORM_PEAKS_PER_SECOND = 100;
+export { WAVEFORM_PEAKS_PER_SECOND } from '../utils/waveform';
 /** Length of one `waveforms` window in seconds; window n starts at n × this. */
 export const WAVEFORM_WINDOW_SECONDS = 20;
 export const waveformKey = (fileId: string | null, audioTrack: number, window: number) =>
@@ -131,8 +131,8 @@ export interface PlayerState {
   segments: PlayerSegment[];
   segmentAutoSkip: SegmentAutoSkipState | null;
   skipOutroTail: boolean;
-  /** Auto-skip at once instead of after the skip button's count-down. */
-  skipSegmentsWithoutDelay: boolean;
+  /** Seconds of the skip button's count-down before auto-skip; 0 = at once (global setting). */
+  autoSkipDelay: number;
   /** Set = the next episode is missing: the warning dialog is open. */
   nextFileWarning: NextFilePlan | null;
   /** The file played to its end (not the next button); cleared when something plays or seeks again. */
@@ -172,6 +172,7 @@ export interface PlayerState {
   /** A segment was watched or skipped: the "after first" auto-skip modes skip it (and its kind) from now on. */
   markSegmentSeen: (segment: PlayerSegment) => void;
   setItemAutoSkip: (mode: SegmentAutoSkip | null) => void;
+  setAutoSkipDelay: (seconds: number) => void;
   setDownloadRanges: (v: [number, number][] | null) => void;
   setIsBuffering: (v: boolean) => void;
   setSubtitleSyncOpen: (v: boolean) => void;
@@ -213,7 +214,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
   segments: [],
   segmentAutoSkip: null,
   skipOutroTail: true,
-  skipSegmentsWithoutDelay: false,
+  autoSkipDelay: DEFAULT_AUTO_SKIP_DELAY,
   nextFileWarning: null,
   playbackEnded: false,
   showFin: false,
@@ -247,6 +248,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
     })),
   setItemAutoSkip: (mode) =>
     set((state) => ({ segmentAutoSkip: state.segmentAutoSkip && { ...state.segmentAutoSkip, itemMode: mode } })),
+  setAutoSkipDelay: (seconds) => set({ autoSkipDelay: seconds }),
   setDownloadRanges: (v) => set({ downloadRanges: v }),
   setIsBuffering: (v) => set({ isBuffering: v }),
   setSubtitleSyncOpen: (v) => set({ subtitleSyncOpen: v }),

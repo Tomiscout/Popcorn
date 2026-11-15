@@ -127,7 +127,7 @@ one workspace, every crate builds on every OS (`cargo build --workspace`). All i
 - Platform-specific DI via `RuntimeInformation.IsOSPlatform` in `Popcorn.Server/ServiceRegister.cs` and
   `Popcorn.Player.Core/ServiceRegister.cs`. Native abstractions in `Popcorn.Core/Domain/Interfaces` (`IPlayerService`,
   `INativeFolderService`, `INativeFileAssosiation` — note spelling) with Linux/Windows impls in `Popcorn.Platform`.
-- Repositories and most services are singletons; `FileStreamService`, `VideoService` scoped.
+- Repositories and most services are singletons (`FileStreamService` too: it owns the running remuxes).
 - DB schema changes: a new FluentMigrator class in `Popcorn.Core/Persistence/Migrations/` named
   `<Name>_<yyyyMMdd>.cs`, plus Dapper map updates in `Popcorn.Core/Persistence/Dapper/`. The server migrates on every
   start (`MigrateDatabase`, Development too); the players never migrate.

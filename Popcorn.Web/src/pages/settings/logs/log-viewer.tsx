@@ -7,6 +7,8 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   IconArrowBarToDown,
   IconCalendar,
+  IconCheck,
+  IconCopy,
   IconFolderOpen,
   IconRefresh,
   IconSearch,
@@ -17,6 +19,7 @@ import dayjs from 'dayjs';
 import { LogApp, LogEntry, LogQuery, LogQueryResult, logLevels } from '../../../model/logs.contract';
 import { resolveServerHost } from '../../../utils/url-resolver';
 import { isAbortError, readJsonLines } from '../../../utils/json-lines';
+import { copyText } from '../../../utils/clipboard';
 import { appColor, levelColor } from './log-colors';
 import './log-viewer.css';
 
@@ -57,7 +60,8 @@ const addCounts = (a: Record<string, number>, b: Record<string, number>) => {
 const formatCount = (n: number) => (n >= 10000 ? `${Math.round(n / 1000)}k` : n.toLocaleString());
 
 const LogViewer: React.FC = () => {
-  const [range, setRange] = useState<DatesRangeValue<string>>([null, null]);
+  // Today by default (open end: live).
+  const [range, setRange] = useState<DatesRangeValue<string>>(() => [dayjs().format('YYYY-MM-DD'), null]);
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search.trim(), 300);
   const [filters, setFilters] = useLocalStorage<Filters>({
@@ -241,20 +245,26 @@ const LogViewer: React.FC = () => {
     });
   };
 
-  const toggleExpanded = (id: number) => {
-    if (window.getSelection()?.toString()) return; // selecting text, not clicking
+  // Stable, so live updates do not re-render every (memoized) row.
+  const toggleExpanded = useCallback((id: number) => {
     setExpanded((s) => {
       const next = new Set(s);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }, []);
 
   const today = dayjs().format('YYYY-MM-DD');
   const presets = [
     { value: [today, null] as [string, null], label: 'Today' },
-    { value: [dayjs().subtract(1, 'day').format('YYYY-MM-DD'), dayjs().subtract(1, 'day').format('YYYY-MM-DD')] as [string, string], label: 'Yesterday' },
+    {
+      value: [dayjs().subtract(1, 'day').format('YYYY-MM-DD'), dayjs().subtract(1, 'day').format('YYYY-MM-DD')] as [
+        string,
+        string,
+      ],
+      label: 'Yesterday',
+    },
     { value: [dayjs().subtract(6, 'day').format('YYYY-MM-DD'), null] as [string, null], label: 'Last 7 days' },
     { value: [dayjs().subtract(29, 'day').format('YYYY-MM-DD'), null] as [string, null], label: 'Last 30 days' },
     { value: [null, null] as [null, null], label: 'Everything' },
@@ -360,7 +370,9 @@ const LogViewer: React.FC = () => {
         <div className="log-panel-head">
           <span>
             {entries.length.toLocaleString()} {entries.length === 1 ? 'entry' : 'entries'}
-            {skipped > 0 && <span className="log-dim"> · {skipped.toLocaleString()} older not shown, narrow the days</span>}
+            {skipped > 0 && (
+              <span className="log-dim"> · {skipped.toLocaleString()} older not shown, narrow the days</span>
+            )}
           </span>
           {topDay && <span className="log-head-day">{dayjs(topDay).format('dddd, D MMMM YYYY')}</span>}
           <span className="log-dim">Ctrl+click a filter to show only it</span>
@@ -390,7 +402,7 @@ const LogViewer: React.FC = () => {
                       appLabel={appLabel(row.entry.app)}
                       search={debouncedSearch}
                       expanded={expanded.has(row.entry.id)}
-                      onToggle={() => toggleExpanded(row.entry.id)}
+                      onToggle={toggleExpanded}
                     />
                   )}
                 </div>
@@ -458,7 +470,11 @@ const FilterChip: React.FC<{
 const DaySeparator: React.FC<{ day: string }> = ({ day }) => {
   const d = dayjs(day);
   const today = dayjs().startOf('day');
-  const name = d.isSame(today, 'day') ? 'Today' : d.isSame(today.subtract(1, 'day'), 'day') ? 'Yesterday' : d.format('dddd');
+  const name = d.isSame(today, 'day')
+    ? 'Today'
+    : d.isSame(today.subtract(1, 'day'), 'day')
+      ? 'Yesterday'
+      : d.format('dddd');
   return (
     <div className="log-day">
       <span>
@@ -485,6 +501,39 @@ const highlight = (text: string, search: string): React.ReactNode => {
   return parts;
 };
 
+/** The entry as the log file has it: the main line, then the detail lines. */
+const entryText = (entry: LogEntry, appLabel: string) => {
+  const source = entry.source ? `  (${entry.source})` : '';
+  const line = `${entry.time} ${entry.level} ${appLabel} ${entry.message}${source}`;
+  return entry.detail ? `${line}\n${entry.detail}` : line;
+};
+
+const CopyButton: React.FC<{ entry: LogEntry; appLabel: string }> = ({ entry, appLabel }) => {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1200);
+    return () => clearTimeout(timer);
+  }, [copied]);
+  return (
+    <button
+      type="button"
+      className={`log-copy${copied ? ' copied' : ''}`}
+      title={entry.detail ? 'Copy the line and its detail lines' : 'Copy the line'}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        copyText(entryText(entry, appLabel)).then(setCopied);
+      }}
+    >
+      {copied ? <IconCheck size={13} /> : <IconCopy size={13} />}
+    </button>
+  );
+};
+
+/** Moved further than this between mouse down and up: a text selection drag, not a click. */
+const DRAG_PX = 4;
+
 /** `[native] ...`, `[overlay] ...` (player) → tag + message. */
 const tagPattern = /^\[([\w.-]{1,24})\]\s+/;
 
@@ -493,8 +542,22 @@ const LogRow: React.FC<{
   appLabel: string;
   search: string;
   expanded: boolean;
-  onToggle: () => void;
+  onToggle: (id: number) => void;
 }> = React.memo(({ entry, appLabel, search, expanded, onToggle }) => {
+  const downRef = useRef<{ x: number; y: number } | null>(null);
+  // A row with detail lines expands on a plain click; a drag (selecting text) or a double/triple click (selecting a
+  // word/line) must leave it alone.
+  const onClick = (e: React.MouseEvent) => {
+    const down = downRef.current;
+    downRef.current = null;
+    if (!down || Math.abs(e.clientX - down.x) > DRAG_PX || Math.abs(e.clientY - down.y) > DRAG_PX) return;
+    if (e.detail === 2) onToggle(entry.id); // undo the first click of a double click
+    if (e.detail !== 1) return;
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed && e.currentTarget.contains(selection.anchorNode)) return;
+    onToggle(entry.id);
+  };
+
   const color = levelColor(entry.level);
   const tag = tagPattern.exec(entry.message);
   const message = tag ? entry.message.slice(tag[0].length) : entry.message;
@@ -504,7 +567,8 @@ const LogRow: React.FC<{
     <div
       className={`log-row lvl-${entry.level}${entry.detail ? ' has-detail' : ''}`}
       style={{ '--lvl-color': color, '--app-color': appColor(entry.app) } as React.CSSProperties}
-      onClick={entry.detail ? onToggle : undefined}
+      onMouseDown={entry.detail ? (e) => (downRef.current = { x: e.clientX, y: e.clientY }) : undefined}
+      onClick={entry.detail ? onClick : undefined}
     >
       <div className="log-line">
         <span className="log-time" title={entry.time}>
@@ -524,9 +588,14 @@ const LogRow: React.FC<{
               {expanded ? '▾' : '▸'} {detailLines} {detailLines === 1 ? 'line' : 'lines'}
             </span>
           )}
+          <CopyButton entry={entry} appLabel={appLabel} />
         </span>
       </div>
-      {expanded && entry.detail && <pre className="log-detail" onClick={(e) => e.stopPropagation()}>{highlight(entry.detail, search)}</pre>}
+      {expanded && entry.detail && (
+        <pre className="log-detail" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          {highlight(entry.detail, search)}
+        </pre>
+      )}
     </div>
   );
 });
