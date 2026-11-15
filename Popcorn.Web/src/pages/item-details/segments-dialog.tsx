@@ -25,6 +25,7 @@ import { useSubscription } from '../../socket/useSubscription.hook';
 import { SocketRequests } from '../../socket/socket-requests';
 import { resolveServerHost } from '../../utils/url-resolver';
 import {
+  hasApplied,
   SegmentFileState,
   SegmentJobKind,
   SegmentOption,
@@ -33,6 +34,7 @@ import {
   SegmentType,
 } from '../../model/segments.contract';
 import SegmentRangeEditor from './segment-range-editor';
+import SegmentFileTree from './segment-file-tree';
 
 interface SegmentsDialogProps {
   itemId: string;
@@ -66,8 +68,6 @@ const audioUrl = (segmentId: string, version: number) =>
 /** The item has this segment type: a saved reference or a file that has / could get it (e.g. from a chapter). */
 const inUse = (state: SegmentsState, type: SegmentType) =>
   state.references.some((r) => r.type === type) || state.files.some((f) => f.segments.some((o) => o.type === type));
-
-const hasApplied = (f: SegmentFileState, type: SegmentType) => f.segments.some((o) => o.type === type && o.applied);
 
 const missing = (f: SegmentFileState, state: SegmentsState) =>
   !f.downloading && TYPES.some((t) => inUse(state, t) && !hasApplied(f, t));
@@ -130,6 +130,8 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
   const [unpicked, setUnpicked] = useState<string[]>([]);
   /** Saved segment open in the range editor. */
   const [editing, setEditing] = useState<string | null>(null);
+  /** Expanded folders of the files tables (both tabs). */
+  const [expanded, setExpanded] = useState<string[]>([]);
 
   const events = useMemo(
     () => ({
@@ -196,6 +198,10 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
     setUnpicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   const toggleScanFile = (id: string) =>
     setScanFiles((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const selectScanFiles = (ids: string[], select: boolean) =>
+    setScanFiles((prev) => [...prev.filter((id) => !ids.includes(id)), ...(select ? ids : [])]);
+  const toggleExpanded = (path: string) =>
+    setExpanded((prev) => (prev.includes(path) ? prev.filter((x) => x !== path) : [...prev, path]));
   const setType = (segmentId: string, type: SegmentType) =>
     client.sendEvent(SocketRequests.SegmentsSetType, { itemId, segmentId, type });
   const remove = (segmentId: string) => client.sendEvent(SocketRequests.SegmentsDelete, { itemId, segmentId });
@@ -422,8 +428,12 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
                         <Table.Th>Outro</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
-                    <Table.Tbody>
-                      {shownFiles.map((f) => (
+                    <SegmentFileTree
+                      files={shownFiles}
+                      expanded={expanded}
+                      onToggleExpanded={toggleExpanded}
+                      selected={selected}
+                      renderFile={(f, indent) => (
                         <Table.Tr
                           key={f.id}
                           style={{ cursor: f.downloading ? 'default' : 'pointer' }}
@@ -437,14 +447,14 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
                               tabIndex={-1}
                             />
                           </Table.Td>
-                          <Table.Td>
+                          <Table.Td style={{ paddingLeft: indent }}>
                             <FileLabel file={f} />
                           </Table.Td>
                           <Table.Td>{appliedBadges(f, SegmentType.Intro)}</Table.Td>
                           <Table.Td>{appliedBadges(f, SegmentType.Outro)}</Table.Td>
                         </Table.Tr>
-                      ))}
-                    </Table.Tbody>
+                      )}
+                    />
                   </Table>
                 </ScrollArea.Autosize>
               </Stack>
@@ -494,8 +504,13 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
                         <Table.Th>Outro</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
-                    <Table.Tbody>
-                      {shownFiles.map((f) => (
+                    <SegmentFileTree
+                      files={shownFiles}
+                      expanded={expanded}
+                      onToggleExpanded={toggleExpanded}
+                      selected={scanFiles}
+                      onSelectFolder={selectScanFiles}
+                      renderFile={(f, indent) => (
                         <Table.Tr key={f.id}>
                           <Table.Td>
                             <Checkbox
@@ -504,14 +519,14 @@ const SegmentsDialog: React.FC<SegmentsDialogProps> = ({ itemId, opened, onClose
                               onChange={() => toggleScanFile(f.id)}
                             />
                           </Table.Td>
-                          <Table.Td maw={200}>
+                          <Table.Td maw={200} style={{ paddingLeft: indent }}>
                             <FileLabel file={f} />
                           </Table.Td>
                           <Table.Td>{optionChips(f, SegmentType.Intro)}</Table.Td>
                           <Table.Td>{optionChips(f, SegmentType.Outro)}</Table.Td>
                         </Table.Tr>
-                      ))}
-                    </Table.Tbody>
+                      )}
+                    />
                   </Table>
                 </ScrollArea.Autosize>
               </Stack>

@@ -11,7 +11,8 @@ segments: [Features](../Docs/Features.md#introoutro-skipping).
   for the range editor).
 - UI: `pages/item-details/segments-dialog.tsx`. Tabs Segment candidates = detect + saved segments with
   type/edit/delete/applied-to ranges (edit = `segment-range-editor.tsx`, see below); Apply segments = the same saved segments list with ticks + scans + per-file toggles. Files labelled S01E04 from parsed tags,
-  full path on hover.
+  full path on hover, grouped in collapsible folders of their path in the item (`segment-file-tree.tsx`; folder rows
+  count intro/outro per folder, in Apply segments with a checkbox selecting the folder's ready files).
 
 ## Silence and timing (`AudioEnvelope`)
 

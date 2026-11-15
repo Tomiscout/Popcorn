@@ -1,7 +1,5 @@
 .player-settings__anchor {
   display: flex;
-  flex-shrink: 0;
-  margin-left: auto;
 }
 
 /* The top bar lets clicks through to the video; its menu takes them. */

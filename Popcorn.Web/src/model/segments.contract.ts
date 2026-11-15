@@ -71,6 +71,10 @@ export interface SegmentFileState {
   segments: SegmentOption[];
 }
 
+/** The file has a segment of this type applied (not only found). */
+export const hasApplied = (f: SegmentFileState, type: SegmentType) =>
+  f.segments.some((o) => o.type === type && o.applied);
+
 export interface SegmentsState {
   itemId: string;
   job: SegmentJob | null;

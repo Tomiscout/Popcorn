@@ -160,8 +160,15 @@ detection: [Popcorn.SegmentFinder](../Popcorn.SegmentFinder/README.md).
     turned on.
   - Browser: extra `SubtitleTrackDto`s from index `ExternalIndexBase` (10000, `ExternalPath` not serialized) in
     `FileStreamService.GetMediaFileMetadataAsync`, `SubtitleDefaultIndex` = the one turned on (`VideoPlayer.tsx`);
-    `api/video/{id}/subtitles/{index}` serves .vtt/.ass/.ssa as they are, the rest converted to WebVTT (VobSub
-    skipped), also while the video downloads.
+    `api/video/{id}/subtitles/{index}` serves .vtt/.ass/.ssa as they are, VobSub (.idx with its .sub) as one
+    `vobsub` file (below), the rest converted to WebVTT, also while the video downloads.
+- **Bitmap subtitles in the browser player**: PGS (`sup`, `libpgs`) and VobSub/DVD (`vobsub`). A `dvd_subtitle` track
+  or external .idx + .sub reaches the browser as one file: the .idx text (frame size, 16-colour palette; for a track
+  its codec extradata via ffprobe) followed by the .sub MPEG-2 program stream (for a track ffmpeg `-c:s copy -f vob`),
+  `TrackUtils.ExtractVobSubTrackAsync`/`WriteVobSubAsync`, sent Brotli-compressed like .sup.
+  `src/player/Components/Subtitles/vobsub.ts` (port of the Apache-2.0 `vobsub` crate of emk/subtitles-rs) parses it,
+  `VobSubSubtitleOverlay` draws the cue on a canvas of the frame size stretched over the picture (anamorphic DVDs line
+  up). Only the first language of a multi-language .sub is read.
 - **Track languages**: `SettingsModel.PrefferedAudioLanguages` / `PrefferedSubtitleLanguages` (spelling kept: stored
   settings; ISO 639-2/T codes in order, Settings → General → Languages, `pages/settings/language-settings.tsx`, list
   from socket `LanguageList`). `LanguageCodes` (`Popcorn.Core/Shared/Languages`, .NET culture data + ISO 639-2/B

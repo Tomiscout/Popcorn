@@ -260,11 +260,11 @@ public class FileStreamService(
     var tracks = new List<SubtitleTrackDto>();
     foreach (var subtitle in found)
     {
-      // What the browser player gets: WebVTT (text formats converted by ffmpeg) or ASS. VobSub (.idx) is bitmaps.
+      // What the browser player gets: WebVTT (text formats converted by ffmpeg), ASS or VobSub (.idx + its .sub).
       var format = Path.GetExtension(subtitle.Path).ToLowerInvariant() switch
       {
         ".ass" or ".ssa" => "ass",
-        ".idx" => null,
+        ".idx" => VobSubDataPath(subtitle.Path) is null ? null : "vobsub",
         _ => "vtt",
       };
       if (format is null) continue;
@@ -285,12 +285,25 @@ public class FileStreamService(
     return tracks;
   }
 
-  /// <summary>An external subtitle file as the browser player reads it: .vtt/.ass/.ssa as they are, the rest converted to WebVTT.</summary>
+  /// <summary>
+  /// An external subtitle file as the browser player reads it: .vtt/.ass/.ssa as they are, VobSub as one file
+  /// (.idx then .sub, see <see cref="TrackUtils.ExtractVobSubTrackAsync"/>), the rest converted to WebVTT.
+  /// </summary>
   private static async Task<string> PrepareExternalSubtitleAsync(MediaFile mediaFile, SubtitleTrackDto subtitle)
   {
     var source = subtitle.ExternalPath!;
     var extension = Path.GetExtension(source).ToLowerInvariant();
     if (extension is ".vtt" or ".ass" or ".ssa") return source;
+
+    if (extension == ".idx")
+    {
+      var subPath = VobSubDataPath(source) ?? throw new FileNotFoundException("VobSub .sub file not found", source);
+      var vobSubPath = Path.Combine(DirectoryUtils.StreamCache, $"{mediaFile.Id}-{subtitle.Index}.vobsub");
+      var changed = new[] { source, subPath }.Max(File.GetLastWriteTimeUtc);
+      if (!File.Exists(vobSubPath) || File.GetLastWriteTimeUtc(vobSubPath) < changed)
+        await TrackUtils.WriteVobSubAsync(await File.ReadAllBytesAsync(source), subPath, vobSubPath);
+      return vobSubPath;
+    }
 
     var outPath = Path.Combine(DirectoryUtils.StreamCache, $"{mediaFile.Id}-{subtitle.Index}.vtt");
     if (File.Exists(outPath) && File.GetLastWriteTimeUtc(outPath) >= File.GetLastWriteTimeUtc(source)) return outPath;
@@ -302,10 +315,21 @@ public class FileStreamService(
     return outPath;
   }
 
+  /// <summary>The .sub next to a VobSub .idx (same name, any case of the extension).</summary>
+  private static string? VobSubDataPath(string idxPath)
+  {
+    var folder = Path.GetDirectoryName(idxPath)!;
+    var name = Path.GetFileNameWithoutExtension(idxPath);
+    return Directory.EnumerateFiles(folder, name + ".*")
+      .FirstOrDefault(f => Path.GetFileNameWithoutExtension(f) == name &&
+                           Path.GetExtension(f).Equals(".sub", StringComparison.OrdinalIgnoreCase));
+  }
+
   private static string TransformSubtitleCodecNameToExtension(string subtitleCodecName) => subtitleCodecName switch
   {
     "subrip" => "srt",
     "hdmv_pgs_subtitle" => "sup",
+    "dvd_subtitle" => "vobsub",
     _ => subtitleCodecName
   };
 
@@ -328,7 +352,9 @@ public class FileStreamService(
     var fileExtension = forceVtt ? "vtt" : subtitle.Format;
     var outPath = Path.Combine(DirectoryUtils.StreamCache, $"{mediaFile.Id}-{trackId}.{fileExtension}");
 
-    outPath = await TrackUtils.ExtractSubtitleTrackAsync(mediaFile.Path, trackId, outPath, forceVtt);
+    outPath = subtitle.Format == "vobsub"
+      ? await TrackUtils.ExtractVobSubTrackAsync(mediaFile.Path, trackId, outPath)
+      : await TrackUtils.ExtractSubtitleTrackAsync(mediaFile.Path, trackId, outPath, forceVtt);
     if(!File.Exists(outPath)) throw new InvalidOperationException($"File {outPath} not found");
     
     return outPath;

@@ -15,6 +15,9 @@ public static class FfmpegBinaries
     /// <summary>ffmpeg to start (full path, or the bare name for PATH).</summary>
     public static string Ffmpeg => Folder is null ? "ffmpeg" : Path.Combine(Folder, ExeName("ffmpeg"));
 
+    /// <summary>ffprobe to start (full path, or the bare name for PATH).</summary>
+    public static string Ffprobe => Folder is null ? "ffprobe" : Path.Combine(Folder, ExeName("ffprobe"));
+
     /// <summary>
     /// Takes the first of <paramref name="folders"/> that has both ffmpeg and ffprobe (default: this program's
     /// folder) for FFMpegCore and <see cref="Ffmpeg"/>.

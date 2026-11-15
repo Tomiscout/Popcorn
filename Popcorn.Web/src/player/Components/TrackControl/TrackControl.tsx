@@ -8,6 +8,7 @@ import { useFileDialog } from '@mantine/hooks';
 import { subtitleFormats } from '../../../utils/file.utils';
 import { usePlayerFeatures } from '../../player-features';
 import { setSubtitleDelay } from '../../subtitle-delay';
+import { useEventListeners } from '../../Utlis/listener.utils';
 
 interface TrackEntry {
   id: string;
@@ -18,11 +19,25 @@ interface TrackEntry {
 /** Subtitle "None" entry; hosts get -1 in `subtitle_track_selected` and turn subtitles off. */
 export const NO_SUBTITLE_ID = '-1';
 
-const toEntry = (t: { index: number; label: string; language?: string; languageName?: string | null }): TrackEntry => ({
+type Track = { index: number; label: string; language?: string; languageName?: string | null };
+
+const toEntry = (t: Track): TrackEntry => ({
   description: t.label,
   language: t.languageName || t.language || '',
   id: t.index.toString(),
 });
+
+/** "Language label" of the track with `id` (as posted in `audio/subtitle_track_selected`), for the centre notification. */
+export const trackName = (tracks: Track[] | undefined, id: string) => {
+  const track = tracks?.find((t) => t.index.toString() === id);
+  if (!track) return id;
+  const entry = toEntry(track);
+  return [entry.language, entry.description].filter(Boolean).join(' ');
+};
+
+/** The entry after `selected`, wrapping around. */
+const nextId = (tracks: TrackEntry[], selected: string | undefined) =>
+  tracks[(tracks.findIndex((t) => t.id === selected) + 1) % tracks.length]?.id;
 
 const TrackControl = () => {
   const subtitlePopupWidth = 500;
@@ -70,6 +85,29 @@ const TrackControl = () => {
     setShowPopup(false);
     setSubtitleSyncOpen(true);
   };
+
+  const cycleSubtitle = () => {
+    const next = nextId(subtitleTracks, selectedSubtitle);
+    if (next) handleSubtitleChange(next);
+  };
+  const cycleAudio = () => {
+    const next = nextId(audioTracks, selectedAudio);
+    if (next) handleAudioChange(next);
+  };
+  // Toggles; the syncer only works on a selected track, like its button.
+  const toggleSync = () => {
+    const { subtitleSyncOpen } = usePlayerStore.getState();
+    if (subtitleSyncOpen) setSubtitleSyncOpen(false);
+    else if (subtitleDelay && currentSubtitle) openSync();
+  };
+
+  // The PlayerHelp dialog lists these.
+  useEventListeners('keyup', {
+    KeyC: cycleSubtitle,
+    KeyS: cycleSubtitle,
+    KeyA: cycleAudio,
+    KeyQ: toggleSync,
+  });
 
   const handleAddSubtitle = () => {
     if (addSubtitle === 'browser') {

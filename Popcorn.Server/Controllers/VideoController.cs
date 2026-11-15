@@ -223,8 +223,8 @@ public class VideoController(
         var filePath = await fileStreamService.GetMediaFileSubtitlesAsync(mediaFile, trackId);
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
 
-        // PGS subtitles are compressed
-        if (extension == ".sup")
+        // Bitmap subtitles (PGS, VobSub) are sent compressed
+        if (extension is ".sup" or ".vobsub")
         {
             return await BuildBrotliFileResponse(filePath);
         }

@@ -93,3 +93,12 @@
   content: '·';
   margin-right: 0.75em;
 }
+
+/* Help + settings on the right; only as wide as the buttons, so the rest of the bar lets clicks through. */
+.top-bar__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}

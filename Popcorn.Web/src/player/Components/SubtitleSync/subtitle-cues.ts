@@ -9,6 +9,7 @@ export interface SubtitleCue {
 /** Bitmap subtitle formats (browser track formats, mpv codec names): there is no text to show. */
 const IMAGE_FORMATS = new Set([
   'sup',
+  'vobsub',
   'hdmv_pgs_subtitle',
   'pgssub',
   'dvd_subtitle',

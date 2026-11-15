@@ -8,7 +8,11 @@ import {
   IconRewindForward10 as ForwardButton,
   IconPlayerSkipForwardFilled as NextTrack,
   IconVolume3 as MuteVolume,
+  IconBadgeCc as SubtitlesIcon,
+  IconMusic as AudioIcon,
 } from '@tabler/icons-react';
+import { usePlayerStore } from '../../../state/player.store';
+import { NO_SUBTITLE_ID, trackName } from '../TrackControl/TrackControl';
 
 import { isTouchDevice } from '../../../utils/platform';
 import './PlaybackNotificationControl.css';
@@ -19,7 +23,7 @@ interface Notification {
   message?: string;
 }
 
-/** Short centred feedback (play/pause, skip, volume) for commands posted on the event bus. */
+/** Short centred feedback (play/pause, skip, volume, track changes) for commands posted on the event bus. */
 const PlaybackNotificationControl = () => {
   const [notification, setNotification] = useState<Notification | null>(null);
   const hideTimeout = useRef<ReturnType<typeof setTimeout>>(null);
@@ -39,6 +43,13 @@ const PlaybackNotificationControl = () => {
       play_status_changed: (isPlaying: boolean) =>
         !isTouchDevice && show({ icon: isPlaying ? <PlayButton /> : <PauseButton /> }),
       play_next_title: () => show({ icon: <NextTrack /> }),
+      audio_track_selected: (id: string) =>
+        show({ icon: <AudioIcon />, message: trackName(usePlayerStore.getState().metadata?.audioTracks, id) }),
+      subtitle_track_selected: (id: string) =>
+        show({
+          icon: <SubtitlesIcon />,
+          message: id === NO_SUBTITLE_ID ? 'Off' : trackName(usePlayerStore.getState().metadata?.subtitleTracks, id),
+        }),
     };
 
     for (const [name, handler] of Object.entries(handlers)) registerEventHandler(name, handler);

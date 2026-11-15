@@ -5,6 +5,7 @@ import { resolveServerHost } from '../../../utils/url-resolver';
 import { postMessage, registerEventHandler, unregisterEventHandler } from '../../../utils/events';
 import VttSubtitleOverlay from './VttSubtitleOverlay';
 import PgsSubtitleOverlay from './PgsSubtitleOverlay';
+import VobSubSubtitleOverlay from './VobSubSubtitleOverlay';
 import { convertSrtToVtt } from '../../../utils/srt.utils';
 import { SubtitleTrackDto } from '../../../query/models/video.models';
 
@@ -129,6 +130,9 @@ const SubtitleOverlay: React.FC<SubtitleOverlayProps> = ({ videoRef }) => {
     }
     if (currentSubtitle.format === 'sup') {
       return <PgsSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.index.toString()} />;
+    }
+    if (currentSubtitle.format === 'vobsub') {
+      return <VobSubSubtitleOverlay videoRef={videoRef} currentKey={currentSubtitle.index.toString()} />;
     } else {
       return <div></div>;
     }

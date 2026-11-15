@@ -1,0 +1,14 @@
+/* The player hides the cursor on its container while idle; the dialog always shows it. */
+.player-help {
+  cursor: default;
+  font-family: var(--mantine-font-family);
+}
+
+.player-help__section + .player-help__section {
+  margin-top: var(--mantine-spacing-md);
+}
+
+.player-help__keys {
+  width: 30%;
+  white-space: nowrap;
+}

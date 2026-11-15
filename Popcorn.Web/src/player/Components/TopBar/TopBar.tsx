@@ -6,12 +6,14 @@ import { IconWindowMaximize, IconWindowMinimize, IconX } from '@tabler/icons-rea
 import { postMessage } from '../../../utils/events';
 import { usePlayerFeatures } from '../../player-features';
 import { PlayerSettings } from '../PlayerSettings/PlayerSettings';
+import { PlayerHelp } from '../PlayerHelp/PlayerHelp';
 
 export interface TopBarProps {
   showControls: boolean;
 }
 
-/** Window buttons (browser only), the title of the current file with its season / episode and the settings menu. */
+/** Window buttons (browser only), the title of the current file with its season / episode, the shortcuts help and
+ * the settings menu. */
 export const TopBar: React.FC<TopBarProps> = ({ showControls }) => {
   const { metadata, isFloating, isFullscreen, setIsFloating, setIsFullscreen } = usePlayerStore();
   const { floating, close } = usePlayerFeatures();
@@ -75,7 +77,12 @@ export const TopBar: React.FC<TopBarProps> = ({ showControls }) => {
           </div>
         )}
 
-        {!isFloating && <PlayerSettings showControls={showControls} />}
+        {!isFloating && (
+          <div className="top-bar__actions">
+            <PlayerHelp />
+            <PlayerSettings showControls={showControls} />
+          </div>
+        )}
       </div>
     </div>
   );
